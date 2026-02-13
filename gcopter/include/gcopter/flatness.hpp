@@ -27,6 +27,7 @@
 
 #include <Eigen/Eigen>
 
+#include <algorithm>
 #include <cmath>
 
 namespace flatness
@@ -84,7 +85,7 @@ namespace flatness
             zu12 = zu1 * zu2;
             zu02 = zu0 * zu2;
             zu_sqr_norm = zu_sqr0 + zu_sqr1 + zu_sqr2;
-            zu_norm = sqrt(zu_sqr_norm);
+            zu_norm = sqrt(std::max(zu_sqr_norm, 1.0e-12));
             z0 = zu0 / zu_norm;
             z1 = zu1 / zu_norm;
             z2 = zu2 / zu_norm;
@@ -110,7 +111,7 @@ namespace flatness
             f_term1 = mass * a1 + dv * w1;
             f_term2 = mass * (a2 + grav) + dv * w2;
             thr = z0 * f_term0 + z1 * f_term1 + z2 * f_term2;
-            tilt_den = sqrt(2.0 * (1.0 + z2));
+            tilt_den = sqrt(std::max(2.0 * (1.0 + z2), 1.0e-12));
             tilt0 = 0.5 * tilt_den;
             tilt1 = -z1 / tilt_den;
             tilt2 = z0 / tilt_den;
@@ -122,7 +123,7 @@ namespace flatness
             quat(3) = tilt0 * s_half_psi;
             c_psi = cos(psi);
             s_psi = sin(psi);
-            omg_den = z2 + 1.0;
+            omg_den = std::max(z2 + 1.0, 1.0e-6);
             omg_term = dz2 / omg_den;
             omg(0) = dz0 * s_psi - dz1 * c_psi -
                      (z0 * s_psi - z1 * c_psi) * omg_term;

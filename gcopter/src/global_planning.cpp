@@ -1,10 +1,10 @@
 #include "misc/visualizer.hpp"
-#include "gcopter/trajectory.hpp"
 #include "gcopter/gcopter.hpp"
 #include "gcopter/firi.hpp"
 #include "gcopter/flatness.hpp"
 #include "gcopter/voxel_map.hpp"
 #include "gcopter/sfc_gen.hpp"
+#include "SplineTrajectory/SplineTrajectory.hpp"
 
 #include <ros/ros.h>
 #include <ros/console.h>
@@ -86,7 +86,7 @@ private:
     Visualizer visualizer;
     std::vector<Eigen::Vector3d> startGoal;
 
-    Trajectory<5> traj;
+    SplineTrajectory::QuinticSpline3D traj;
     double trajStamp;
 
 public:
@@ -201,7 +201,7 @@ public:
                 physicalParams(5) = config.speedEps;
                 const int quadratureRes = config.integralIntervs;
 
-                traj.clear();
+                traj = SplineTrajectory::QuinticSpline3D();
 
                 if (!gcopter.setup(config.weightT,
                                    iniState, finState,
@@ -220,7 +220,7 @@ public:
                     return;
                 }
 
-                if (traj.getPieceNum() > 0)
+                if (traj.isInitialized() && traj.getNumSegments() > 0)
                 {
                     trajStamp = ros::Time::now().toSec();
                     visualizer.visualize(traj, route);
@@ -270,21 +270,27 @@ public:
         flatmap.reset(physicalParams(0), physicalParams(1), physicalParams(2),
                       physicalParams(3), physicalParams(4), physicalParams(5));
 
-        if (traj.getPieceNum() > 0)
+        if (traj.isInitialized() && traj.getNumSegments() > 0)
         {
             const double delta = ros::Time::now().toSec() - trajStamp;
-            if (delta > 0.0 && delta < traj.getTotalDuration())
+            if (delta > 0.0 && delta < traj.getDuration())
             {
                 double thr;
                 Eigen::Vector4d quat;
                 Eigen::Vector3d omg;
 
-                flatmap.forward(traj.getVel(delta),
-                                traj.getAcc(delta),
-                                traj.getJer(delta),
+                const auto &ppoly = traj.getTrajectory();
+                const Eigen::Vector3d vel = ppoly.evaluate(delta, SplineTrajectory::Deriv::Vel);
+                const Eigen::Vector3d acc = ppoly.evaluate(delta, SplineTrajectory::Deriv::Acc);
+                const Eigen::Vector3d jer = ppoly.evaluate(delta, SplineTrajectory::Deriv::Jerk);
+                const Eigen::Vector3d pos = ppoly.evaluate(delta, SplineTrajectory::Deriv::Pos);
+
+                flatmap.forward(vel,
+                                acc,
+                                jer,
                                 0.0, 0.0,
                                 thr, quat, omg);
-                double speed = traj.getVel(delta).norm();
+                double speed = vel.norm();
                 double bodyratemag = omg.norm();
                 double tiltangle = acos(1.0 - 2.0 * (quat(1) * quat(1) + quat(2) * quat(2)));
                 std_msgs::Float64 speedMsg, thrMsg, tiltMsg, bdrMsg;
@@ -297,7 +303,7 @@ public:
                 visualizer.tiltPub.publish(tiltMsg);
                 visualizer.bdrPub.publish(bdrMsg);
 
-                visualizer.visualizeSphere(traj.getPos(delta),
+                visualizer.visualizeSphere(pos,
                                            config.dilateRadius);
             }
         }
