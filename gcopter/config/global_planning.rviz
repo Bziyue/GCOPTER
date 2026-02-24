@@ -1,64 +1,78 @@
 Panels:
   - Class: rviz_common/Displays
-    Name: Displays
     Help Height: 78
+    Name: Displays
     Property Tree Widget:
       Expanded:
-        - /GlobalMap
+        - /Grid1
       Splitter Ratio: 0.5
-    Tree Height: 600
+    Tree Height: 471
   - Class: rviz_common/Selection
     Name: Selection
   - Class: rviz_common/Tool Properties
-    Name: Tool Properties
     Expanded:
-      - /2D Goal Pose
-      - /Publish Point
+      - /Interact1
+      - /Measure1
+      - /Publish Point1
+    Name: Tool Properties
     Splitter Ratio: 0.5886790156364441
   - Class: rviz_common/Views
-    Name: Views
     Expanded:
-      - /Current View
+      - /Current View1
+    Name: Views
     Splitter Ratio: 0.5
   - Class: rviz_common/Time
+    Experimental: false
     Name: Time
     SyncMode: 0
     SyncSource: GlobalMap
-
 Visualization Manager:
   Class: ""
-  Name: root
-  Enabled: true
-  Global Options:
-    Background Color: 48; 48; 48
-    Fixed Frame: odom
-    Frame Rate: 30
-
   Displays:
-    - Class: rviz_default_plugins/Grid
-      Name: Grid
-      Enabled: true
-      Alpha: 0.3
+    - Alpha: 0.30000001192092896
       Cell Size: 1
+      Class: rviz_default_plugins/Grid
       Color: 160; 160; 164
+      Enabled: true
+      Line Style:
+        Line Width: 0.029999999329447746
+        Value: Lines
+      Name: Grid
+      Normal Cell Count: 0
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
       Plane: XY
       Plane Cell Count: 50
       Reference Frame: <Fixed Frame>
-
+      Value: true
     - Class: rviz_default_plugins/Axes
-      Name: Axes
       Enabled: true
       Length: 2
-      Radius: 0.1
+      Name: Axes
+      Radius: 0.10000000149011612
       Reference Frame: <Fixed Frame>
-
-    - Class: rviz_default_plugins/PointCloud2
-      Name: GlobalMap
-      Enabled: true
-      Alpha: 1
-      Color Transformer: AxisColor
+      Value: true
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 4.75
+        Min Value: 0
+        Value: true
       Axis: Z
+      Channel Name: intensity
+      Class: rviz_default_plugins/PointCloud2
+      Color: 255; 255; 255
+      Color Transformer: AxisColor
       Decay Time: 0
+      Enabled: true
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Max Intensity: 4096
+      Min Color: 0; 0; 0
+      Min Intensity: 0
+      Name: GlobalMap
       Position Transformer: XYZ
       Selectable: true
       Size (Pixels): 3
@@ -67,70 +81,98 @@ Visualization Manager:
       Topic:
         Depth: 5
         Durability Policy: Volatile
+        Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Best Effort
         Value: /voxel_map
-
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: true
     - Class: rviz_default_plugins/Marker
-      Name: Waypoints
       Enabled: true
+      Name: Waypoints
+      Namespaces:
+        waypoints: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
+        Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /visualizer/waypoints
-
+      Value: true
     - Class: rviz_default_plugins/Marker
-      Name: Route
       Enabled: true
+      Name: Route
+      Namespaces:
+        route: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
+        Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /visualizer/route
-
+      Value: true
     - Class: rviz_default_plugins/Marker
-      Name: Mesh
       Enabled: true
+      Name: Mesh
+      Namespaces:
+        mesh: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
+        Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /visualizer/mesh
-
+      Value: true
     - Class: rviz_default_plugins/Marker
-      Name: Edge
       Enabled: true
+      Name: Edge
+      Namespaces:
+        edge: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
+        Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /visualizer/edge
-
+      Value: true
     - Class: rviz_default_plugins/Marker
-      Name: Spheres
       Enabled: true
+      Name: Spheres
+      Namespaces:
+        StartGoal: true
+        spheres: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
+        Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /visualizer/spheres
-
+      Value: true
     - Class: rviz_default_plugins/Marker
-      Name: Trajectory
       Enabled: true
+      Name: Trajectory
+      Namespaces:
+        trajectory: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
+        Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /visualizer/trajectory
-
+      Value: true
+  Enabled: true
+  Global Options:
+    Background Color: 48; 48; 48
+    Fixed Frame: odom
+    Frame Rate: 30
+  Name: root
   Tools:
     - Class: rviz_default_plugins/Interact
       Hide Inactive Objects: true
@@ -138,6 +180,7 @@ Visualization Manager:
     - Class: rviz_default_plugins/Select
     - Class: rviz_default_plugins/FocusCamera
     - Class: rviz_default_plugins/Measure
+      Line color: 128; 128; 0
     - Class: rviz_default_plugins/SetGoal
       Topic:
         Depth: 5
@@ -153,22 +196,48 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /clicked_point
-
+  Transformation:
+    Current:
+      Class: rviz_default_plugins/TF
+  Value: true
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Name: Current View
-      Distance: 40
+      Distance: 26.04378890991211
+      Enable Stereo Rendering:
+        Stereo Eye Separation: 0.05999999865889549
+        Stereo Focal Distance: 1
+        Swap Stereo Eyes: false
+        Value: false
       Focal Point:
-        X: 0
-        Y: 0
-        Z: 1
-      Pitch: 0.8
-      Yaw: 0.8
+        X: -7.951349258422852
+        Y: 6.3731465339660645
+        Z: 16.855175018310547
+      Focal Shape Fixed Size: true
+      Focal Shape Size: 0.05000000074505806
+      Invert Z Axis: false
+      Name: Current View
+      Near Clip Distance: 0.009999999776482582
+      Pitch: 0.9600003957748413
       Target Frame: odom
-
+      Value: Orbit (rviz_default_plugins)
+      Yaw: 0.6349999904632568
+    Saved: ~
 Window Geometry:
+  Displays:
+    collapsed: false
   Height: 1000
+  Hide Left Dock: false
+  Hide Right Dock: false
+  QMainWindow State: 000000ff00000000fd0000000300000000000001560000034ffc0200000003fb000000100044006900730070006c006100790073010000003d00000262000000c900fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007301000002a5000000e70000005c00fffffffb0000001200530065006c0065006300740069006f006e0000000297000001180000005c00ffffff00000001000001490000034ffc0200000001fb0000000a00560069006500770073010000003d0000034f000000a400ffffff000000030000064000000039fc0100000001fb0000000800540069006d0065010000000000000640000002fb00ffffff000003950000034f00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  Selection:
+    collapsed: false
+  Time:
+    collapsed: false
+  Tool Properties:
+    collapsed: false
+  Views:
+    collapsed: false
   Width: 1600
-  X: 120
-  Y: 60
+  X: 2859
+  Y: 201
