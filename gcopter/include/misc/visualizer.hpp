@@ -5,68 +5,61 @@
 #include "gcopter/geo_utils.hpp"
 #include "gcopter/quickhull.hpp"
 
-#include <iostream>
-#include <memory>
 #include <chrono>
 #include <cmath>
+#include <iostream>
+#include <memory>
 
-#include <ros/ros.h>
-#include <std_msgs/Float64.h>
-#include <geometry_msgs/Point.h>
-#include <geometry_msgs/PoseStamped.h>
-#include <visualization_msgs/Marker.h>
-#include <visualization_msgs/MarkerArray.h>
+#include <rclcpp/rclcpp.hpp>
+#include <geometry_msgs/msg/point.hpp>
+#include <std_msgs/msg/float64.hpp>
+#include <visualization_msgs/msg/marker.hpp>
 
-// Visualizer for the planner
 class Visualizer
 {
 private:
-    // config contains the scale for some markers
-    ros::NodeHandle nh;
+    rclcpp::Node::SharedPtr node;
 
-    // These are publishers for path, waypoints on the trajectory,
-    // the entire trajectory, the mesh of free-space polytopes,
-    // the edge of free-space polytopes, and spheres for safety radius
-    ros::Publisher routePub;
-    ros::Publisher wayPointsPub;
-    ros::Publisher trajectoryPub;
-    ros::Publisher meshPub;
-    ros::Publisher edgePub;
-    ros::Publisher spherePub;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr routePub;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr wayPointsPub;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr trajectoryPub;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr meshPub;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr edgePub;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr spherePub;
 
 public:
-    ros::Publisher speedPub;
-    ros::Publisher thrPub;
-    ros::Publisher tiltPub;
-    ros::Publisher bdrPub;
+    rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr speedPub;
+    rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr thrPub;
+    rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr tiltPub;
+    rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr bdrPub;
 
 public:
-    Visualizer(ros::NodeHandle &nh_)
-        : nh(nh_)
+    explicit Visualizer(const rclcpp::Node::SharedPtr &node_)
+        : node(node_)
     {
-        routePub = nh.advertise<visualization_msgs::Marker>("/visualizer/route", 10);
-        wayPointsPub = nh.advertise<visualization_msgs::Marker>("/visualizer/waypoints", 10);
-        trajectoryPub = nh.advertise<visualization_msgs::Marker>("/visualizer/trajectory", 10);
-        meshPub = nh.advertise<visualization_msgs::Marker>("/visualizer/mesh", 1000);
-        edgePub = nh.advertise<visualization_msgs::Marker>("/visualizer/edge", 1000);
-        spherePub = nh.advertise<visualization_msgs::Marker>("/visualizer/spheres", 1000);
-        speedPub = nh.advertise<std_msgs::Float64>("/visualizer/speed", 1000);
-        thrPub = nh.advertise<std_msgs::Float64>("/visualizer/total_thrust", 1000);
-        tiltPub = nh.advertise<std_msgs::Float64>("/visualizer/tilt_angle", 1000);
-        bdrPub = nh.advertise<std_msgs::Float64>("/visualizer/body_rate", 1000);
+        routePub = node->create_publisher<visualization_msgs::msg::Marker>("/visualizer/route", 10);
+        wayPointsPub = node->create_publisher<visualization_msgs::msg::Marker>("/visualizer/waypoints", 10);
+        trajectoryPub = node->create_publisher<visualization_msgs::msg::Marker>("/visualizer/trajectory", 10);
+        meshPub = node->create_publisher<visualization_msgs::msg::Marker>("/visualizer/mesh", 1000);
+        edgePub = node->create_publisher<visualization_msgs::msg::Marker>("/visualizer/edge", 1000);
+        spherePub = node->create_publisher<visualization_msgs::msg::Marker>("/visualizer/spheres", 1000);
+        speedPub = node->create_publisher<std_msgs::msg::Float64>("/visualizer/speed", 1000);
+        thrPub = node->create_publisher<std_msgs::msg::Float64>("/visualizer/total_thrust", 1000);
+        tiltPub = node->create_publisher<std_msgs::msg::Float64>("/visualizer/tilt_angle", 1000);
+        bdrPub = node->create_publisher<std_msgs::msg::Float64>("/visualizer/body_rate", 1000);
     }
 
     inline void visualize(const SplineTrajectory::QuinticSpline3D &spline,
                           const std::vector<Eigen::Vector3d> &route)
     {
-        visualization_msgs::Marker routeMarker, wayPointsMarker, trajMarker;
+        visualization_msgs::msg::Marker routeMarker, wayPointsMarker, trajMarker;
 
         routeMarker.id = 0;
-        routeMarker.type = visualization_msgs::Marker::LINE_LIST;
-        routeMarker.header.stamp = ros::Time::now();
+        routeMarker.type = visualization_msgs::msg::Marker::LINE_LIST;
+        routeMarker.header.stamp = node->get_clock()->now();
         routeMarker.header.frame_id = "odom";
         routeMarker.pose.orientation.w = 1.00;
-        routeMarker.action = visualization_msgs::Marker::ADD;
+        routeMarker.action = visualization_msgs::msg::Marker::ADD;
         routeMarker.ns = "route";
         routeMarker.color.r = 1.00;
         routeMarker.color.g = 0.00;
@@ -76,7 +69,7 @@ public:
 
         wayPointsMarker = routeMarker;
         wayPointsMarker.id = -wayPointsMarker.id - 1;
-        wayPointsMarker.type = visualization_msgs::Marker::SPHERE_LIST;
+        wayPointsMarker.type = visualization_msgs::msg::Marker::SPHERE_LIST;
         wayPointsMarker.ns = "waypoints";
         wayPointsMarker.color.r = 1.00;
         wayPointsMarker.color.g = 0.00;
@@ -94,11 +87,11 @@ public:
         trajMarker.color.b = 1.00;
         trajMarker.scale.x = 0.30;
 
-        if (route.size() > 0)
+        if (!route.empty())
         {
             bool first = true;
             Eigen::Vector3d last;
-            for (auto it : route)
+            for (const auto &it : route)
             {
                 if (first)
                 {
@@ -106,7 +99,7 @@ public:
                     last = it;
                     continue;
                 }
-                geometry_msgs::Point point;
+                geometry_msgs::msg::Point point;
 
                 point.x = last(0);
                 point.y = last(1);
@@ -119,7 +112,7 @@ public:
                 last = it;
             }
 
-            routePub.publish(routeMarker);
+            routePub->publish(routeMarker);
         }
 
         if (spline.isInitialized() && spline.getNumSegments() > 0)
@@ -127,14 +120,14 @@ public:
             const auto &wps = spline.getSpacePoints();
             for (int i = 0; i < wps.rows(); i++)
             {
-                geometry_msgs::Point point;
+                geometry_msgs::msg::Point point;
                 point.x = wps(i, 0);
                 point.y = wps(i, 1);
                 point.z = wps(i, 2);
                 wayPointsMarker.points.push_back(point);
             }
 
-            wayPointsPub.publish(wayPointsMarker);
+            wayPointsPub->publish(wayPointsMarker);
         }
 
         if (spline.isInitialized() && spline.getNumSegments() > 0)
@@ -145,7 +138,7 @@ public:
             Eigen::Vector3d lastX = spline.getTrajectory().evaluate(t_start);
             for (double t = t_start + T; t < t_end; t += T)
             {
-                geometry_msgs::Point point;
+                geometry_msgs::msg::Point point;
                 Eigen::Vector3d X = spline.getTrajectory().evaluate(t);
                 point.x = lastX(0);
                 point.y = lastX(1);
@@ -157,17 +150,12 @@ public:
                 trajMarker.points.push_back(point);
                 lastX = X;
             }
-            trajectoryPub.publish(trajMarker);
+            trajectoryPub->publish(trajMarker);
         }
     }
 
-    // Visualize some polytopes in H-representation
     inline void visualizePolytope(const std::vector<Eigen::MatrixX4d> &hPolys)
     {
-
-        // Due to the fact that H-representation cannot be directly visualized
-        // We first conduct vertex enumeration of them, then apply quickhull
-        // to obtain triangle meshs of polyhedra
         Eigen::Matrix3Xd mesh(3, 0), curTris(3, 0), oldTris(3, 0);
         for (size_t id = 0; id < hPolys.size(); id++)
         {
@@ -190,15 +178,14 @@ public:
             mesh.rightCols(curTris.cols()) = curTris;
         }
 
-        // RVIZ support tris for visualization
-        visualization_msgs::Marker meshMarker, edgeMarker;
+        visualization_msgs::msg::Marker meshMarker, edgeMarker;
 
         meshMarker.id = 0;
-        meshMarker.header.stamp = ros::Time::now();
+        meshMarker.header.stamp = node->get_clock()->now();
         meshMarker.header.frame_id = "odom";
         meshMarker.pose.orientation.w = 1.00;
-        meshMarker.action = visualization_msgs::Marker::ADD;
-        meshMarker.type = visualization_msgs::Marker::TRIANGLE_LIST;
+        meshMarker.action = visualization_msgs::msg::Marker::ADD;
+        meshMarker.type = visualization_msgs::msg::Marker::TRIANGLE_LIST;
         meshMarker.ns = "mesh";
         meshMarker.color.r = 0.00;
         meshMarker.color.g = 0.00;
@@ -209,7 +196,7 @@ public:
         meshMarker.scale.z = 1.0;
 
         edgeMarker = meshMarker;
-        edgeMarker.type = visualization_msgs::Marker::LINE_LIST;
+        edgeMarker.type = visualization_msgs::msg::Marker::LINE_LIST;
         edgeMarker.ns = "edge";
         edgeMarker.color.r = 0.00;
         edgeMarker.color.g = 1.00;
@@ -217,7 +204,7 @@ public:
         edgeMarker.color.a = 1.00;
         edgeMarker.scale.x = 0.02;
 
-        geometry_msgs::Point point;
+        geometry_msgs::msg::Point point;
 
         int ptnum = mesh.cols();
 
@@ -244,24 +231,21 @@ public:
             }
         }
 
-        meshPub.publish(meshMarker);
-        edgePub.publish(edgeMarker);
-
-        return;
+        meshPub->publish(meshMarker);
+        edgePub->publish(edgeMarker);
     }
 
-    // Visualize all spheres with centers sphs and the same radius
     inline void visualizeSphere(const Eigen::Vector3d &center,
                                 const double &radius)
     {
-        visualization_msgs::Marker sphereMarkers, sphereDeleter;
+        visualization_msgs::msg::Marker sphereMarkers, sphereDeleter;
 
         sphereMarkers.id = 0;
-        sphereMarkers.type = visualization_msgs::Marker::SPHERE_LIST;
-        sphereMarkers.header.stamp = ros::Time::now();
+        sphereMarkers.type = visualization_msgs::msg::Marker::SPHERE_LIST;
+        sphereMarkers.header.stamp = node->get_clock()->now();
         sphereMarkers.header.frame_id = "odom";
         sphereMarkers.pose.orientation.w = 1.00;
-        sphereMarkers.action = visualization_msgs::Marker::ADD;
+        sphereMarkers.action = visualization_msgs::msg::Marker::ADD;
         sphereMarkers.ns = "spheres";
         sphereMarkers.color.r = 0.00;
         sphereMarkers.color.g = 0.00;
@@ -272,30 +256,30 @@ public:
         sphereMarkers.scale.z = radius * 2.0;
 
         sphereDeleter = sphereMarkers;
-        sphereDeleter.action = visualization_msgs::Marker::DELETE;
+        sphereDeleter.action = visualization_msgs::msg::Marker::DELETE;
 
-        geometry_msgs::Point point;
+        geometry_msgs::msg::Point point;
         point.x = center(0);
         point.y = center(1);
         point.z = center(2);
         sphereMarkers.points.push_back(point);
 
-        spherePub.publish(sphereDeleter);
-        spherePub.publish(sphereMarkers);
+        spherePub->publish(sphereDeleter);
+        spherePub->publish(sphereMarkers);
     }
 
     inline void visualizeStartGoal(const Eigen::Vector3d &center,
                                    const double &radius,
-                                   const int sg)
+                                   int sg)
     {
-        visualization_msgs::Marker sphereMarkers, sphereDeleter;
+        visualization_msgs::msg::Marker sphereMarkers, sphereDeleter;
 
         sphereMarkers.id = sg;
-        sphereMarkers.type = visualization_msgs::Marker::SPHERE_LIST;
-        sphereMarkers.header.stamp = ros::Time::now();
+        sphereMarkers.type = visualization_msgs::msg::Marker::SPHERE_LIST;
+        sphereMarkers.header.stamp = node->get_clock()->now();
         sphereMarkers.header.frame_id = "odom";
         sphereMarkers.pose.orientation.w = 1.00;
-        sphereMarkers.action = visualization_msgs::Marker::ADD;
+        sphereMarkers.action = visualization_msgs::msg::Marker::ADD;
         sphereMarkers.ns = "StartGoal";
         sphereMarkers.color.r = 1.00;
         sphereMarkers.color.g = 0.00;
@@ -306,9 +290,9 @@ public:
         sphereMarkers.scale.z = radius * 2.0;
 
         sphereDeleter = sphereMarkers;
-        sphereDeleter.action = visualization_msgs::Marker::DELETEALL;
+        sphereDeleter.action = visualization_msgs::msg::Marker::DELETEALL;
 
-        geometry_msgs::Point point;
+        geometry_msgs::msg::Point point;
         point.x = center(0);
         point.y = center(1);
         point.z = center(2);
@@ -316,11 +300,11 @@ public:
 
         if (sg == 0)
         {
-            spherePub.publish(sphereDeleter);
-            ros::Duration(1.0e-9).sleep();
-            sphereMarkers.header.stamp = ros::Time::now();
+            spherePub->publish(sphereDeleter);
+            rclcpp::sleep_for(std::chrono::nanoseconds(1));
+            sphereMarkers.header.stamp = node->get_clock()->now();
         }
-        spherePub.publish(sphereMarkers);
+        spherePub->publish(sphereMarkers);
     }
 };
 

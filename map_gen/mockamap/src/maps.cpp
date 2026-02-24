@@ -3,11 +3,19 @@
 #include <algorithm>
 #include <iostream>
 #include <random>
+#include <type_traits>
 #include <vector>
 
 #include <Eigen/Core>
 
 #include "perlinnoise.hpp"
+
+#define ROS_INFO(...) RCLCPP_INFO(rclcpp::get_logger("mockamap.maps"), __VA_ARGS__)
+#define GET_PARAM(node, name, value, default_value) \
+  do { \
+    (node)->declare_parameter<std::decay_t<decltype(value)>>(name, default_value); \
+    (void)(node)->get_parameter(name, value); \
+  } while (0)
 
 using namespace mocka;
 
@@ -29,9 +37,9 @@ Maps::randomMapGenerate()
   double _w_l, _w_h;
   int    _ObsNum;
 
-  info.nh_private->param("width_min", _w_l, 0.6);
-  info.nh_private->param("width_max", _w_h, 1.5);
-  info.nh_private->param("obstacle_number", _ObsNum, 10);
+  GET_PARAM(info.nh_private, "width_min", _w_l, 0.6);
+  GET_PARAM(info.nh_private, "width_max", _w_h, 1.5);
+  GET_PARAM(info.nh_private, "obstacle_number", _ObsNum, 10);
 
   std::uniform_real_distribution<double> rand_x;
   std::uniform_real_distribution<double> rand_y;
@@ -106,10 +114,10 @@ Maps::perlin3D()
   int    fractal;
   double attenuation;
 
-  info.nh_private->param("complexity", complexity, 0.142857);
-  info.nh_private->param("fill", fill, 0.38);
-  info.nh_private->param("fractal", fractal, 1);
-  info.nh_private->param("attenuation", attenuation, 0.5);
+  GET_PARAM(info.nh_private, "complexity", complexity, 0.142857);
+  GET_PARAM(info.nh_private, "fill", fill, 0.38);
+  GET_PARAM(info.nh_private, "fractal", fractal, 1);
+  GET_PARAM(info.nh_private, "attenuation", attenuation, 0.5);
 
   info.cloud->width  = info.sizeX * info.sizeY * info.sizeZ;
   info.cloud->height = 1;
@@ -608,10 +616,10 @@ Maps::maze2D()
   int    type;
   int    addWallX;
   int    addWallY;
-  info.nh_private->param("road_width", width, 1.0);
-  info.nh_private->param("add_wall_x", addWallX, 0);
-  info.nh_private->param("add_wall_y", addWallY, 0);
-  info.nh_private->param("maze_type", type, 1);
+  GET_PARAM(info.nh_private, "road_width", width, 1.0);
+  GET_PARAM(info.nh_private, "add_wall_x", addWallX, 0);
+  GET_PARAM(info.nh_private, "add_wall_y", addWallY, 0);
+  GET_PARAM(info.nh_private, "maze_type", type, 1);
 
   int mx = info.sizeX / (width * info.scale);
   int my = info.sizeY / (width * info.scale);
@@ -784,10 +792,10 @@ Maps::Maze3DGen()
   int    nodeRad;
   int    roadRad;
 
-  info.nh_private->param("numNodes", numNodes, 10);
-  info.nh_private->param("connectivity", connectivity, 0.5);
-  info.nh_private->param("nodeRad", nodeRad, 3);
-  info.nh_private->param("roadRad", roadRad, 2);
+  GET_PARAM(info.nh_private, "numNodes", numNodes, 10);
+  GET_PARAM(info.nh_private, "connectivity", connectivity, 0.5);
+  GET_PARAM(info.nh_private, "nodeRad", nodeRad, 3);
+  GET_PARAM(info.nh_private, "roadRad", roadRad, 2);
   ROS_INFO("received parameters : numNodes: %d connectivity: "
            "%f nodeRad: %d roadRad: %d",
            numNodes,

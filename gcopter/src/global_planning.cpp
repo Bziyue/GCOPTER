@@ -6,17 +6,17 @@
 #include "gcopter/sfc_gen.hpp"
 #include "SplineTrajectory/SplineTrajectory.hpp"
 
-#include <ros/ros.h>
-#include <ros/console.h>
-#include <geometry_msgs/Point.h>
-#include <geometry_msgs/PoseStamped.h>
-#include <sensor_msgs/PointCloud2.h>
+#include <rclcpp/rclcpp.hpp>
+#include <geometry_msgs/msg/pose_stamped.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
+#include <std_msgs/msg/float64.hpp>
 
 #include <cmath>
 #include <iostream>
 #include <string>
 #include <vector>
 #include <memory>
+#include <functional>
 #include <chrono>
 #include <random>
 
@@ -45,30 +45,39 @@ struct Config
     int integralIntervs;
     double relCostTol;
 
-    Config(const ros::NodeHandle &nh_priv)
+    template <typename T>
+    static T declareAndGet(const rclcpp::Node::SharedPtr &node,
+                           const std::string &name,
+                           const T &defaultValue)
     {
-        nh_priv.getParam("MapTopic", mapTopic);
-        nh_priv.getParam("TargetTopic", targetTopic);
-        nh_priv.getParam("DilateRadius", dilateRadius);
-        nh_priv.getParam("VoxelWidth", voxelWidth);
-        nh_priv.getParam("MapBound", mapBound);
-        nh_priv.getParam("TimeoutRRT", timeoutRRT);
-        nh_priv.getParam("MaxVelMag", maxVelMag);
-        nh_priv.getParam("MaxBdrMag", maxBdrMag);
-        nh_priv.getParam("MaxTiltAngle", maxTiltAngle);
-        nh_priv.getParam("MinThrust", minThrust);
-        nh_priv.getParam("MaxThrust", maxThrust);
-        nh_priv.getParam("VehicleMass", vehicleMass);
-        nh_priv.getParam("GravAcc", gravAcc);
-        nh_priv.getParam("HorizDrag", horizDrag);
-        nh_priv.getParam("VertDrag", vertDrag);
-        nh_priv.getParam("ParasDrag", parasDrag);
-        nh_priv.getParam("SpeedEps", speedEps);
-        nh_priv.getParam("WeightT", weightT);
-        nh_priv.getParam("ChiVec", chiVec);
-        nh_priv.getParam("SmoothingEps", smoothingEps);
-        nh_priv.getParam("IntegralIntervs", integralIntervs);
-        nh_priv.getParam("RelCostTol", relCostTol);
+        node->declare_parameter<T>(name, defaultValue);
+        return node->get_parameter(name).get_value<T>();
+    }
+
+    explicit Config(const rclcpp::Node::SharedPtr &node)
+    {
+        mapTopic = declareAndGet<std::string>(node, "MapTopic", "/voxel_map");
+        targetTopic = declareAndGet<std::string>(node, "TargetTopic", "/move_base_simple/goal");
+        dilateRadius = declareAndGet<double>(node, "DilateRadius", 0.5);
+        voxelWidth = declareAndGet<double>(node, "VoxelWidth", 0.25);
+        mapBound = declareAndGet<std::vector<double>>(node, "MapBound", {-25.0, 25.0, -25.0, 25.0, 0.0, 5.0});
+        timeoutRRT = declareAndGet<double>(node, "TimeoutRRT", 0.02);
+        maxVelMag = declareAndGet<double>(node, "MaxVelMag", 4.0);
+        maxBdrMag = declareAndGet<double>(node, "MaxBdrMag", 2.1);
+        maxTiltAngle = declareAndGet<double>(node, "MaxTiltAngle", 1.05);
+        minThrust = declareAndGet<double>(node, "MinThrust", 2.0);
+        maxThrust = declareAndGet<double>(node, "MaxThrust", 12.0);
+        vehicleMass = declareAndGet<double>(node, "VehicleMass", 0.61);
+        gravAcc = declareAndGet<double>(node, "GravAcc", 9.8);
+        horizDrag = declareAndGet<double>(node, "HorizDrag", 0.70);
+        vertDrag = declareAndGet<double>(node, "VertDrag", 0.80);
+        parasDrag = declareAndGet<double>(node, "ParasDrag", 0.01);
+        speedEps = declareAndGet<double>(node, "SpeedEps", 0.0001);
+        weightT = declareAndGet<double>(node, "WeightT", 20.0);
+        chiVec = declareAndGet<std::vector<double>>(node, "ChiVec", {1.0e+4, 1.0e+4, 1.0e+4, 1.0e+4, 1.0e+5});
+        smoothingEps = declareAndGet<double>(node, "SmoothingEps", 1.0e-2);
+        integralIntervs = declareAndGet<int>(node, "IntegralIntervs", 16);
+        relCostTol = declareAndGet<double>(node, "RelCostTol", 1.0e-5);
     }
 };
 
@@ -77,9 +86,9 @@ class GlobalPlanner
 private:
     Config config;
 
-    ros::NodeHandle nh;
-    ros::Subscriber mapSub;
-    ros::Subscriber targetSub;
+    rclcpp::Node::SharedPtr node;
+    rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr mapSub;
+    rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr targetSub;
 
     bool mapInitialized;
     voxel_map::VoxelMap voxelMap;
@@ -91,11 +100,12 @@ private:
 
 public:
     GlobalPlanner(const Config &conf,
-                  ros::NodeHandle &nh_)
+                  const rclcpp::Node::SharedPtr &node_)
         : config(conf),
-          nh(nh_),
+          node(node_),
           mapInitialized(false),
-          visualizer(nh)
+          visualizer(node),
+          trajStamp(0.0)
     {
         const Eigen::Vector3i xyz((config.mapBound[1] - config.mapBound[0]) / config.voxelWidth,
                                   (config.mapBound[3] - config.mapBound[2]) / config.voxelWidth,
@@ -105,20 +115,24 @@ public:
 
         voxelMap = voxel_map::VoxelMap(xyz, offset, config.voxelWidth);
 
-        mapSub = nh.subscribe(config.mapTopic, 1, &GlobalPlanner::mapCallBack, this,
-                              ros::TransportHints().tcpNoDelay());
+        mapSub = node->create_subscription<sensor_msgs::msg::PointCloud2>(
+            config.mapTopic,
+            rclcpp::QoS(1),
+            std::bind(&GlobalPlanner::mapCallBack, this, std::placeholders::_1));
 
-        targetSub = nh.subscribe(config.targetTopic, 1, &GlobalPlanner::targetCallBack, this,
-                                 ros::TransportHints().tcpNoDelay());
+        targetSub = node->create_subscription<geometry_msgs::msg::PoseStamped>(
+            config.targetTopic,
+            rclcpp::QoS(1),
+            std::bind(&GlobalPlanner::targetCallBack, this, std::placeholders::_1));
     }
 
-    inline void mapCallBack(const sensor_msgs::PointCloud2::ConstPtr &msg)
+    inline void mapCallBack(const sensor_msgs::msg::PointCloud2::SharedPtr msg)
     {
         if (!mapInitialized)
         {
             size_t cur = 0;
             const size_t total = msg->data.size() / msg->point_step;
-            float *fdata = (float *)(&msg->data[0]);
+            const float *fdata = reinterpret_cast<const float *>(msg->data.data());
             for (size_t i = 0; i < total; i++)
             {
                 cur = msg->point_step / sizeof(float) * i;
@@ -175,11 +189,6 @@ public:
 
                 gcopter::SplineSFCOptimizer gcopter;
 
-                // magnitudeBounds = [v_max, omg_max, theta_max, thrust_min, thrust_max]^T
-                // penaltyWeights = [pos_weight, vel_weight, omg_weight, theta_weight, thrust_weight]^T
-                // physicalParams = [vehicle_mass, gravitational_acceleration, horitonral_drag_coeff,
-                //                   vertical_drag_coeff, parasitic_drag_coeff, speed_smooth_factor]^T
-                // initialize some constraint parameters
                 Eigen::VectorXd magnitudeBounds(5);
                 Eigen::VectorXd penaltyWeights(5);
                 Eigen::VectorXd physicalParams(6);
@@ -222,14 +231,14 @@ public:
 
                 if (traj.isInitialized() && traj.getNumSegments() > 0)
                 {
-                    trajStamp = ros::Time::now().toSec();
+                    trajStamp = node->now().seconds();
                     visualizer.visualize(traj, route);
                 }
             }
         }
     }
 
-    inline void targetCallBack(const geometry_msgs::PoseStamped::ConstPtr &msg)
+    inline void targetCallBack(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
     {
         if (mapInitialized)
         {
@@ -243,17 +252,16 @@ public:
             const Eigen::Vector3d goal(msg->pose.position.x, msg->pose.position.y, zGoal);
             if (voxelMap.query(goal) == 0)
             {
-                visualizer.visualizeStartGoal(goal, 0.5, startGoal.size());
+                visualizer.visualizeStartGoal(goal, 0.5, static_cast<int>(startGoal.size()));
                 startGoal.emplace_back(goal);
             }
             else
             {
-                ROS_WARN("Infeasible Position Selected !!!\n");
+                RCLCPP_WARN(node->get_logger(), "Infeasible Position Selected !!!");
             }
 
             plan();
         }
-        return;
     }
 
     inline void process()
@@ -272,7 +280,7 @@ public:
 
         if (traj.isInitialized() && traj.getNumSegments() > 0)
         {
-            const double delta = ros::Time::now().toSec() - trajStamp;
+            const double delta = node->now().seconds() - trajStamp;
             if (delta > 0.0 && delta < traj.getDuration())
             {
                 double thr;
@@ -293,15 +301,15 @@ public:
                 double speed = vel.norm();
                 double bodyratemag = omg.norm();
                 double tiltangle = acos(1.0 - 2.0 * (quat(1) * quat(1) + quat(2) * quat(2)));
-                std_msgs::Float64 speedMsg, thrMsg, tiltMsg, bdrMsg;
+                std_msgs::msg::Float64 speedMsg, thrMsg, tiltMsg, bdrMsg;
                 speedMsg.data = speed;
                 thrMsg.data = thr;
                 tiltMsg.data = tiltangle;
                 bdrMsg.data = bodyratemag;
-                visualizer.speedPub.publish(speedMsg);
-                visualizer.thrPub.publish(thrMsg);
-                visualizer.tiltPub.publish(tiltMsg);
-                visualizer.bdrPub.publish(bdrMsg);
+                visualizer.speedPub->publish(speedMsg);
+                visualizer.thrPub->publish(thrMsg);
+                visualizer.tiltPub->publish(tiltMsg);
+                visualizer.bdrPub->publish(bdrMsg);
 
                 visualizer.visualizeSphere(pos,
                                            config.dilateRadius);
@@ -312,18 +320,19 @@ public:
 
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "global_planning_node");
-    ros::NodeHandle nh_;
+    rclcpp::init(argc, argv);
+    auto node = rclcpp::Node::make_shared("global_planning_node");
 
-    GlobalPlanner global_planner(Config(ros::NodeHandle("~")), nh_);
+    GlobalPlanner global_planner(Config(node), node);
 
-    ros::Rate lr(1000);
-    while (ros::ok())
+    rclcpp::Rate lr(1000.0);
+    while (rclcpp::ok())
     {
         global_planner.process();
-        ros::spinOnce();
+        rclcpp::spin_some(node);
         lr.sleep();
     }
 
+    rclcpp::shutdown();
     return 0;
 }
