@@ -251,20 +251,20 @@ def apply_axis_headroom(ax, fraction=0.12):
 def build_constraint_handles_and_labels(colors):
     legend_handles = [
         Line2D([0], [0], color=colors["speed"], linewidth=2.2),
-        Line2D([0], [0], color=colors["speed"], linewidth=1.8, linestyle="--", alpha=0.35),
+        Line2D([0], [0], color=colors["speed"], linewidth=1.8, linestyle="--", alpha=0.6),
         Line2D([0], [0], color=colors["body_rate_mag"], linewidth=2.2),
-        Line2D([0], [0], color=colors["body_rate_mag"], linewidth=1.8, linestyle="--", alpha=0.35),
+        Line2D([0], [0], color=colors["body_rate_mag"], linewidth=1.8, linestyle="--", alpha=0.6),
         Line2D([0], [0], color=colors["tilt_angle"], linewidth=2.2),
-        Line2D([0], [0], color=colors["tilt_angle"], linewidth=1.8, linestyle="--", alpha=0.35),
+        Line2D([0], [0], color=colors["tilt_angle"], linewidth=1.8, linestyle="--", alpha=0.6),
         Line2D([0], [0], color=colors["thrust"], linewidth=2.4),
-        Line2D([0], [0], color=colors["thrust"], linewidth=1.9, linestyle="--", alpha=0.35),
-        Line2D([0], [0], color=colors["thrust"], linewidth=2.2, linestyle=":", alpha=0.35),
+        Line2D([0], [0], color=colors["thrust"], linewidth=1.9, linestyle="--", alpha=0.6),
+        Line2D([0], [0], color=colors["thrust"], linewidth=2.2, linestyle=":", alpha=0.6),
     ]
     legend_labels = [
-        "Speed", "Speed Limit",
-        "Body Rate", "Body Rate Limit",
-        "Tilt Angle", "Tilt Limit",
-        "Thrust", "Max Thrust", "Min Thrust",
+        "Speed [m/s]", "Speed Limit [m/s]",
+        "Body Rate [rad/s]", "Body Rate Limit [rad/s]",
+        "Tilt Angle [rad]", "Tilt Limit [rad]",
+        "Thrust [N]", "Max Thrust [N]", "Min Thrust [N]",
     ]
     return legend_handles, legend_labels
 
@@ -274,11 +274,12 @@ def plot_constraints(output_dir: Path, series, constraints):
     ax_thrust = ax.twinx()
     t = series["time"]
     colors = {
-        "speed": "#0f766e",
-        "body_rate_mag": "#2563eb",
-        "tilt_angle": "#7c3aed",
-        "thrust": "#d97706",
+        "speed": "#127a6b",
+        "body_rate_mag": "#2f59d9",
+        "tilt_angle": "#8b5cf6",
+        "thrust": "#dd6b20",
     }
+    limit_alpha = 0.6
 
     legend_handles, legend_labels = build_constraint_handles_and_labels(colors)
 
@@ -290,11 +291,11 @@ def plot_constraints(output_dir: Path, series, constraints):
 
     for label, values, limit_value, color, limit_style in curve_specs:
         ax.plot(t, values, color=color, linewidth=2.2)
-        ax.axhline(limit_value, color=color, linestyle=limit_style, linewidth=1.8, alpha=0.35)
+        ax.axhline(limit_value, color=color, linestyle=limit_style, linewidth=1.8, alpha=limit_alpha)
 
     ax_thrust.plot(t, series["thrust"], color=colors["thrust"], linewidth=2.4)
-    ax_thrust.axhline(constraints["MaxThrust"], color=colors["thrust"], linestyle="--", linewidth=1.9, alpha=0.35)
-    ax_thrust.axhline(constraints["MinThrust"], color=colors["thrust"], linestyle=":", linewidth=2.2, alpha=0.35)
+    ax_thrust.axhline(constraints["MaxThrust"], color=colors["thrust"], linestyle="--", linewidth=1.9, alpha=limit_alpha)
+    ax_thrust.axhline(constraints["MinThrust"], color=colors["thrust"], linestyle=":", linewidth=2.2, alpha=limit_alpha)
 
     ax.set_xlabel("time [s]")
     ax.set_ylabel("speed / body rate / tilt")
@@ -311,10 +312,10 @@ def plot_constraints(output_dir: Path, series, constraints):
     ax_thrust = ax.twinx()
     for _, values, limit_value, color, limit_style in curve_specs:
         ax.plot(t, values, color=color, linewidth=2.2)
-        ax.axhline(limit_value, color=color, linestyle=limit_style, linewidth=1.8, alpha=0.35)
+        ax.axhline(limit_value, color=color, linestyle=limit_style, linewidth=1.8, alpha=limit_alpha)
     ax_thrust.plot(t, series["thrust"], color=colors["thrust"], linewidth=2.4)
-    ax_thrust.axhline(constraints["MaxThrust"], color=colors["thrust"], linestyle="--", linewidth=1.9, alpha=0.35)
-    ax_thrust.axhline(constraints["MinThrust"], color=colors["thrust"], linestyle=":", linewidth=2.2, alpha=0.35)
+    ax_thrust.axhline(constraints["MaxThrust"], color=colors["thrust"], linestyle="--", linewidth=1.9, alpha=limit_alpha)
+    ax_thrust.axhline(constraints["MinThrust"], color=colors["thrust"], linestyle=":", linewidth=2.2, alpha=limit_alpha)
     ax.set_xlabel("time [s]")
     ax.set_ylabel("speed / body rate / tilt")
     ax_thrust.set_ylabel("thrust", color=colors["thrust"])
@@ -328,7 +329,7 @@ def plot_constraints(output_dir: Path, series, constraints):
         legend_labels,
         loc="upper center",
         bbox_to_anchor=(0.5, 0.985),
-        ncol=len(legend_labels),
+        ncol=5,
         frameon=False,
         fontsize=10,
         handlelength=2.8,
