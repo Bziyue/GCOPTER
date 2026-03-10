@@ -39,6 +39,13 @@ install(TARGETS global_planning
   DESTINATION lib/${PROJECT_NAME}
 )
 
+install(PROGRAMS
+  scripts/start_global_planning_launch.sh
+  scripts/trajectory_dynamics_analysis.py
+  scripts/run_trajectory_dynamics_analysis.sh
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 install(DIRECTORY config launch
   DESTINATION share/${PROJECT_NAME}
 )

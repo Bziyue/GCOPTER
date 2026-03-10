@@ -77,7 +77,7 @@ main(int argc, char** argv)
   double update_freq;
   int type;
 
-  node->declare_parameter<int>("seed", 4546);
+  node->declare_parameter<int>("seed", 1024);
   node->declare_parameter<double>("update_freq", 1.0);
   node->declare_parameter<double>("resolution", 0.38);
   node->declare_parameter<int>("x_length", 100);

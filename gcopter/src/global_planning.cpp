@@ -9,16 +9,24 @@
 #include <rclcpp/rclcpp.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
+#include <std_msgs/msg/bool.hpp>
 #include <std_msgs/msg/float64.hpp>
 
 #include <cmath>
+#include <ctime>
+#include <filesystem>
+#include <fstream>
+#include <iomanip>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <vector>
 #include <memory>
 #include <functional>
 #include <chrono>
 #include <random>
+#include <system_error>
+#include <unistd.h>
 
 struct Config
 {
@@ -44,6 +52,9 @@ struct Config
     double smoothingEps;
     int integralIntervs;
     double relCostTol;
+    std::string dynamicsExportTriggerTopic;
+    std::string dynamicsExportFile;
+    double dynamicsSampleDt;
 
     template <typename T>
     static T declareAndGet(const rclcpp::Node::SharedPtr &node,
@@ -78,6 +89,10 @@ struct Config
         smoothingEps = declareAndGet<double>(node, "SmoothingEps", 1.0e-2);
         integralIntervs = declareAndGet<int>(node, "IntegralIntervs", 16);
         relCostTol = declareAndGet<double>(node, "RelCostTol", 1.0e-5);
+        dynamicsExportTriggerTopic = declareAndGet<std::string>(node, "DynamicsExportTriggerTopic", "/gcopter/save_dynamics_trigger");
+        dynamicsExportFile = declareAndGet<std::string>(node, "DynamicsExportFile",
+                                                        "/home/zdp/CodeField/GCOPTER/src/GCOPTER/gcopter/scripts/latest_trajectory_coefficients.json");
+        dynamicsSampleDt = declareAndGet<double>(node, "DynamicsSampleDt", 0.01);
     }
 };
 
@@ -89,14 +104,198 @@ private:
     rclcpp::Node::SharedPtr node;
     rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr mapSub;
     rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr targetSub;
+    rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr dynamicsTriggerSub;
 
     bool mapInitialized;
     voxel_map::VoxelMap voxelMap;
     Visualizer visualizer;
     std::vector<Eigen::Vector3d> startGoal;
+    bool exportRequested;
 
     SplineTrajectory::QuinticSpline3D traj;
     double trajStamp;
+
+    static std::string quoteForJson(const std::string &text)
+    {
+        std::ostringstream oss;
+        oss << '"';
+        for (const char ch : text)
+        {
+            switch (ch)
+            {
+            case '\\':
+                oss << "\\\\";
+                break;
+            case '"':
+                oss << "\\\"";
+                break;
+            case '\n':
+                oss << "\\n";
+                break;
+            default:
+                oss << ch;
+                break;
+            }
+        }
+        oss << '"';
+        return oss.str();
+    }
+
+    static void writeStdVector(std::ostream &ofs,
+                               const std::vector<double> &values)
+    {
+        ofs << '[';
+        for (size_t i = 0; i < values.size(); ++i)
+        {
+            if (i > 0)
+            {
+                ofs << ", ";
+            }
+            ofs << std::setprecision(17) << values[i];
+        }
+        ofs << ']';
+    }
+
+    static void writeEigenVector(std::ostream &ofs,
+                                 const Eigen::Vector3d &vec)
+    {
+        ofs << '['
+            << std::setprecision(17) << vec.x() << ", "
+            << std::setprecision(17) << vec.y() << ", "
+            << std::setprecision(17) << vec.z() << ']';
+    }
+
+    static void writeEigenMatrix(std::ostream &ofs,
+                                 const Eigen::MatrixXd &mat)
+    {
+        ofs << '[';
+        for (Eigen::Index row = 0; row < mat.rows(); ++row)
+        {
+            if (row > 0)
+            {
+                ofs << ",\n    ";
+            }
+            ofs << '[';
+            for (Eigen::Index col = 0; col < mat.cols(); ++col)
+            {
+                if (col > 0)
+                {
+                    ofs << ", ";
+                }
+                ofs << std::setprecision(17) << mat(row, col);
+            }
+            ofs << ']';
+        }
+        ofs << ']';
+    }
+
+    bool writeTrajectoryExport(const std::filesystem::path &coeffFile) const
+    {
+        const auto &ppoly = traj.getTrajectory();
+        std::ofstream ofs(coeffFile);
+        if (!ofs.is_open())
+        {
+            RCLCPP_ERROR(node->get_logger(), "Failed to open coefficient export file: %s", coeffFile.c_str());
+            return false;
+        }
+
+        ofs << "{\n";
+        ofs << "  \"format_version\": 1,\n";
+        ofs << "  \"trajectory_type\": \"quintic_spline_3d\",\n";
+        ofs << "  \"generated_at_ros_time\": " << std::setprecision(17) << node->now().seconds() << ",\n";
+        ofs << "  \"trajectory_stamp\": " << std::setprecision(17) << trajStamp << ",\n";
+        ofs << "  \"heading\": {\n";
+        ofs << "    \"psi\": 0.0,\n";
+        ofs << "    \"dpsi\": 0.0\n";
+        ofs << "  },\n";
+        ofs << "  \"constraints\": {\n";
+        ofs << "    \"MaxVelMag\": " << std::setprecision(17) << config.maxVelMag << ",\n";
+        ofs << "    \"MaxBdrMag\": " << std::setprecision(17) << config.maxBdrMag << ",\n";
+        ofs << "    \"MaxTiltAngle\": " << std::setprecision(17) << config.maxTiltAngle << ",\n";
+        ofs << "    \"MinThrust\": " << std::setprecision(17) << config.minThrust << ",\n";
+        ofs << "    \"MaxThrust\": " << std::setprecision(17) << config.maxThrust << "\n";
+        ofs << "  },\n";
+        ofs << "  \"physical_params\": {\n";
+        ofs << "    \"VehicleMass\": " << std::setprecision(17) << config.vehicleMass << ",\n";
+        ofs << "    \"GravAcc\": " << std::setprecision(17) << config.gravAcc << ",\n";
+        ofs << "    \"HorizDrag\": " << std::setprecision(17) << config.horizDrag << ",\n";
+        ofs << "    \"VertDrag\": " << std::setprecision(17) << config.vertDrag << ",\n";
+        ofs << "    \"ParasDrag\": " << std::setprecision(17) << config.parasDrag << ",\n";
+        ofs << "    \"SpeedEps\": " << std::setprecision(17) << config.speedEps << "\n";
+        ofs << "  },\n";
+        ofs << "  \"sampling\": {\n";
+        ofs << "    \"dt\": " << std::setprecision(17) << config.dynamicsSampleDt << "\n";
+        ofs << "  },\n";
+        ofs << "  \"num_segments\": " << ppoly.getNumSegments() << ",\n";
+        ofs << "  \"num_coefficients\": " << ppoly.getNumCoeffs() << ",\n";
+        ofs << "  \"breakpoints\": ";
+        writeStdVector(ofs, ppoly.getBreakpoints());
+        ofs << ",\n";
+        ofs << "  \"coefficients\": ";
+        writeEigenMatrix(ofs, ppoly.getCoefficients());
+        if (startGoal.size() == 2)
+        {
+            ofs << ",\n  \"start_goal\": {\n";
+            ofs << "    \"start\": ";
+            writeEigenVector(ofs, startGoal[0]);
+            ofs << ",\n    \"goal\": ";
+            writeEigenVector(ofs, startGoal[1]);
+            ofs << "\n  }\n";
+        }
+        else
+        {
+            ofs << '\n';
+        }
+        ofs << "}\n";
+        return true;
+    }
+
+    bool exportTrajectoryArtifacts()
+    {
+        if (!(traj.isInitialized() && traj.getNumSegments() > 0))
+        {
+            return false;
+        }
+
+        std::error_code ec;
+        const std::filesystem::path coeffFile(config.dynamicsExportFile);
+        const std::filesystem::path exportDir = coeffFile.parent_path();
+        std::filesystem::create_directories(exportDir, ec);
+        if (ec)
+        {
+            RCLCPP_ERROR(node->get_logger(), "Failed to create export directory %s: %s",
+                         exportDir.c_str(), ec.message().c_str());
+            return false;
+        }
+
+        if (!writeTrajectoryExport(coeffFile))
+        {
+            return false;
+        }
+
+        RCLCPP_INFO(node->get_logger(),
+                    "Exported trajectory dynamics coefficients: %s",
+                    coeffFile.c_str());
+        return true;
+    }
+
+    inline void dynamicsTriggerCallBack(const std_msgs::msg::Bool::SharedPtr msg)
+    {
+        if (!msg->data)
+        {
+            return;
+        }
+
+        exportRequested = true;
+        if (exportTrajectoryArtifacts())
+        {
+            exportRequested = false;
+            return;
+        }
+
+        RCLCPP_INFO(node->get_logger(),
+                    "Dynamics export requested. Waiting for a valid optimized trajectory before writing artifacts.");
+    }
 
 public:
     GlobalPlanner(const Config &conf,
@@ -105,6 +304,7 @@ public:
           node(node_),
           mapInitialized(false),
           visualizer(node),
+          exportRequested(false),
           trajStamp(0.0)
     {
         const Eigen::Vector3i xyz((config.mapBound[1] - config.mapBound[0]) / config.voxelWidth,
@@ -124,6 +324,11 @@ public:
             config.targetTopic,
             rclcpp::QoS(1),
             std::bind(&GlobalPlanner::targetCallBack, this, std::placeholders::_1));
+
+        dynamicsTriggerSub = node->create_subscription<std_msgs::msg::Bool>(
+            config.dynamicsExportTriggerTopic,
+            rclcpp::QoS(1),
+            std::bind(&GlobalPlanner::dynamicsTriggerCallBack, this, std::placeholders::_1));
     }
 
     inline void mapCallBack(const sensor_msgs::msg::PointCloud2::SharedPtr msg)
@@ -233,6 +438,10 @@ public:
                 {
                     trajStamp = node->now().seconds();
                     visualizer.visualize(traj, route);
+                    if (exportRequested && exportTrajectoryArtifacts())
+                    {
+                        exportRequested = false;
+                    }
                 }
             }
         }

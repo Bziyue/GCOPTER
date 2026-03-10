@@ -30,3 +30,8 @@
 *.exe
 *.out
 *.app
+
+# GCOPTER dynamics analysis artifacts
+gcopter/scripts/__pycache__/
+gcopter/scripts/latest_trajectory_coefficients.json
+gcopter/scripts/trajectory_dynamics_output/

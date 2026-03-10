@@ -22,3 +22,6 @@ global_planning_node:
     SmoothingEps: 1.0e-2
     IntegralIntervs: 16
     RelCostTol: 1.0e-5
+    DynamicsExportTriggerTopic: /gcopter/save_dynamics_trigger
+    DynamicsExportFile: /home/zdp/CodeField/GCOPTER/src/GCOPTER/gcopter/scripts/latest_trajectory_coefficients.json
+    DynamicsSampleDt: 0.01
