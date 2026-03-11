@@ -39,12 +39,13 @@ public:
     explicit Visualizer(const rclcpp::Node::SharedPtr &node_)
         : node(node_)
     {
-        routePub = node->create_publisher<visualization_msgs::msg::Marker>("/visualizer/route", 10);
-        wayPointsPub = node->create_publisher<visualization_msgs::msg::Marker>("/visualizer/waypoints", 10);
-        trajectoryPub = node->create_publisher<visualization_msgs::msg::Marker>("/visualizer/trajectory", 10);
-        meshPub = node->create_publisher<visualization_msgs::msg::Marker>("/visualizer/mesh", 1000);
-        edgePub = node->create_publisher<visualization_msgs::msg::Marker>("/visualizer/edge", 1000);
-        spherePub = node->create_publisher<visualization_msgs::msg::Marker>("/visualizer/spheres", 1000);
+        const auto marker_qos = rclcpp::QoS(100).reliable().transient_local();
+        routePub = node->create_publisher<visualization_msgs::msg::Marker>("/visualizer/route", marker_qos);
+        wayPointsPub = node->create_publisher<visualization_msgs::msg::Marker>("/visualizer/waypoints", marker_qos);
+        trajectoryPub = node->create_publisher<visualization_msgs::msg::Marker>("/visualizer/trajectory", marker_qos);
+        meshPub = node->create_publisher<visualization_msgs::msg::Marker>("/visualizer/mesh", marker_qos);
+        edgePub = node->create_publisher<visualization_msgs::msg::Marker>("/visualizer/edge", marker_qos);
+        spherePub = node->create_publisher<visualization_msgs::msg::Marker>("/visualizer/spheres", marker_qos);
         speedPub = node->create_publisher<std_msgs::msg::Float64>("/visualizer/speed", 1000);
         thrPub = node->create_publisher<std_msgs::msg::Float64>("/visualizer/total_thrust", 1000);
         tiltPub = node->create_publisher<std_msgs::msg::Float64>("/visualizer/tilt_angle", 1000);
