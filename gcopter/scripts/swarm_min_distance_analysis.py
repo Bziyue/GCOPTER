@@ -167,7 +167,7 @@ def save_plot(output_base: Path, times, min_distances, safety_distance):
     )
     ax.set_xlabel("Time [s]")
     ax.set_ylabel("Distance [m]")
-    ax.set_title("Swarm Minimum Inter-Drone Distance During Execution")
+    # ax.set_title("Swarm Minimum Inter-Drone Distance During Execution")
     ax.grid(True, linestyle=":", linewidth=0.8, alpha=0.6)
     ax.legend(frameon=False)
     fig.tight_layout()

@@ -1140,7 +1140,7 @@ private:
                                                config.agentMeshResource,
                                                config.agentMeshScale,
                                                config.agentMeshRotateYawDeg,
-                                               0.16, colors);
+                                               0.08, colors);
             publishPrimaryTrajectoryStats(delta);
         }
     }

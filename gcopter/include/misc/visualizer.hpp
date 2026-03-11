@@ -104,7 +104,7 @@ public:
         routeMarker.color.g = 0.00;
         routeMarker.color.b = 0.00;
         routeMarker.color.a = 1.00;
-        routeMarker.scale.x = 0.1;
+        routeMarker.scale.x = 0.06;
 
         wayPointsMarker = routeMarker;
         wayPointsMarker.id = marker_id;

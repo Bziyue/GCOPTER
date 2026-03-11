@@ -2,7 +2,7 @@ global_planning_node:
   ros__parameters:
     MapTopic: /voxel_map
     TargetTopic: /move_base_simple/goal
-    DilateRadius: 0.5
+    DilateRadius: 0.15
     VoxelWidth: 0.25
     MapBound: [-25.0, 25.0, -25.0, 25.0, 0.0, 5.0]
     TimeoutRRT: 0.02
@@ -20,7 +20,7 @@ global_planning_node:
     WeightT: 20.0
     ChiVec: [1.0e+4, 1.0e+4, 1.0e+4, 1.0e+4, 1.0e+5]
     SmoothingEps: 1.0e-2
-    IntegralIntervs: 16
+    IntegralIntervs: 1024
     RelCostTol: 1.0e-5
     DroneCount: 4
     MaxSamplingAttempts: 200
@@ -38,7 +38,7 @@ global_planning_node:
     RandomColumnHeightRange: [2.0, 5.0]
     RandomMapPublishHz: 1.0
     AgentMeshResource: package://gcopter/meshes/fake_drone.dae
-    AgentMeshScale: 2.0
+    AgentMeshScale: 0.6
     AgentMeshRotateYawDeg: 0.0
     DynamicObstacleWeight: 2.0e+4
     DynamicsExportTriggerTopic: /gcopter/save_dynamics_trigger
