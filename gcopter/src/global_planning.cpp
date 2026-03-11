@@ -70,6 +70,9 @@ struct Config
     std::vector<double> randomBoxSizeYRange;
     std::vector<double> randomColumnHeightRange;
     double randomMapPublishHz;
+    std::string agentMeshResource;
+    double agentMeshScale;
+    double agentMeshRotateYawDeg;
     double dynamicObstacleWeight;
     std::string dynamicsExportTriggerTopic;
     std::string dynamicsExportFile;
@@ -123,6 +126,9 @@ struct Config
         randomBoxSizeYRange = declareAndGet<std::vector<double>>(node, "RandomBoxSizeYRange", {0.8, 2.2});
         randomColumnHeightRange = declareAndGet<std::vector<double>>(node, "RandomColumnHeightRange", {2.0, 5.0});
         randomMapPublishHz = declareAndGet<double>(node, "RandomMapPublishHz", 1.0);
+        agentMeshResource = declareAndGet<std::string>(node, "AgentMeshResource", "package://gcopter/meshes/fake_drone.dae");
+        agentMeshScale = declareAndGet<double>(node, "AgentMeshScale", 2.0);
+        agentMeshRotateYawDeg = declareAndGet<double>(node, "AgentMeshRotateYawDeg", 0.0);
         dynamicObstacleWeight = declareAndGet<double>(node, "DynamicObstacleWeight", 2.0e4);
         dynamicsExportTriggerTopic = declareAndGet<std::string>(node, "DynamicsExportTriggerTopic", "/gcopter/save_dynamics_trigger");
         dynamicsExportFile = declareAndGet<std::string>(node, "DynamicsExportFile",
@@ -164,6 +170,7 @@ private:
     std::vector<Eigen::Vector3d> startGoal;
     std::vector<PlannedTrajectory> plannedTrajectories;
     sensor_msgs::msg::PointCloud2 randomMapMsg;
+    std::vector<double> lastAgentYaws;
     double swarmAnimationStamp;
     double lastAnimationPublish;
     std::mt19937 rng;
@@ -817,6 +824,7 @@ private:
         }
 
         swarmAnimationStamp = node->now().seconds();
+        lastAgentYaws.assign(plannedTrajectories.size(), 0.0);
         lastAnimationPublish = 0.0;
     }
 
@@ -1092,12 +1100,15 @@ private:
         }
 
         std::vector<Eigen::Vector3d> positions;
+        std::vector<double> yaws;
         std::vector<std::vector<Eigen::Vector3d>> trails;
         const auto colors = buildSwarmColors(plannedTrajectories.size());
         positions.reserve(plannedTrajectories.size());
+        yaws.reserve(plannedTrajectories.size());
         trails.reserve(plannedTrajectories.size());
-        for (const auto &planned : plannedTrajectories)
+        for (size_t i = 0; i < plannedTrajectories.size(); ++i)
         {
+            const auto &planned = plannedTrajectories[i];
             if (!planned.traj.isInitialized() || planned.traj.getNumSegments() <= 0)
             {
                 continue;
@@ -1105,6 +1116,19 @@ private:
 
             const double query_time = std::clamp(delta, 0.0, planned.traj.getDuration());
             positions.push_back(planned.traj.getTrajectory().evaluate(query_time, SplineTrajectory::Deriv::Pos));
+            const Eigen::Vector3d velocity =
+                planned.traj.getTrajectory().evaluate(query_time, SplineTrajectory::Deriv::Vel);
+            const double horiz_speed = velocity.head<2>().norm();
+            double yaw = (i < lastAgentYaws.size()) ? lastAgentYaws[i] : 0.0;
+            if (horiz_speed > 1.0e-3)
+            {
+                yaw = std::atan2(velocity.y(), velocity.x());
+            }
+            if (i < lastAgentYaws.size())
+            {
+                lastAgentYaws[i] = yaw;
+            }
+            yaws.push_back(yaw);
             trails.push_back(sampleExecutedTrail(planned, delta));
         }
 
@@ -1112,8 +1136,11 @@ private:
         {
             // Publish all bodies and trails as a single MarkerArray for
             // atomic update — guarantees all drones are rendered together.
-            visualizer.visualizeAnimationFrame(positions, trails,
-                                               config.dilateRadius, 0.16, colors);
+            visualizer.visualizeAnimationFrame(positions, yaws, trails,
+                                               config.agentMeshResource,
+                                               config.agentMeshScale,
+                                               config.agentMeshRotateYawDeg,
+                                               0.16, colors);
             publishPrimaryTrajectoryStats(delta);
         }
     }

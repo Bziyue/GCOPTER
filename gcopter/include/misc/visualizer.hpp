@@ -246,13 +246,17 @@ public:
 
     inline void visualizeAnimationFrame(
         const std::vector<Eigen::Vector3d> &positions,
+        const std::vector<double> &yaws,
         const std::vector<std::vector<Eigen::Vector3d>> &trails,
-        const double body_radius,
+        const std::string &mesh_resource,
+        const double mesh_scale,
+        const double mesh_rotate_yaw_deg,
         const double trail_width,
         const std::vector<std::array<float, 3>> &colors)
     {
         visualization_msgs::msg::MarkerArray array;
         const auto stamp = node->get_clock()->now();
+        const double yaw_offset = mesh_rotate_yaw_deg * M_PI / 180.0;
 
         for (size_t i = 0; i < positions.size(); ++i)
         {
@@ -261,20 +265,25 @@ public:
             marker.header.frame_id = "odom";
             marker.ns = "agent_body";
             marker.id = static_cast<int>(i);
-            marker.type = visualization_msgs::msg::Marker::SPHERE;
+            marker.type = visualization_msgs::msg::Marker::MESH_RESOURCE;
             marker.action = visualization_msgs::msg::Marker::ADD;
             marker.pose.position.x = positions[i].x();
             marker.pose.position.y = positions[i].y();
             marker.pose.position.z = positions[i].z();
-            marker.pose.orientation.w = 1.0;
-            marker.scale.x = body_radius * 2.0;
-            marker.scale.y = body_radius * 2.0;
-            marker.scale.z = body_radius * 2.0;
-            const auto &color = colors[i % colors.size()];
-            marker.color.r = color[0];
-            marker.color.g = color[1];
-            marker.color.b = color[2];
+            const double yaw = (i < yaws.size() ? yaws[i] : 0.0) + yaw_offset;
+            marker.pose.orientation.w = std::cos(0.5 * yaw);
+            marker.pose.orientation.x = 0.0;
+            marker.pose.orientation.y = 0.0;
+            marker.pose.orientation.z = std::sin(0.5 * yaw);
+            marker.scale.x = mesh_scale;
+            marker.scale.y = mesh_scale;
+            marker.scale.z = mesh_scale;
+            marker.color.r = 0.0;
+            marker.color.g = 0.0;
+            marker.color.b = 0.0;
             marker.color.a = 1.0;
+            marker.mesh_resource = mesh_resource;
+            marker.mesh_use_embedded_materials = false;
             array.markers.push_back(std::move(marker));
         }
 

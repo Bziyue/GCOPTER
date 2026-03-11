@@ -4,6 +4,7 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded:
+        - /Global Options1
         - /Grid1
       Splitter Ratio: 0.5
     Tree Height: 471
@@ -44,7 +45,7 @@ Visualization Manager:
         Y: 0
         Z: 0
       Plane: XY
-      Plane Cell Count: 50
+      Plane Cell Count: 500
       Reference Frame: <Fixed Frame>
       Value: true
     - Class: rviz_default_plugins/Axes
@@ -57,8 +58,8 @@ Visualization Manager:
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
-        Max Value: 4.75
-        Min Value: 0
+        Max Value: 4.875
+        Min Value: 0.125
         Value: true
       Axis: Z
       Channel Name: intensity
@@ -89,10 +90,10 @@ Visualization Manager:
       Use rainbow: true
       Value: true
     - Class: rviz_default_plugins/Marker
-      Enabled: true
+      Enabled: false
       Name: Waypoints
       Namespaces:
-        waypoints: true
+        {}
       Topic:
         Depth: 100
         Durability Policy: Transient Local
@@ -100,12 +101,12 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /visualizer/waypoints
-      Value: true
+      Value: false
     - Class: rviz_default_plugins/Marker
-      Enabled: true
+      Enabled: false
       Name: Route
       Namespaces:
-        route: true
+        {}
       Topic:
         Depth: 100
         Durability Policy: Transient Local
@@ -113,12 +114,12 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /visualizer/route
-      Value: true
+      Value: false
     - Class: rviz_default_plugins/Marker
-      Enabled: true
+      Enabled: false
       Name: Mesh
       Namespaces:
-        mesh: true
+        {}
       Topic:
         Depth: 100
         Durability Policy: Transient Local
@@ -126,12 +127,12 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /visualizer/mesh
-      Value: true
+      Value: false
     - Class: rviz_default_plugins/Marker
-      Enabled: true
+      Enabled: false
       Name: Edge
       Namespaces:
-        edge: true
+        {}
       Topic:
         Depth: 100
         Durability Policy: Transient Local
@@ -139,25 +140,23 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /visualizer/edge
-      Value: true
+      Value: false
     - Class: rviz_default_plugins/MarkerArray
       Enabled: true
       Name: Animation
       Namespaces:
-        StartGoal: true
         agent_body: true
         executed_trail: true
       Topic:
         Depth: 100
         Durability Policy: Transient Local
-        Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /visualizer/animation
       Value: true
   Enabled: true
   Global Options:
-    Background Color: 48; 48; 48
+    Background Color: 255; 255; 255
     Fixed Frame: odom
     Frame Rate: 30
   Name: root
@@ -191,25 +190,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 26.04378890991211
+      Distance: 61.02897644042969
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -7.951349258422852
-        Y: 6.3731465339660645
-        Z: 16.855175018310547
+        X: -0.9723097681999207
+        Y: -0.5468599796295166
+        Z: -2.308199167251587
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.9600003957748413
+      Pitch: 0.9150001406669617
       Target Frame: odom
       Value: Orbit (rviz_default_plugins)
-      Yaw: 0.6349999904632568
+      Yaw: 3.1299991607666016
     Saved: ~
 Window Geometry:
   Displays:
@@ -227,5 +226,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1600
-  X: 2859
-  Y: 201
+  X: 2958
+  Y: 115

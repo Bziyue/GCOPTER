@@ -37,6 +37,9 @@ global_planning_node:
     RandomBoxSizeYRange: [0.8, 2.2]
     RandomColumnHeightRange: [2.0, 5.0]
     RandomMapPublishHz: 1.0
+    AgentMeshResource: package://gcopter/meshes/fake_drone.dae
+    AgentMeshScale: 2.0
+    AgentMeshRotateYawDeg: 0.0
     DynamicObstacleWeight: 2.0e+4
     DynamicsExportTriggerTopic: /gcopter/save_dynamics_trigger
     DynamicsExportFile: /home/zdp/CodeField/GCOPTER/src/GCOPTER/gcopter/scripts/latest_trajectory_coefficients.json

@@ -42,11 +42,12 @@ install(TARGETS global_planning
 install(PROGRAMS
   scripts/start_global_planning_launch.sh
   scripts/trajectory_dynamics_analysis.py
+  scripts/swarm_min_distance_analysis.py
   scripts/run_trajectory_dynamics_analysis.sh
   DESTINATION lib/${PROJECT_NAME}
 )
 
-install(DIRECTORY config launch
+install(DIRECTORY config launch meshes
   DESTINATION share/${PROJECT_NAME}
 )
 
