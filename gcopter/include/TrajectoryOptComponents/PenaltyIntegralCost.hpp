@@ -1,13 +1,22 @@
 #ifndef SPLINE_TRAJECTORY_PENALTY_INTEGRAL_COST_HPP
 #define SPLINE_TRAJECTORY_PENALTY_INTEGRAL_COST_HPP
 
+#include "SplineTrajectory/SplineTrajectory.hpp"
 #include "TrajectoryOptComponents/SFCCommonTypes.hpp"
 #include "gcopter/flatness.hpp"
 
 #include <cmath>
+#include <vector>
 
 namespace gcopter
 {
+struct DynamicObstacleTrajectory
+{
+    int drone_id = -1;
+    double start_time = 0.0;
+    SplineTrajectory::QuinticSpline3D traj;
+};
+
 struct PenaltyIntegralCost
 {
     using VectorType = Eigen::Vector3d;
@@ -18,13 +27,21 @@ struct PenaltyIntegralCost
     Eigen::VectorXd magnitude_bounds;
     Eigen::VectorXd penalty_weights;
     flatness::FlatnessMap *flatmap = nullptr;
+    const std::vector<DynamicObstacleTrajectory> *dynamic_obstacles = nullptr;
+    double dynamic_obstacle_weight = 0.0;
+    Eigen::Vector3d dynamic_obstacle_ellipsoid = Eigen::Vector3d::Ones();
+    int self_drone_id = -1;
 
     void reset(const PolyhedraH *polys,
                const Eigen::VectorXi *indices,
                double smoothing,
                const Eigen::VectorXd &magnitudeBounds,
                const Eigen::VectorXd &penaltyWeights,
-               flatness::FlatnessMap *fm)
+               flatness::FlatnessMap *fm,
+               const std::vector<DynamicObstacleTrajectory> *dynamicObstacles = nullptr,
+               double dynamicObstacleWeight = 0.0,
+               const Eigen::Vector3d &dynamicObstacleEllipsoid = Eigen::Vector3d::Ones(),
+               int selfDroneId = -1)
     {
         h_polys = polys;
         h_poly_idx = indices;
@@ -32,14 +49,18 @@ struct PenaltyIntegralCost
         magnitude_bounds = magnitudeBounds;
         penalty_weights = penaltyWeights;
         flatmap = fm;
+        dynamic_obstacles = dynamicObstacles;
+        dynamic_obstacle_weight = dynamicObstacleWeight;
+        dynamic_obstacle_ellipsoid = dynamicObstacleEllipsoid;
+        self_drone_id = selfDroneId;
     }
 
-    double operator()(double /*t*/, double /*t_global*/, int seg_idx,
+    double operator()(double /*t*/, double t_global, int seg_idx,
                       const VectorType &p, const VectorType &v,
                       const VectorType &a, const VectorType &j,
                       const VectorType &/*s*/, VectorType &gp,
                       VectorType &gv, VectorType &ga, VectorType &gj,
-                      VectorType &/*gs*/, double &/*gt*/) const
+                      VectorType &/*gs*/, double &gt) const
     {
         if (!h_polys || !h_poly_idx || !flatmap)
             return 0.0;
@@ -141,10 +162,76 @@ struct PenaltyIntegralCost
         ga += totalGradAcc;
         gj += totalGradJer;
 
+        pena += dynamicObstaclePenalty(t_global, p, gp, gt);
+
         return pena;
     }
 
 private:
+    double dynamicObstaclePenalty(const double t_global,
+                                  const VectorType &p,
+                                  VectorType &gp,
+                                  double &gt) const
+    {
+        if (!dynamic_obstacles || dynamic_obstacle_weight <= 0.0)
+        {
+            return 0.0;
+        }
+
+        const Eigen::Array3d safe_axes = dynamic_obstacle_ellipsoid.array().max(1.0e-3);
+        const Eigen::Array3d inv_axes2 = safe_axes.square().inverse();
+
+        double penalty = 0.0;
+        for (const auto &obstacle : *dynamic_obstacles)
+        {
+            if (obstacle.drone_id == self_drone_id ||
+                !obstacle.traj.isInitialized() ||
+                obstacle.traj.getNumSegments() <= 0)
+            {
+                continue;
+            }
+
+            const double traj_start = obstacle.traj.getStartTime();
+            const double rel_time = std::max(0.0, t_global - obstacle.start_time);
+            const double end_time = obstacle.traj.getEndTime();
+
+            VectorType obstacle_pos;
+            VectorType obstacle_vel;
+            if (traj_start + rel_time <= end_time)
+            {
+                obstacle_pos = obstacle.traj.getTrajectory().evaluate(traj_start + rel_time, SplineTrajectory::Deriv::Pos);
+                obstacle_vel = obstacle.traj.getTrajectory().evaluate(traj_start + rel_time, SplineTrajectory::Deriv::Vel);
+            }
+            else
+            {
+                obstacle_pos = obstacle.traj.getTrajectory().evaluate(end_time, SplineTrajectory::Deriv::Pos);
+                obstacle_vel = obstacle.traj.getTrajectory().evaluate(end_time, SplineTrajectory::Deriv::Vel);
+                obstacle_pos += (traj_start + rel_time - end_time) * obstacle_vel;
+            }
+
+            const VectorType delta = p - obstacle_pos;
+            const double ellipsoid_distance_sq =
+                delta.array().square().matrix().cwiseProduct(inv_axes2.matrix()).sum();
+            const double violation = 1.0 - ellipsoid_distance_sq;
+            if (violation <= 0.0)
+            {
+                continue;
+            }
+
+            const double violation_sq = violation * violation;
+            penalty += dynamic_obstacle_weight * violation_sq * violation;
+
+            const VectorType grad_ellipsoid =
+                2.0 * delta.array().matrix().cwiseProduct(inv_axes2.matrix());
+            const VectorType grad_pos =
+                -3.0 * dynamic_obstacle_weight * violation_sq * grad_ellipsoid;
+            gp += grad_pos;
+            gt += grad_pos.dot(-obstacle_vel);
+        }
+
+        return penalty;
+    }
+
     static inline bool smoothedL1(const double &x,
                                   const double &mu,
                                   double &f,

@@ -22,6 +22,11 @@ global_planning_node:
     SmoothingEps: 1.0e-2
     IntegralIntervs: 16
     RelCostTol: 1.0e-5
+    DroneCount: 4
+    MaxSamplingAttempts: 200
+    MaxPlanningAttemptsPerDrone: 30
+    MinStartGoalDistanceRatio: 0.5
+    DynamicObstacleWeight: 2.0e+4
     DynamicsExportTriggerTopic: /gcopter/save_dynamics_trigger
     DynamicsExportFile: /home/zdp/CodeField/GCOPTER/src/GCOPTER/gcopter/scripts/latest_trajectory_coefficients.json
     DynamicsSampleDt: 0.01

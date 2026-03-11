@@ -7,8 +7,10 @@
 
 #include <chrono>
 #include <cmath>
+#include <array>
 #include <iostream>
 #include <memory>
+#include <vector>
 
 #include <rclcpp/rclcpp.hpp>
 #include <geometry_msgs/msg/point.hpp>
@@ -49,12 +51,36 @@ public:
         bdrPub = node->create_publisher<std_msgs::msg::Float64>("/visualizer/body_rate", 1000);
     }
 
+    inline void clearTrajectoryVisuals()
+    {
+        visualization_msgs::msg::Marker marker;
+        marker.action = visualization_msgs::msg::Marker::DELETEALL;
+        routePub->publish(marker);
+        wayPointsPub->publish(marker);
+        trajectoryPub->publish(marker);
+    }
+
+    inline void clearStartGoalVisuals()
+    {
+        visualization_msgs::msg::Marker marker;
+        marker.action = visualization_msgs::msg::Marker::DELETEALL;
+        spherePub->publish(marker);
+    }
+
     inline void visualize(const SplineTrajectory::QuinticSpline3D &spline,
                           const std::vector<Eigen::Vector3d> &route)
     {
+        visualize(spline, route, 0, {0.0f, 0.5f, 1.0f});
+    }
+
+    inline void visualize(const SplineTrajectory::QuinticSpline3D &spline,
+                          const std::vector<Eigen::Vector3d> &route,
+                          const int marker_id,
+                          const std::array<float, 3> &traj_color)
+    {
         visualization_msgs::msg::Marker routeMarker, wayPointsMarker, trajMarker;
 
-        routeMarker.id = 0;
+        routeMarker.id = marker_id;
         routeMarker.type = visualization_msgs::msg::Marker::LINE_LIST;
         routeMarker.header.stamp = node->get_clock()->now();
         routeMarker.header.frame_id = "odom";
@@ -68,23 +94,23 @@ public:
         routeMarker.scale.x = 0.1;
 
         wayPointsMarker = routeMarker;
-        wayPointsMarker.id = -wayPointsMarker.id - 1;
+        wayPointsMarker.id = marker_id;
         wayPointsMarker.type = visualization_msgs::msg::Marker::SPHERE_LIST;
         wayPointsMarker.ns = "waypoints";
-        wayPointsMarker.color.r = 1.00;
-        wayPointsMarker.color.g = 0.00;
-        wayPointsMarker.color.b = 0.00;
+        wayPointsMarker.color.r = traj_color[0];
+        wayPointsMarker.color.g = traj_color[1];
+        wayPointsMarker.color.b = traj_color[2];
         wayPointsMarker.scale.x = 0.35;
         wayPointsMarker.scale.y = 0.35;
         wayPointsMarker.scale.z = 0.35;
 
         trajMarker = routeMarker;
         trajMarker.header.frame_id = "odom";
-        trajMarker.id = 0;
+        trajMarker.id = marker_id;
         trajMarker.ns = "trajectory";
-        trajMarker.color.r = 0.00;
-        trajMarker.color.g = 0.50;
-        trajMarker.color.b = 1.00;
+        trajMarker.color.r = traj_color[0];
+        trajMarker.color.g = traj_color[1];
+        trajMarker.color.b = traj_color[2];
         trajMarker.scale.x = 0.30;
 
         if (!route.empty())
@@ -238,6 +264,12 @@ public:
     inline void visualizeSphere(const Eigen::Vector3d &center,
                                 const double &radius)
     {
+        visualizeSpheres({center}, radius);
+    }
+
+    inline void visualizeSpheres(const std::vector<Eigen::Vector3d> &centers,
+                                 const double &radius)
+    {
         visualization_msgs::msg::Marker sphereMarkers, sphereDeleter;
 
         sphereMarkers.id = 0;
@@ -258,11 +290,14 @@ public:
         sphereDeleter = sphereMarkers;
         sphereDeleter.action = visualization_msgs::msg::Marker::DELETE;
 
-        geometry_msgs::msg::Point point;
-        point.x = center(0);
-        point.y = center(1);
-        point.z = center(2);
-        sphereMarkers.points.push_back(point);
+        for (const auto &center : centers)
+        {
+            geometry_msgs::msg::Point point;
+            point.x = center(0);
+            point.y = center(1);
+            point.z = center(2);
+            sphereMarkers.points.push_back(point);
+        }
 
         spherePub->publish(sphereDeleter);
         spherePub->publish(sphereMarkers);
@@ -270,7 +305,9 @@ public:
 
     inline void visualizeStartGoal(const Eigen::Vector3d &center,
                                    const double &radius,
-                                   int sg)
+                                   int sg,
+                                   bool clear_previous = false,
+                                   const std::array<float, 3> &color = {1.0f, 0.0f, 0.0f})
     {
         visualization_msgs::msg::Marker sphereMarkers, sphereDeleter;
 
@@ -281,9 +318,9 @@ public:
         sphereMarkers.pose.orientation.w = 1.00;
         sphereMarkers.action = visualization_msgs::msg::Marker::ADD;
         sphereMarkers.ns = "StartGoal";
-        sphereMarkers.color.r = 1.00;
-        sphereMarkers.color.g = 0.00;
-        sphereMarkers.color.b = 0.00;
+        sphereMarkers.color.r = color[0];
+        sphereMarkers.color.g = color[1];
+        sphereMarkers.color.b = color[2];
         sphereMarkers.color.a = 1.00;
         sphereMarkers.scale.x = radius * 2.0;
         sphereMarkers.scale.y = radius * 2.0;
@@ -298,7 +335,7 @@ public:
         point.z = center(2);
         sphereMarkers.points.push_back(point);
 
-        if (sg == 0)
+        if (clear_previous)
         {
             spherePub->publish(sphereDeleter);
             rclcpp::sleep_for(std::chrono::nanoseconds(1));

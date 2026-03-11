@@ -333,7 +333,11 @@ namespace gcopter
                    const int &integralResolution,
                    const Eigen::VectorXd &magnitudeBounds,
                    const Eigen::VectorXd &penaltyWeights,
-                   const Eigen::VectorXd &physicalParams)
+                   const Eigen::VectorXd &physicalParams,
+                   const std::vector<DynamicObstacleTrajectory> *dynamicObstacles = nullptr,
+                   const double dynamicObstacleWeight = 0.0,
+                   const Eigen::Vector3d &dynamicObstacleEllipsoid = Eigen::Vector3d::Ones(),
+                   const int selfDroneId = -1)
         {
             headPVA_ = initialPVA;
             tailPVA_ = terminalPVA;
@@ -422,7 +426,8 @@ namespace gcopter
             time_cost_.weight = timeWeight;
             flatmap_.reset(physicalPm_(0), physicalPm_(1), physicalPm_(2),
                            physicalPm_(3), physicalPm_(4), physicalPm_(5));
-            integral_cost_.reset(&hPolytopes_, &hPolyIdx_, smoothEps_, magnitudeBd_, penaltyWt_, &flatmap_);
+            integral_cost_.reset(&hPolytopes_, &hPolyIdx_, smoothEps_, magnitudeBd_, penaltyWt_, &flatmap_,
+                                 dynamicObstacles, dynamicObstacleWeight, dynamicObstacleEllipsoid, selfDroneId);
 
             return true;
         }

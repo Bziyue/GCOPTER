@@ -1,4 +1,6 @@
 from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from ament_index_python.packages import get_package_share_directory
 import os
@@ -7,8 +9,14 @@ import os
 def generate_launch_description():
     gcopter_share = get_package_share_directory('gcopter')
     params_file = os.path.join(gcopter_share, 'config', 'global_planning_ros2.yaml')
+    drone_count = LaunchConfiguration('drone_count')
 
     return LaunchDescription([
+        DeclareLaunchArgument(
+            'drone_count',
+            default_value='80',
+            description='Number of drones to plan sequentially in chain-planning mode.',
+        ),
         Node(
             package='mockamap',
             executable='mockamap_node',
@@ -34,7 +42,7 @@ def generate_launch_description():
             executable='global_planning',
             name='global_planning_node',
             output='screen',
-            parameters=[params_file],
+            parameters=[params_file, {'DroneCount': drone_count}],
         ),
         Node(
             package='rviz2',
