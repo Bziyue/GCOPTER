@@ -139,6 +139,7 @@ private:
     std::vector<Eigen::Vector3d> startGoal;
     std::vector<PlannedTrajectory> plannedTrajectories;
     double swarmAnimationStamp;
+    double lastAnimationPublish;
     std::mt19937 rng;
 
     static std::string quoteForJson(const std::string &text)
@@ -243,6 +244,41 @@ private:
             {0.55f, 0.55f, 0.55f},
         }};
         return kPalette[static_cast<size_t>(id) % kPalette.size()];
+    }
+
+    std::vector<std::array<float, 3>> buildSwarmColors(const size_t count) const
+    {
+        std::vector<std::array<float, 3>> colors;
+        colors.reserve(count);
+        for (size_t i = 0; i < count; ++i)
+        {
+            colors.push_back(colorForId(static_cast<int>(i)));
+        }
+        return colors;
+    }
+
+    std::vector<Eigen::Vector3d> sampleExecutedTrail(const PlannedTrajectory &planned,
+                                                     const double delta) const
+    {
+        std::vector<Eigen::Vector3d> trail;
+        if (!planned.traj.isInitialized() || planned.traj.getNumSegments() <= 0)
+        {
+            return trail;
+        }
+
+        const double query_time = std::clamp(delta, 0.0, planned.traj.getDuration());
+        const double sample_dt = std::max(0.02, config.dynamicsSampleDt);
+        trail.push_back(planned.traj.getTrajectory().evaluate(0.0, SplineTrajectory::Deriv::Pos));
+        for (double t = sample_dt; t < query_time; t += sample_dt)
+        {
+            trail.push_back(planned.traj.getTrajectory().evaluate(t, SplineTrajectory::Deriv::Pos));
+        }
+        if (query_time > 0.0)
+        {
+            trail.push_back(planned.traj.getTrajectory().evaluate(query_time, SplineTrajectory::Deriv::Pos));
+        }
+
+        return trail;
     }
 
     Eigen::Vector3d dynamicObstacleEllipsoid() const
@@ -454,6 +490,7 @@ private:
     {
         visualizer.clearTrajectoryVisuals();
         visualizer.clearStartGoalVisuals();
+        visualizer.clearAnimationFrame(static_cast<int>(plannedTrajectories.size()) + 32);
 
         std::vector<Eigen::MatrixX4d> allCorridors;
         for (const auto &planned : plannedTrajectories)
@@ -469,12 +506,13 @@ private:
         {
             const auto color = colorForId(static_cast<int>(i));
             const auto &planned = plannedTrajectories[i];
-            visualizer.visualize(planned.traj, planned.route, planned.droneId, color);
+            visualizer.visualize(planned.traj, planned.route, planned.droneId, color, true, true);
             visualizer.visualizeStartGoal(planned.start, config.dilateRadius * 0.9, 2 * planned.droneId, false, color);
             visualizer.visualizeStartGoal(planned.goal, config.dilateRadius * 0.9, 2 * planned.droneId + 1, false, color);
         }
 
         swarmAnimationStamp = node->now().seconds();
+        lastAnimationPublish = 0.0;
     }
 
     bool writeTrajectoryExport(const std::filesystem::path &coeffFile) const
@@ -731,14 +769,28 @@ private:
             return;
         }
 
-        const double delta = node->now().seconds() - swarmAnimationStamp;
+        const double now_sec = node->now().seconds();
+
+        // Throttle animation to ~30 fps to prevent flooding RViz
+        // and avoid cascading performance degradation from trail resampling.
+        constexpr double kAnimationDt = 1.0 / 30.0;
+        if (now_sec - lastAnimationPublish < kAnimationDt)
+        {
+            return;
+        }
+        lastAnimationPublish = now_sec;
+
+        const double delta = now_sec - swarmAnimationStamp;
         if (delta < 0.0)
         {
             return;
         }
 
         std::vector<Eigen::Vector3d> positions;
+        std::vector<std::vector<Eigen::Vector3d>> trails;
+        const auto colors = buildSwarmColors(plannedTrajectories.size());
         positions.reserve(plannedTrajectories.size());
+        trails.reserve(plannedTrajectories.size());
         for (const auto &planned : plannedTrajectories)
         {
             if (!planned.traj.isInitialized() || planned.traj.getNumSegments() <= 0)
@@ -748,11 +800,15 @@ private:
 
             const double query_time = std::clamp(delta, 0.0, planned.traj.getDuration());
             positions.push_back(planned.traj.getTrajectory().evaluate(query_time, SplineTrajectory::Deriv::Pos));
+            trails.push_back(sampleExecutedTrail(planned, delta));
         }
 
         if (!positions.empty())
         {
-            visualizer.visualizeSpheres(positions, config.dilateRadius);
+            // Publish all bodies and trails as a single MarkerArray for
+            // atomic update — guarantees all drones are rendered together.
+            visualizer.visualizeAnimationFrame(positions, trails,
+                                               config.dilateRadius, 0.16, colors);
             publishPrimaryTrajectoryStats(delta);
         }
     }
@@ -811,6 +867,7 @@ public:
           exportRequested(false),
           visualizer(node),
           swarmAnimationStamp(0.0),
+          lastAnimationPublish(0.0),
           rng(std::random_device{}())
     {
         const Eigen::Vector3i xyz((config.mapBound[1] - config.mapBound[0]) / config.voxelWidth,
