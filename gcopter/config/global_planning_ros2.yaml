@@ -26,6 +26,17 @@ global_planning_node:
     MaxSamplingAttempts: 200
     MaxPlanningAttemptsPerDrone: 30
     MinStartGoalDistanceRatio: 0.5
+    UseRandomMap: false
+    RandomMapSeed: 1024
+    RandomCylinderCount: 24
+    RandomBoxCount: 24
+    RandomPlacementAttemptsPerObstacle: 80
+    RandomObstacleSpacing: 0.75
+    RandomCylinderRadiusRange: [0.6, 1.4]
+    RandomBoxSizeXRange: [0.8, 2.2]
+    RandomBoxSizeYRange: [0.8, 2.2]
+    RandomColumnHeightRange: [2.0, 5.0]
+    RandomMapPublishHz: 1.0
     DynamicObstacleWeight: 2.0e+4
     DynamicsExportTriggerTopic: /gcopter/save_dynamics_trigger
     DynamicsExportFile: /home/zdp/CodeField/GCOPTER/src/GCOPTER/gcopter/scripts/latest_trajectory_coefficients.json

@@ -9,6 +9,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
+#include <sensor_msgs/point_cloud2_iterator.hpp>
 #include <std_msgs/msg/bool.hpp>
 #include <std_msgs/msg/float64.hpp>
 
@@ -58,6 +59,17 @@ struct Config
     int maxSamplingAttempts;
     int maxPlanningAttemptsPerDrone;
     double minStartGoalDistanceRatio;
+    bool useRandomMap;
+    int randomMapSeed;
+    int randomCylinderCount;
+    int randomBoxCount;
+    int randomPlacementAttemptsPerObstacle;
+    double randomObstacleSpacing;
+    std::vector<double> randomCylinderRadiusRange;
+    std::vector<double> randomBoxSizeXRange;
+    std::vector<double> randomBoxSizeYRange;
+    std::vector<double> randomColumnHeightRange;
+    double randomMapPublishHz;
     double dynamicObstacleWeight;
     std::string dynamicsExportTriggerTopic;
     std::string dynamicsExportFile;
@@ -100,6 +112,17 @@ struct Config
         maxSamplingAttempts = declareAndGet<int>(node, "MaxSamplingAttempts", 200);
         maxPlanningAttemptsPerDrone = declareAndGet<int>(node, "MaxPlanningAttemptsPerDrone", 30);
         minStartGoalDistanceRatio = declareAndGet<double>(node, "MinStartGoalDistanceRatio", 0.5);
+        useRandomMap = declareAndGet<bool>(node, "UseRandomMap", false);
+        randomMapSeed = declareAndGet<int>(node, "RandomMapSeed", 1024);
+        randomCylinderCount = declareAndGet<int>(node, "RandomCylinderCount", 24);
+        randomBoxCount = declareAndGet<int>(node, "RandomBoxCount", 24);
+        randomPlacementAttemptsPerObstacle = declareAndGet<int>(node, "RandomPlacementAttemptsPerObstacle", 80);
+        randomObstacleSpacing = declareAndGet<double>(node, "RandomObstacleSpacing", 0.75);
+        randomCylinderRadiusRange = declareAndGet<std::vector<double>>(node, "RandomCylinderRadiusRange", {0.6, 1.4});
+        randomBoxSizeXRange = declareAndGet<std::vector<double>>(node, "RandomBoxSizeXRange", {0.8, 2.2});
+        randomBoxSizeYRange = declareAndGet<std::vector<double>>(node, "RandomBoxSizeYRange", {0.8, 2.2});
+        randomColumnHeightRange = declareAndGet<std::vector<double>>(node, "RandomColumnHeightRange", {2.0, 5.0});
+        randomMapPublishHz = declareAndGet<double>(node, "RandomMapPublishHz", 1.0);
         dynamicObstacleWeight = declareAndGet<double>(node, "DynamicObstacleWeight", 2.0e4);
         dynamicsExportTriggerTopic = declareAndGet<std::string>(node, "DynamicsExportTriggerTopic", "/gcopter/save_dynamics_trigger");
         dynamicsExportFile = declareAndGet<std::string>(node, "DynamicsExportFile",
@@ -128,6 +151,8 @@ private:
     rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr mapSub;
     rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr targetSub;
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr dynamicsTriggerSub;
+    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr randomMapPub;
+    rclcpp::TimerBase::SharedPtr randomMapTimer;
 
     bool mapInitialized;
     bool chainPlanningStarted;
@@ -138,6 +163,7 @@ private:
     Visualizer visualizer;
     std::vector<Eigen::Vector3d> startGoal;
     std::vector<PlannedTrajectory> plannedTrajectories;
+    sensor_msgs::msg::PointCloud2 randomMapMsg;
     double swarmAnimationStamp;
     double lastAnimationPublish;
     std::mt19937 rng;
@@ -255,6 +281,285 @@ private:
             colors.push_back(colorForId(static_cast<int>(i)));
         }
         return colors;
+    }
+
+    Eigen::Vector2d mapLengthXY() const
+    {
+        return Eigen::Vector2d(config.mapBound[1] - config.mapBound[0],
+                               config.mapBound[3] - config.mapBound[2]);
+    }
+
+    std::pair<double, double> clampRange(const std::vector<double> &values,
+                                         const std::pair<double, double> &fallback,
+                                         const double lower_bound,
+                                         const double upper_bound) const
+    {
+        double low = fallback.first;
+        double high = fallback.second;
+        if (values.size() >= 2)
+        {
+            low = std::min(values[0], values[1]);
+            high = std::max(values[0], values[1]);
+        }
+        low = std::clamp(low, lower_bound, upper_bound);
+        high = std::clamp(high, low, upper_bound);
+        return {low, high};
+    }
+
+    void resetVoxelMap()
+    {
+        const Eigen::Vector3i xyz((config.mapBound[1] - config.mapBound[0]) / config.voxelWidth,
+                                  (config.mapBound[3] - config.mapBound[2]) / config.voxelWidth,
+                                  (config.mapBound[5] - config.mapBound[4]) / config.voxelWidth);
+
+        const Eigen::Vector3d offset(config.mapBound[0], config.mapBound[2], config.mapBound[4]);
+        voxelMap = voxel_map::VoxelMap(xyz, offset, config.voxelWidth);
+    }
+
+    void rasterizeCylinderColumn(const Eigen::Vector2d &center,
+                                 const double radius,
+                                 const double height)
+    {
+        const auto size = voxelMap.getSize();
+        const auto origin = voxelMap.getOrigin();
+        const double scale = voxelMap.getScale();
+        const double max_z = std::min(config.mapBound[5], config.mapBound[4] + height);
+        const int z_max_id = std::clamp(static_cast<int>(std::floor((max_z - origin.z()) / scale)),
+                                        0,
+                                        size.z() - 1);
+        const int x_min_id = std::clamp(static_cast<int>(std::floor((center.x() - radius - origin.x()) / scale)), 0, size.x() - 1);
+        const int x_max_id = std::clamp(static_cast<int>(std::floor((center.x() + radius - origin.x()) / scale)), 0, size.x() - 1);
+        const int y_min_id = std::clamp(static_cast<int>(std::floor((center.y() - radius - origin.y()) / scale)), 0, size.y() - 1);
+        const int y_max_id = std::clamp(static_cast<int>(std::floor((center.y() + radius - origin.y()) / scale)), 0, size.y() - 1);
+        const double radius_sq = radius * radius;
+
+        for (int x = x_min_id; x <= x_max_id; ++x)
+        {
+            for (int y = y_min_id; y <= y_max_id; ++y)
+            {
+                const auto sample = voxelMap.posI2D(Eigen::Vector3i(x, y, 0));
+                const double dx = sample.x() - center.x();
+                const double dy = sample.y() - center.y();
+                if (dx * dx + dy * dy > radius_sq)
+                {
+                    continue;
+                }
+
+                for (int z = 0; z <= z_max_id; ++z)
+                {
+                    voxelMap.setOccupied(Eigen::Vector3i(x, y, z));
+                }
+            }
+        }
+    }
+
+    void rasterizeBoxColumn(const Eigen::Vector2d &center,
+                            const Eigen::Vector2d &half_size,
+                            const double height)
+    {
+        const auto size = voxelMap.getSize();
+        const auto origin = voxelMap.getOrigin();
+        const double scale = voxelMap.getScale();
+        const double max_z = std::min(config.mapBound[5], config.mapBound[4] + height);
+        const int z_max_id = std::clamp(static_cast<int>(std::floor((max_z - origin.z()) / scale)),
+                                        0,
+                                        size.z() - 1);
+        const int x_min_id = std::clamp(static_cast<int>(std::floor((center.x() - half_size.x() - origin.x()) / scale)), 0, size.x() - 1);
+        const int x_max_id = std::clamp(static_cast<int>(std::floor((center.x() + half_size.x() - origin.x()) / scale)), 0, size.x() - 1);
+        const int y_min_id = std::clamp(static_cast<int>(std::floor((center.y() - half_size.y() - origin.y()) / scale)), 0, size.y() - 1);
+        const int y_max_id = std::clamp(static_cast<int>(std::floor((center.y() + half_size.y() - origin.y()) / scale)), 0, size.y() - 1);
+
+        for (int x = x_min_id; x <= x_max_id; ++x)
+        {
+            for (int y = y_min_id; y <= y_max_id; ++y)
+            {
+                for (int z = 0; z <= z_max_id; ++z)
+                {
+                    voxelMap.setOccupied(Eigen::Vector3i(x, y, z));
+                }
+            }
+        }
+    }
+
+    std::vector<Eigen::Vector3d> collectOccupiedPoints() const
+    {
+        std::vector<Eigen::Vector3d> points;
+        const auto size = voxelMap.getSize();
+        const auto &voxels = voxelMap.getVoxels();
+        points.reserve(voxels.size() / 8);
+        for (int z = 0; z < size.z(); ++z)
+        {
+            for (int y = 0; y < size.y(); ++y)
+            {
+                for (int x = 0; x < size.x(); ++x)
+                {
+                    const int idx = x + y * size.x() + z * size.x() * size.y();
+                    if (voxels[idx] == voxel_map::Occupied)
+                    {
+                        points.push_back(voxelMap.posI2D(Eigen::Vector3i(x, y, z)));
+                    }
+                }
+            }
+        }
+        return points;
+    }
+
+    void buildRandomMapMessage(const std::vector<Eigen::Vector3d> &points)
+    {
+        randomMapMsg = sensor_msgs::msg::PointCloud2();
+        randomMapMsg.header.frame_id = "odom";
+        randomMapMsg.header.stamp = node->get_clock()->now();
+        randomMapMsg.height = 1;
+        randomMapMsg.is_dense = true;
+        randomMapMsg.is_bigendian = false;
+
+        sensor_msgs::PointCloud2Modifier modifier(randomMapMsg);
+        modifier.setPointCloud2FieldsByString(1, "xyz");
+        modifier.resize(points.size());
+
+        sensor_msgs::PointCloud2Iterator<float> iter_x(randomMapMsg, "x");
+        sensor_msgs::PointCloud2Iterator<float> iter_y(randomMapMsg, "y");
+        sensor_msgs::PointCloud2Iterator<float> iter_z(randomMapMsg, "z");
+        for (const auto &point : points)
+        {
+            *iter_x = static_cast<float>(point.x());
+            *iter_y = static_cast<float>(point.y());
+            *iter_z = static_cast<float>(point.z());
+            ++iter_x;
+            ++iter_y;
+            ++iter_z;
+        }
+    }
+
+    void publishRandomMap()
+    {
+        if (!config.useRandomMap || !randomMapPub)
+        {
+            return;
+        }
+        randomMapMsg.header.stamp = node->get_clock()->now();
+        randomMapPub->publish(randomMapMsg);
+    }
+
+    void generateRandomMap()
+    {
+        resetVoxelMap();
+
+        struct Footprint
+        {
+            Eigen::Vector2d center = Eigen::Vector2d::Zero();
+            double bound_radius = 0.0;
+        };
+
+        std::mt19937 map_rng(static_cast<std::mt19937::result_type>(config.randomMapSeed));
+        const auto xy_len = mapLengthXY();
+        const auto radius_range = clampRange(config.randomCylinderRadiusRange, {0.6, 1.4}, config.voxelWidth, 0.5 * std::min(xy_len.x(), xy_len.y()));
+        const auto box_x_range = clampRange(config.randomBoxSizeXRange, {0.8, 2.2}, config.voxelWidth, 0.5 * xy_len.x());
+        const auto box_y_range = clampRange(config.randomBoxSizeYRange, {0.8, 2.2}, config.voxelWidth, 0.5 * xy_len.y());
+        const auto height_range = clampRange(config.randomColumnHeightRange,
+                                             {2.0, std::max(2.0, config.mapBound[5] - config.mapBound[4])},
+                                             config.voxelWidth,
+                                             std::max(config.voxelWidth, config.mapBound[5] - config.mapBound[4]));
+        std::vector<Footprint> footprints;
+        footprints.reserve(static_cast<size_t>(config.randomCylinderCount + config.randomBoxCount));
+
+        auto sample_uniform = [&map_rng](const double low, const double high)
+        {
+            std::uniform_real_distribution<double> dist(low, high);
+            return dist(map_rng);
+        };
+
+        auto can_place = [&](const Eigen::Vector2d &center, const double bound_radius)
+        {
+            for (const auto &footprint : footprints)
+            {
+                if ((center - footprint.center).norm() <
+                    bound_radius + footprint.bound_radius + config.randomObstacleSpacing)
+                {
+                    return false;
+                }
+            }
+            return true;
+        };
+
+        int placed_cylinders = 0;
+        for (int i = 0; i < config.randomCylinderCount; ++i)
+        {
+            bool placed = false;
+            for (int attempt = 0; attempt < config.randomPlacementAttemptsPerObstacle; ++attempt)
+            {
+                const double radius = sample_uniform(radius_range.first, radius_range.second);
+                const double height = sample_uniform(height_range.first, height_range.second);
+                const double x = sample_uniform(config.mapBound[0] + radius, config.mapBound[1] - radius);
+                const double y = sample_uniform(config.mapBound[2] + radius, config.mapBound[3] - radius);
+                const Eigen::Vector2d center(x, y);
+                if (!can_place(center, radius))
+                {
+                    continue;
+                }
+                rasterizeCylinderColumn(center, radius, height);
+                footprints.push_back({center, radius});
+                ++placed_cylinders;
+                placed = true;
+                break;
+            }
+            if (!placed)
+            {
+                RCLCPP_WARN(node->get_logger(),
+                            "Random map: failed to place cylinder obstacle %d/%d after %d attempts.",
+                            i + 1,
+                            config.randomCylinderCount,
+                            config.randomPlacementAttemptsPerObstacle);
+            }
+        }
+
+        int placed_boxes = 0;
+        for (int i = 0; i < config.randomBoxCount; ++i)
+        {
+            bool placed = false;
+            for (int attempt = 0; attempt < config.randomPlacementAttemptsPerObstacle; ++attempt)
+            {
+                const double size_x = sample_uniform(box_x_range.first, box_x_range.second);
+                const double size_y = sample_uniform(box_y_range.first, box_y_range.second);
+                const double height = sample_uniform(height_range.first, height_range.second);
+                const Eigen::Vector2d half_size(0.5 * size_x, 0.5 * size_y);
+                const double x = sample_uniform(config.mapBound[0] + half_size.x(), config.mapBound[1] - half_size.x());
+                const double y = sample_uniform(config.mapBound[2] + half_size.y(), config.mapBound[3] - half_size.y());
+                const Eigen::Vector2d center(x, y);
+                const double bound_radius = half_size.norm();
+                if (!can_place(center, bound_radius))
+                {
+                    continue;
+                }
+                rasterizeBoxColumn(center, half_size, height);
+                footprints.push_back({center, bound_radius});
+                ++placed_boxes;
+                placed = true;
+                break;
+            }
+            if (!placed)
+            {
+                RCLCPP_WARN(node->get_logger(),
+                            "Random map: failed to place box obstacle %d/%d after %d attempts.",
+                            i + 1,
+                            config.randomBoxCount,
+                            config.randomPlacementAttemptsPerObstacle);
+            }
+        }
+
+        const auto occupied_points = collectOccupiedPoints();
+        voxelMap.dilate(std::ceil(config.dilateRadius / voxelMap.getScale()));
+        buildRandomMapMessage(occupied_points);
+        mapInitialized = true;
+
+        RCLCPP_INFO(node->get_logger(),
+                    "Random map generated with %d/%d cylinders, %d/%d boxes, %zu occupied voxels (seed=%d).",
+                    placed_cylinders,
+                    config.randomCylinderCount,
+                    placed_boxes,
+                    config.randomBoxCount,
+                    occupied_points.size(),
+                    config.randomMapSeed);
     }
 
     std::vector<Eigen::Vector3d> sampleExecutedTrail(const PlannedTrajectory &planned,
@@ -870,17 +1175,21 @@ public:
           lastAnimationPublish(0.0),
           rng(std::random_device{}())
     {
-        const Eigen::Vector3i xyz((config.mapBound[1] - config.mapBound[0]) / config.voxelWidth,
-                                  (config.mapBound[3] - config.mapBound[2]) / config.voxelWidth,
-                                  (config.mapBound[5] - config.mapBound[4]) / config.voxelWidth);
+        resetVoxelMap();
 
-        const Eigen::Vector3d offset(config.mapBound[0], config.mapBound[2], config.mapBound[4]);
-        voxelMap = voxel_map::VoxelMap(xyz, offset, config.voxelWidth);
-
-        mapSub = node->create_subscription<sensor_msgs::msg::PointCloud2>(
-            config.mapTopic,
-            rclcpp::QoS(1),
-            std::bind(&GlobalPlanner::mapCallBack, this, std::placeholders::_1));
+        if (!config.useRandomMap)
+        {
+            mapSub = node->create_subscription<sensor_msgs::msg::PointCloud2>(
+                config.mapTopic,
+                rclcpp::QoS(1),
+                std::bind(&GlobalPlanner::mapCallBack, this, std::placeholders::_1));
+        }
+        else
+        {
+            randomMapPub = node->create_publisher<sensor_msgs::msg::PointCloud2>(
+                config.mapTopic,
+                rclcpp::QoS(1).reliable().transient_local());
+        }
 
         targetSub = node->create_subscription<geometry_msgs::msg::PoseStamped>(
             config.targetTopic,
@@ -891,10 +1200,29 @@ public:
             config.dynamicsExportTriggerTopic,
             rclcpp::QoS(1),
             std::bind(&GlobalPlanner::dynamicsTriggerCallBack, this, std::placeholders::_1));
+
+        if (config.useRandomMap)
+        {
+            generateRandomMap();
+            publishRandomMap();
+            if (config.randomMapPublishHz > 0.0)
+            {
+                const auto period = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                    std::chrono::duration<double>(1.0 / config.randomMapPublishHz));
+                randomMapTimer = node->create_wall_timer(
+                    period,
+                    std::bind(&GlobalPlanner::publishRandomMap, this));
+            }
+        }
     }
 
     inline void mapCallBack(const sensor_msgs::msg::PointCloud2::SharedPtr msg)
     {
+        if (config.useRandomMap)
+        {
+            return;
+        }
+
         if (mapInitialized)
         {
             return;
