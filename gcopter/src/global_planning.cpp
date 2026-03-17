@@ -165,7 +165,7 @@ public:
                                                    voxelMap.getCorner(),
                                                    &voxelMap, 0.01,
                                                    route);
-            std::vector<Eigen::MatrixX4d> hPolys;
+            traj_opt_components::PolyhedraH hPolys;
             std::vector<Eigen::Vector3d> pc;
             voxelMap.getSurf(pc);
 

@@ -1,12 +1,12 @@
-#ifndef SPLINE_TRAJECTORY_LINEAR_TIME_COST_HPP
-#define SPLINE_TRAJECTORY_LINEAR_TIME_COST_HPP
+#pragma once
 
 #include <vector>
+
 #include <Eigen/Eigen>
 
-namespace gcopter
+namespace traj_opt_components
 {
-struct TimeCost
+struct LinearTimeCost
 {
     double weight = 0.0;
 
@@ -22,5 +22,3 @@ struct TimeCost
     }
 };
 }
-
-#endif

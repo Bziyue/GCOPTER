@@ -2,6 +2,7 @@
 #define VISUALIZER_HPP
 
 #include "SplineTrajectory/SplineTrajectory.hpp"
+#include "TrajectoryOptComponents/SFCCommonTypes.hpp"
 #include "gcopter/geo_utils.hpp"
 #include "gcopter/quickhull.hpp"
 
@@ -154,7 +155,7 @@ public:
         }
     }
 
-    inline void visualizePolytope(const std::vector<Eigen::MatrixX4d> &hPolys)
+    inline void visualizePolytope(const traj_opt_components::PolyhedraH &hPolys)
     {
         Eigen::Matrix3Xd mesh(3, 0), curTris(3, 0), oldTris(3, 0);
         for (size_t id = 0; id < hPolys.size(); id++)

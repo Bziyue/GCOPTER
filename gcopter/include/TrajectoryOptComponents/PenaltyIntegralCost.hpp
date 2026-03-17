@@ -1,6 +1,7 @@
 #ifndef SPLINE_TRAJECTORY_PENALTY_INTEGRAL_COST_HPP
 #define SPLINE_TRAJECTORY_PENALTY_INTEGRAL_COST_HPP
 
+#include "TrajectoryOptComponents/PenaltyUtils.hpp"
 #include "TrajectoryOptComponents/SFCCommonTypes.hpp"
 #include "gcopter/flatness.hpp"
 
@@ -8,6 +9,9 @@
 
 namespace gcopter
 {
+using traj_opt_components::PolyhedronH;
+using traj_opt_components::PolyhedraH;
+
 struct PenaltyIntegralCost
 {
     using VectorType = Eigen::Vector3d;
@@ -79,7 +83,7 @@ struct PenaltyIntegralCost
             const double violaPos = outerNormal.dot(p) + poly(k, 3);
             double violaPosPena = 0.0;
             double violaPosPenaD = 0.0;
-            if (smoothedL1(violaPos, smooth_eps, violaPosPena, violaPosPenaD))
+            if (traj_opt_components::smoothedL1(violaPos, smooth_eps, violaPosPena, violaPosPenaD))
             {
                 gradPos += weightPos * violaPosPenaD * outerNormal;
                 pena += weightPos * violaPosPena;
@@ -89,7 +93,7 @@ struct PenaltyIntegralCost
         double violaVel = v.squaredNorm() - velSqrMax;
         double violaVelPena = 0.0;
         double violaVelPenaD = 0.0;
-        if (smoothedL1(violaVel, smooth_eps, violaVelPena, violaVelPenaD))
+        if (traj_opt_components::smoothedL1(violaVel, smooth_eps, violaVelPena, violaVelPenaD))
         {
             gradVel += weightVel * violaVelPenaD * 2.0 * v;
             pena += weightVel * violaVelPena;
@@ -98,7 +102,7 @@ struct PenaltyIntegralCost
         double violaOmg = omg.squaredNorm() - omgSqrMax;
         double violaOmgPena = 0.0;
         double violaOmgPenaD = 0.0;
-        if (smoothedL1(violaOmg, smooth_eps, violaOmgPena, violaOmgPenaD))
+        if (traj_opt_components::smoothedL1(violaOmg, smooth_eps, violaOmgPena, violaOmgPenaD))
         {
             gradOmg += weightOmg * violaOmgPenaD * 2.0 * omg;
             pena += weightOmg * violaOmgPena;
@@ -112,7 +116,7 @@ struct PenaltyIntegralCost
         double violaTheta = std::acos(cos_theta) - thetaMax;
         double violaThetaPena = 0.0;
         double violaThetaPenaD = 0.0;
-        if (smoothedL1(violaTheta, smooth_eps, violaThetaPena, violaThetaPenaD))
+        if (traj_opt_components::smoothedL1(violaTheta, smooth_eps, violaThetaPena, violaThetaPenaD))
         {
             const double denom = std::sqrt(std::max(1.0 - cos_theta * cos_theta, 1e-12));
             gradQuat += weightTheta * violaThetaPenaD /
@@ -124,7 +128,7 @@ struct PenaltyIntegralCost
         double violaThrust = (thr - thrustMean) * (thr - thrustMean) - thrustSqrRadi;
         double violaThrustPena = 0.0;
         double violaThrustPenaD = 0.0;
-        if (smoothedL1(violaThrust, smooth_eps, violaThrustPena, violaThrustPenaD))
+        if (traj_opt_components::smoothedL1(violaThrust, smooth_eps, violaThrustPena, violaThrustPenaD))
         {
             gradThr += weightThrust * violaThrustPenaD * 2.0 * (thr - thrustMean);
             pena += weightThrust * violaThrustPena;
@@ -144,32 +148,6 @@ struct PenaltyIntegralCost
         return pena;
     }
 
-private:
-    static inline bool smoothedL1(const double &x,
-                                  const double &mu,
-                                  double &f,
-                                  double &df)
-    {
-        if (x < 0.0)
-        {
-            return false;
-        }
-        else if (x > mu)
-        {
-            f = x - 0.5 * mu;
-            df = 1.0;
-            return true;
-        }
-        else
-        {
-            const double xdmu = x / mu;
-            const double sqrxdmu = xdmu * xdmu;
-            const double mumxd2 = mu - 0.5 * x;
-            f = mumxd2 * sqrxdmu * xdmu;
-            df = sqrxdmu * ((-0.5) * xdmu + 3.0 * mumxd2 / mu);
-            return true;
-        }
-    }
 };
 }
 

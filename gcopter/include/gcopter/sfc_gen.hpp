@@ -27,6 +27,7 @@
 
 #include "geo_utils.hpp"
 #include "firi.hpp"
+#include "TrajectoryOptComponents/SFCCommonTypes.hpp"
 
 #include <ompl/util/Console.h>
 #include <ompl/base/SpaceInformation.h>
@@ -119,7 +120,7 @@ namespace sfc_gen
                             const Eigen::Vector3d &highCorner,
                             const double &progress,
                             const double &range,
-                            std::vector<Eigen::MatrixX4d> &hpolys,
+                            traj_opt_components::PolyhedraH &hpolys,
                             const double eps = 1.0e-6)
     {
         hpolys.clear();
@@ -185,9 +186,9 @@ namespace sfc_gen
         }
     }
 
-    inline void shortCut(std::vector<Eigen::MatrixX4d> &hpolys)
+    inline void shortCut(traj_opt_components::PolyhedraH &hpolys)
     {
-        std::vector<Eigen::MatrixX4d> htemp = hpolys;
+        traj_opt_components::PolyhedraH htemp = hpolys;
         if (htemp.size() == 1)
         {
             Eigen::MatrixX4d headPoly = htemp.front();

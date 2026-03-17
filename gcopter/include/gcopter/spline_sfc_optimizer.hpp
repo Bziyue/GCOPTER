@@ -20,18 +20,24 @@
 
 namespace gcopter
 {
+    using traj_opt_components::LinearTimeCost;
+    using traj_opt_components::PolyhedraH;
+    using traj_opt_components::PolyhedraV;
+    using traj_opt_components::PolyhedronH;
+    using traj_opt_components::PolyhedronV;
+
     class SplineSFCOptimizer
     {
     public:
         using SplineType = SplineTrajectory::QuinticSplineND<3>;
         using OptimizerType = SplineTrajectory::SplineOptimizer<3, SplineType,
                                                                 SplineTrajectory::QuadInvTimeMap,
-                                                                PolytopeSpatialMap>;
+                                                                traj_opt_components::PolytopeSpatialMap>;
 
     private:
         OptimizerType optimizer_;
-        PolytopeSpatialMap spatial_map_;
-        TimeCost time_cost_;
+        traj_opt_components::PolytopeSpatialMap spatial_map_;
+        LinearTimeCost time_cost_;
         PenaltyIntegralCost integral_cost_;
         flatness::FlatnessMap flatmap_;
 
