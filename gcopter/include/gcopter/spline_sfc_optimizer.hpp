@@ -3,10 +3,10 @@
 
 #include "SplineTrajectory/SplineOptimizer.hpp"
 #include "SplineTrajectory/SplineTrajectory.hpp"
+#include "TrajectoryOptAdapters/GcopterPenaltyIntegralCostAdapter.hpp"
 #include "TrajectoryOptComponents/SFCCommonTypes.hpp"
-#include "TrajectoryOptComponents/PolytopeSpatialMap.hpp"
 #include "TrajectoryOptComponents/LinearTimeCost.hpp"
-#include "TrajectoryOptComponents/PenaltyIntegralCost.hpp"
+#include "TrajectoryOptComponents/PolytopeSpatialMap.hpp"
 #include "gcopter/flatness.hpp"
 #include "gcopter/geo_utils.hpp"
 #include "gcopter/lbfgs.hpp"
@@ -25,6 +25,7 @@ namespace gcopter
     using traj_opt_components::PolyhedraV;
     using traj_opt_components::PolyhedronH;
     using traj_opt_components::PolyhedronV;
+    using PenaltyIntegralCost = traj_opt_adapters::GcopterPenaltyIntegralCostAdapter;
 
     class SplineSFCOptimizer
     {
