@@ -3,9 +3,13 @@
 
 #include "TrajectoryOptComponents/PenaltyUtils.hpp"
 #include "TrajectoryOptComponents/SFCCommonTypes.hpp"
+#include "TrajectoryOptComponents/SpatialCosts/AngularRateBoundPenalty.hpp"
+#include "TrajectoryOptComponents/SpatialCosts/FlatnessState.hpp"
+#include "TrajectoryOptComponents/SpatialCosts/PolytopePositionPenalty.hpp"
+#include "TrajectoryOptComponents/SpatialCosts/ThrustBandPenalty.hpp"
+#include "TrajectoryOptComponents/SpatialCosts/TiltAnglePenalty.hpp"
+#include "TrajectoryOptComponents/SpatialCosts/VelocityBoundPenalty.hpp"
 #include "gcopter/flatness.hpp"
-
-#include <cmath>
 
 namespace gcopter
 {
@@ -48,23 +52,14 @@ struct PenaltyIntegralCost
         if (!h_polys || !h_poly_idx || !flatmap)
             return 0.0;
 
-        const double velSqrMax = magnitude_bounds(0) * magnitude_bounds(0);
-        const double omgSqrMax = magnitude_bounds(1) * magnitude_bounds(1);
-        const double thetaMax = magnitude_bounds(2);
-        const double thrustMean = 0.5 * (magnitude_bounds(3) + magnitude_bounds(4));
-        const double thrustRadi = 0.5 * std::fabs(magnitude_bounds(4) - magnitude_bounds(3));
-        const double thrustSqrRadi = thrustRadi * thrustRadi;
-
         const double weightPos = penalty_weights(0);
         const double weightVel = penalty_weights(1);
         const double weightOmg = penalty_weights(2);
         const double weightTheta = penalty_weights(3);
         const double weightThrust = penalty_weights(4);
 
-        double thr = 0.0;
-        Eigen::Vector4d quat(1.0, 0.0, 0.0, 0.0);
-        Eigen::Vector3d omg(0.0, 0.0, 0.0);
-        flatmap->forward(v, a, j, 0.0, 0.0, thr, quat, omg);
+        const auto flatness_state =
+            traj_opt_components::evaluateFlatnessPenaltyState(flatmap, v, a, j);
 
         VectorType gradPos = VectorType::Zero();
         VectorType gradVel = VectorType::Zero();
@@ -74,65 +69,34 @@ struct PenaltyIntegralCost
 
         const int poly_id = (*h_poly_idx)(seg_idx);
         const PolyhedronH &poly = (*h_polys)[poly_id];
-        const int K = poly.rows();
         double pena = 0.0;
 
-        for (int k = 0; k < K; ++k)
-        {
-            const Eigen::Vector3d outerNormal = poly.block<1, 3>(k, 0);
-            const double violaPos = outerNormal.dot(p) + poly(k, 3);
-            double violaPosPena = 0.0;
-            double violaPosPenaD = 0.0;
-            if (traj_opt_components::smoothedL1(violaPos, smooth_eps, violaPosPena, violaPosPenaD))
-            {
-                gradPos += weightPos * violaPosPenaD * outerNormal;
-                pena += weightPos * violaPosPena;
-            }
-        }
-
-        double violaVel = v.squaredNorm() - velSqrMax;
-        double violaVelPena = 0.0;
-        double violaVelPenaD = 0.0;
-        if (traj_opt_components::smoothedL1(violaVel, smooth_eps, violaVelPena, violaVelPenaD))
-        {
-            gradVel += weightVel * violaVelPenaD * 2.0 * v;
-            pena += weightVel * violaVelPena;
-        }
-
-        double violaOmg = omg.squaredNorm() - omgSqrMax;
-        double violaOmgPena = 0.0;
-        double violaOmgPenaD = 0.0;
-        if (traj_opt_components::smoothedL1(violaOmg, smooth_eps, violaOmgPena, violaOmgPenaD))
-        {
-            gradOmg += weightOmg * violaOmgPenaD * 2.0 * omg;
-            pena += weightOmg * violaOmgPena;
-        }
-
-        double cos_theta = 1.0 - 2.0 * (quat(1) * quat(1) + quat(2) * quat(2));
-        if (cos_theta > 1.0)
-            cos_theta = 1.0;
-        else if (cos_theta < -1.0)
-            cos_theta = -1.0;
-        double violaTheta = std::acos(cos_theta) - thetaMax;
-        double violaThetaPena = 0.0;
-        double violaThetaPenaD = 0.0;
-        if (traj_opt_components::smoothedL1(violaTheta, smooth_eps, violaThetaPena, violaThetaPenaD))
-        {
-            const double denom = std::sqrt(std::max(1.0 - cos_theta * cos_theta, 1e-12));
-            gradQuat += weightTheta * violaThetaPenaD /
-                        denom * 4.0 *
-                        Eigen::Vector4d(0.0, quat(1), quat(2), 0.0);
-            pena += weightTheta * violaThetaPena;
-        }
-
-        double violaThrust = (thr - thrustMean) * (thr - thrustMean) - thrustSqrRadi;
-        double violaThrustPena = 0.0;
-        double violaThrustPenaD = 0.0;
-        if (traj_opt_components::smoothedL1(violaThrust, smooth_eps, violaThrustPena, violaThrustPenaD))
-        {
-            gradThr += weightThrust * violaThrustPenaD * 2.0 * (thr - thrustMean);
-            pena += weightThrust * violaThrustPena;
-        }
+        pena += traj_opt_components::accumulatePolytopePositionPenalty(poly,
+                                                                       p,
+                                                                       smooth_eps,
+                                                                       weightPos,
+                                                                       gradPos);
+        pena += traj_opt_components::accumulateVelocityBoundPenalty(v,
+                                                                    magnitude_bounds(0),
+                                                                    smooth_eps,
+                                                                    weightVel,
+                                                                    gradVel);
+        pena += traj_opt_components::accumulateAngularRateBoundPenalty(flatness_state.angular_rate,
+                                                                       magnitude_bounds(1),
+                                                                       smooth_eps,
+                                                                       weightOmg,
+                                                                       gradOmg);
+        pena += traj_opt_components::accumulateTiltAnglePenalty(flatness_state.quaternion,
+                                                                magnitude_bounds(2),
+                                                                smooth_eps,
+                                                                weightTheta,
+                                                                gradQuat);
+        pena += traj_opt_components::accumulateThrustBandPenalty(flatness_state.thrust,
+                                                                 magnitude_bounds(3),
+                                                                 magnitude_bounds(4),
+                                                                 smooth_eps,
+                                                                 weightThrust,
+                                                                 gradThr);
 
         VectorType totalGradPos, totalGradVel, totalGradAcc, totalGradJer;
         double totalGradPsi = 0.0, totalGradPsiD = 0.0;
