@@ -4,14 +4,22 @@ project(mockamap)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(ament_cmake REQUIRED)
-find_package(rclcpp REQUIRED)
-find_package(sensor_msgs REQUIRED)
-find_package(pcl_conversions REQUIRED)
+find_package(catkin REQUIRED COMPONENTS
+  roscpp
+  sensor_msgs
+  pcl_conversions
+)
 find_package(PCL REQUIRED COMPONENTS common kdtree)
+
+catkin_package(
+  INCLUDE_DIRS include
+  CATKIN_DEPENDS roscpp sensor_msgs pcl_conversions
+  DEPENDS PCL
+)
 
 include_directories(
   include
+  ${catkin_INCLUDE_DIRS}
   ${PCL_INCLUDE_DIRS}
 )
 add_definitions(${PCL_DEFINITIONS})
@@ -22,22 +30,15 @@ add_executable(mockamap_node
   src/perlinnoise.cpp
 )
 
-ament_target_dependencies(mockamap_node
-  rclcpp
-  sensor_msgs
-  pcl_conversions
-)
-
 target_link_libraries(mockamap_node
+  ${catkin_LIBRARIES}
   ${PCL_LIBRARIES}
 )
 
 install(TARGETS mockamap_node
-  DESTINATION lib/${PROJECT_NAME}
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
 install(DIRECTORY launch config
-  DESTINATION share/${PROJECT_NAME}
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
-
-ament_package()

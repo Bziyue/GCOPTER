@@ -10,11 +10,12 @@
 
 #include "perlinnoise.hpp"
 
-#define ROS_INFO(...) RCLCPP_INFO(rclcpp::get_logger("mockamap.maps"), __VA_ARGS__)
 #define GET_PARAM(node, name, value, default_value) \
   do { \
-    (node)->declare_parameter<std::decay_t<decltype(value)>>(name, default_value); \
-    (void)(node)->get_parameter(name, value); \
+    if (!(node)->getParam(name, value)) { \
+      value = default_value; \
+      (node)->setParam(name, value); \
+    } \
   } while (0)
 
 using namespace mocka;

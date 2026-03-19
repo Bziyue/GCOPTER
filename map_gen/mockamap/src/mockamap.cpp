@@ -1,5 +1,5 @@
-#include <rclcpp/rclcpp.hpp>
-#include <sensor_msgs/msg/point_cloud2.hpp>
+#include <ros/ros.h>
+#include <sensor_msgs/PointCloud2.h>
 
 #include <algorithm>
 #include <iostream>
@@ -10,8 +10,6 @@
 #include <pcl_conversions/pcl_conversions.h>
 
 #include "maps.hpp"
-
-#define ROS_INFO(...) RCLCPP_INFO(rclcpp::get_logger("mockamap"), __VA_ARGS__)
 
 void
 optimizeMap(mocka::Maps::BasicInfo& in)
@@ -62,12 +60,13 @@ optimizeMap(mocka::Maps::BasicInfo& in)
 int
 main(int argc, char** argv)
 {
-  rclcpp::init(argc, argv);
-  auto node = rclcpp::Node::make_shared("mockamap_node");
+  ros::init(argc, argv, "mockamap_node");
+  ros::NodeHandle node;
+  ros::NodeHandle privateNode("~");
 
-  auto pcl_pub = node->create_publisher<sensor_msgs::msg::PointCloud2>("mock_map", 1);
+  ros::Publisher pcl_pub = node.advertise<sensor_msgs::PointCloud2>("mock_map", 1);
   pcl::PointCloud<pcl::PointXYZ> cloud;
-  sensor_msgs::msg::PointCloud2  output;
+  sensor_msgs::PointCloud2 output;
 
   int seed;
   int sizeX;
@@ -77,21 +76,13 @@ main(int argc, char** argv)
   double update_freq;
   int type;
 
-  node->declare_parameter<int>("seed", 4546);
-  node->declare_parameter<double>("update_freq", 1.0);
-  node->declare_parameter<double>("resolution", 0.38);
-  node->declare_parameter<int>("x_length", 100);
-  node->declare_parameter<int>("y_length", 100);
-  node->declare_parameter<int>("z_length", 10);
-  node->declare_parameter<int>("type", 1);
-
-  node->get_parameter("seed", seed);
-  node->get_parameter("update_freq", update_freq);
-  node->get_parameter("resolution", scale);
-  node->get_parameter("x_length", sizeX);
-  node->get_parameter("y_length", sizeY);
-  node->get_parameter("z_length", sizeZ);
-  node->get_parameter("type", type);
+  privateNode.param("seed", seed, 4546);
+  privateNode.param("update_freq", update_freq, 1.0);
+  privateNode.param("resolution", scale, 0.38);
+  privateNode.param("x_length", sizeX, 100);
+  privateNode.param("y_length", sizeY, 100);
+  privateNode.param("z_length", sizeZ, 10);
+  privateNode.param("type", type, 1);
 
   scale = 1 / scale;
   sizeX = sizeX * scale;
@@ -99,7 +90,7 @@ main(int argc, char** argv)
   sizeZ = sizeZ * scale;
 
   mocka::Maps::BasicInfo info;
-  info.nh_private = node.get();
+  info.nh_private = &privateNode;
   info.sizeX      = sizeX;
   info.sizeY      = sizeY;
   info.sizeZ      = sizeZ;
@@ -112,14 +103,13 @@ main(int argc, char** argv)
   map.setInfo(info);
   map.generate(type);
 
-  rclcpp::Rate loop_rate(update_freq);
-  while (rclcpp::ok())
+  ros::Rate loop_rate(update_freq);
+  while (ros::ok())
   {
-    pcl_pub->publish(output);
-    rclcpp::spin_some(node);
+    pcl_pub.publish(output);
+    ros::spinOnce();
     loop_rate.sleep();
   }
 
-  rclcpp::shutdown();
   return 0;
 }

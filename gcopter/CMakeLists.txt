@@ -7,40 +7,39 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_BUILD_TYPE "Release")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall -fPIC")
 
-find_package(ament_cmake REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(ompl REQUIRED)
-find_package(rclcpp REQUIRED)
-find_package(std_msgs REQUIRED)
-find_package(geometry_msgs REQUIRED)
-find_package(sensor_msgs REQUIRED)
-find_package(visualization_msgs REQUIRED)
-
-include_directories(
-  include
-  ${OMPL_INCLUDE_DIRS}
-  ${EIGEN3_INCLUDE_DIRS}
-)
-
-add_executable(global_planning src/global_planning.cpp)
-ament_target_dependencies(global_planning
-  rclcpp
+find_package(catkin REQUIRED COMPONENTS
+  roscpp
   std_msgs
   geometry_msgs
   sensor_msgs
   visualization_msgs
 )
 
+catkin_package(
+  INCLUDE_DIRS include
+  CATKIN_DEPENDS roscpp std_msgs geometry_msgs sensor_msgs visualization_msgs
+)
+
+include_directories(
+  include
+  ${catkin_INCLUDE_DIRS}
+  ${OMPL_INCLUDE_DIRS}
+  ${EIGEN3_INCLUDE_DIRS}
+)
+
+add_executable(global_planning src/global_planning.cpp)
+
 target_link_libraries(global_planning
+  ${catkin_LIBRARIES}
   ${OMPL_LIBRARIES}
 )
 
 install(TARGETS global_planning
-  DESTINATION lib/${PROJECT_NAME}
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
 install(DIRECTORY config launch
-  DESTINATION share/${PROJECT_NAME}
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
-
-ament_package()
