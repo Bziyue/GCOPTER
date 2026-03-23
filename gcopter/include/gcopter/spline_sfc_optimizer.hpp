@@ -37,6 +37,7 @@ namespace gcopter
 
     private:
         OptimizerType optimizer_;
+        typename OptimizerType::Workspace workspace_;
         traj_opt_components::PolytopeSpatialMap spatial_map_;
         LinearTimeCost time_cost_;
         PenaltyIntegralCost integral_cost_;
@@ -310,12 +311,27 @@ namespace gcopter
             }
         }
 
+        template <typename TimeCostFunc, typename IntegralCostFunc>
+        auto makeEvaluateSpec(const TimeCostFunc &time_cost,
+                              const IntegralCostFunc &integral_cost)
+        {
+            return OptimizerType::makeEvaluateSpec(time_cost, integral_cost, workspace_);
+        }
+
         static inline double costFunctional(void *ptr,
                                             const Eigen::VectorXd &x,
                                             Eigen::VectorXd &g)
         {
             auto &obj = *(SplineSFCOptimizer *)ptr;
-            double cost = obj.optimizer_.evaluate(x, g, obj.time_cost_, obj.integral_cost_);
+            auto spec = obj.makeEvaluateSpec(obj.time_cost_, obj.integral_cost_);
+            const auto evaluation = obj.optimizer_.evaluate(x, g, spec);
+            if (!evaluation)
+            {
+                g.setZero();
+                return 1.0e20;
+            }
+
+            double cost = evaluation.cost;
             if (!std::isfinite(cost) || !g.allFinite())
             {
                 g.setZero();
@@ -394,7 +410,10 @@ namespace gcopter
             spatial_map_.reset(&vPolytopes_, &vPolyIdx_, pieceN_);
             optimizer_.setSpatialMap(&spatial_map_);
             optimizer_.setEnergyWeights(1.0);
-            optimizer_.setIntegralNumSteps(integralRes_);
+            if (!optimizer_.setIntegralNumSteps(integralRes_))
+            {
+                return false;
+            }
 
             typename OptimizerType::WaypointsType waypoints(pieceN_ + 1, 3);
             waypoints.row(0) = headPVA_.col(0).transpose();
@@ -479,11 +498,8 @@ namespace gcopter
                                      double energy_weight)
                 {
                     optimizer_.setEnergyWeights(energy_weight);
-                    auto check = optimizer_.checkGradients(
-                        x,
-                        std::forward<decltype(time_func)>(time_func),
-                        SplineTrajectory::VoidWaypointsCost(),
-                        std::forward<decltype(integral_func)>(integral_func));
+                    auto spec = OptimizerType::makeEvaluateSpec(time_func, integral_func, workspace_);
+                    auto check = optimizer_.checkGradients(x, spec);
                     std::cerr << "[GradCheck] " << tag << " -> " << check.makeReport();
                     std::cerr << "[GradCheck] " << tag << " rel error: " << check.rel_error
                               << " | norm: " << check.error_norm << std::endl;
@@ -547,16 +563,18 @@ namespace gcopter
                                                                           SplineTrajectory::QuadInvTimeMap,
                                                                           SplineTrajectory::IdentitySpatialMap<3>>;
                     IdentityOpt identity_opt;
+                    typename IdentityOpt::Workspace identity_workspace;
                     identity_opt.setEnergyWeights(0.0);
-                    identity_opt.setIntegralNumSteps(integralRes_);
-                    if (identity_opt.setInitState(ref_times_, ref_waypoints_, 0.0, ref_bc_))
+                    if (!identity_opt.setIntegralNumSteps(integralRes_))
+                    {
+                        std::cerr << "[GradCheck] pos_quadratic_identity step setup failed" << std::endl;
+                    }
+                    else if (identity_opt.setInitState(ref_times_, ref_waypoints_, 0.0, ref_bc_))
                     {
                         Eigen::VectorXd x_id = identity_opt.generateInitialGuess();
-                        auto check = identity_opt.checkGradients(
-                            x_id,
-                            ZeroTimeCost(),
-                            SplineTrajectory::VoidWaypointsCost(),
-                            pos_quadratic);
+                        ZeroTimeCost zero_time_cost;
+                        auto spec = IdentityOpt::makeEvaluateSpec(zero_time_cost, pos_quadratic, identity_workspace);
+                        auto check = identity_opt.checkGradients(x_id, spec);
                         std::cerr << "[GradCheck] pos_quadratic_identity -> " << check.makeReport();
                         std::cerr << "[GradCheck] pos_quadratic_identity rel error: " << check.rel_error
                                   << " | norm: " << check.error_norm << std::endl;
@@ -582,12 +600,15 @@ namespace gcopter
             if (ret >= 0)
             {
                 Eigen::VectorXd grad(x.size());
-                minCostFunctional = optimizer_.evaluate(x, grad, time_cost_, integral_cost_);
-                const SplineType *spline_ptr = optimizer_.getOptimalSpline();
-                if (spline_ptr)
+                auto spec = makeEvaluateSpec(time_cost_, integral_cost_);
+                const auto evaluation = optimizer_.evaluate(x, grad, spec);
+                if (!evaluation)
                 {
-                    spline = *spline_ptr;
+                    spline = SplineType();
+                    return INFINITY;
                 }
+                minCostFunctional = evaluation.cost;
+                spline = optimizer_.getWorkingSpline(workspace_);
             }
             else
             {
