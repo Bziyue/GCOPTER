@@ -378,7 +378,7 @@ namespace SplineTrajectory
 
             int seg_idx = 0;
             int step_in_seg = 0;
-            int global_sample_index = 0;
+            int sample_buffer_index = 0;
             double alpha = 0.0;
             double t_local = 0.0;
             double t_global = 0.0;
@@ -491,21 +491,37 @@ namespace SplineTrajectory
             }
         };
 
-        struct Status
+        enum class ErrorCode
+        {
+            None = 0,
+            ValidationFailed,
+            InvalidOptimizerState,
+            InvalidIntegralSteps,
+            DimensionMismatch,
+            NullWorkspace,
+            NullTimeCost,
+            NullIntegralCost,
+            NullWaypointsCost,
+            NullSampleCost,
+            NullTrajectoryCost
+        };
+
+        struct ResultBase
         {
             bool ok = false;
+            ErrorCode code = ErrorCode::None;
             std::string message;
 
             explicit operator bool() const { return ok; }
         };
 
-        struct EvaluationResult
+        struct Status : ResultBase
         {
-            bool ok = false;
-            double cost = 0.0;
-            std::string message;
+        };
 
-            explicit operator bool() const { return ok; }
+        struct EvaluationResult : ResultBase
+        {
+            double cost = 0.0;
         };
 
     private:
@@ -685,7 +701,8 @@ namespace SplineTrajectory
             if (t_points.empty())
             {
                 is_valid_ = false;
-                return makeErrorStatus("Input time points vector is empty");
+                return makeErrorStatus(ErrorCode::ValidationFailed,
+                                       "Input time points vector is empty");
             }
 
             std::vector<double> time_segments;
@@ -729,7 +746,8 @@ namespace SplineTrajectory
         {
             if (steps <= 0)
             {
-                return makeErrorStatus("[SplineOptimizer Error] integral_num_steps must be positive.");
+                return makeErrorStatus(ErrorCode::InvalidIntegralSteps,
+                                       "[SplineOptimizer Error] integral_num_steps must be positive.");
             }
             integral_num_steps_ = steps;
             return makeOkStatus();
@@ -1271,9 +1289,9 @@ namespace SplineTrajectory
             if (!status)
             {
                 grad_out.setZero(x.size());
-                return {false, 0.0, status.message};
+                return makeErrorEvaluationResult(status.code, status.message);
             }
-            return {true, runEvaluation(x, grad_out, resolveEvaluateSpec(spec)), {}};
+            return makeOkEvaluationResult(runEvaluation(x, grad_out, resolveEvaluateSpec(spec)));
         }
 
         /**
@@ -1287,6 +1305,7 @@ namespace SplineTrajectory
         struct GradientCheckResult
         {
             bool valid = false;          
+            ErrorCode code = ErrorCode::None;
             double error_norm = 0.0;      
             double rel_error = 0.0;       
             double max_abs_error = 0.0;
@@ -1331,6 +1350,7 @@ namespace SplineTrajectory
             const Status status = validateEvaluateSpec(x, spec);
             if (!status)
             {
+                res.code = status.code;
                 res.message = status.message;
                 return res;
             }
@@ -1363,12 +1383,37 @@ namespace SplineTrajectory
     private:
         static Status makeOkStatus()
         {
-            return {true, {}};
+            Status status;
+            status.ok = true;
+            status.code = ErrorCode::None;
+            return status;
         }
 
-        static Status makeErrorStatus(std::string message)
+        static Status makeErrorStatus(ErrorCode code, std::string message)
         {
-            return {false, std::move(message)};
+            Status status;
+            status.ok = false;
+            status.code = code;
+            status.message = std::move(message);
+            return status;
+        }
+
+        static EvaluationResult makeOkEvaluationResult(double cost)
+        {
+            EvaluationResult result;
+            result.ok = true;
+            result.code = ErrorCode::None;
+            result.cost = cost;
+            return result;
+        }
+
+        static EvaluationResult makeErrorEvaluationResult(ErrorCode code, std::string message)
+        {
+            EvaluationResult result;
+            result.ok = false;
+            result.code = code;
+            result.message = std::move(message);
+            return result;
         }
 
         static Status makeValidationStatus(const std::vector<std::string> &errors)
@@ -1385,7 +1430,7 @@ namespace SplineTrajectory
                 ss << "  [" << (i + 1) << "] " << errors[i] << "\n";
             }
 
-            return makeErrorStatus(ss.str());
+            return makeErrorStatus(ErrorCode::ValidationFailed, ss.str());
         }
 
         int calculateDimension() const
@@ -1484,47 +1529,56 @@ namespace SplineTrajectory
         {
             if (!is_valid_)
             {
-                return makeErrorStatus("[SplineOptimizer Error] evaluate() called on an invalid optimizer state.");
+                return makeErrorStatus(ErrorCode::InvalidOptimizerState,
+                                       "[SplineOptimizer Error] evaluate() called on an invalid optimizer state.");
             }
             if (integral_num_steps_ <= 0)
             {
-                return makeErrorStatus("[SplineOptimizer Error] integral_num_steps must be positive.");
+                return makeErrorStatus(ErrorCode::InvalidIntegralSteps,
+                                       "[SplineOptimizer Error] integral_num_steps must be positive.");
             }
             if (x.size() != getDimension())
             {
-                return makeErrorStatus("[SplineOptimizer Error] Input dimension mismatch in evaluate().");
+                return makeErrorStatus(ErrorCode::DimensionMismatch,
+                                       "[SplineOptimizer Error] Input dimension mismatch in evaluate().");
             }
             if (spec.workspace == nullptr)
             {
-                return makeErrorStatus("[SplineOptimizer Error] 'workspace' must not be null.");
+                return makeErrorStatus(ErrorCode::NullWorkspace,
+                                       "[SplineOptimizer Error] 'workspace' must not be null.");
             }
             if (spec.time_cost == nullptr)
             {
-                return makeErrorStatus("[SplineOptimizer Error] 'time_cost' must not be null.");
+                return makeErrorStatus(ErrorCode::NullTimeCost,
+                                       "[SplineOptimizer Error] 'time_cost' must not be null.");
             }
             if (spec.integral_cost == nullptr)
             {
-                return makeErrorStatus("[SplineOptimizer Error] 'integral_cost' must not be null.");
+                return makeErrorStatus(ErrorCode::NullIntegralCost,
+                                       "[SplineOptimizer Error] 'integral_cost' must not be null.");
             }
             if constexpr (!std::is_same_v<WaypointsCostFunc, VoidWaypointsCost>)
             {
                 if (spec.waypoints_cost == nullptr)
                 {
-                    return makeErrorStatus("[SplineOptimizer Error] 'waypoints_cost' must not be null.");
+                    return makeErrorStatus(ErrorCode::NullWaypointsCost,
+                                           "[SplineOptimizer Error] 'waypoints_cost' must not be null.");
                 }
             }
             if constexpr (!std::is_same_v<SampleCostFunc, VoidSampleCost>)
             {
                 if (spec.sample_cost == nullptr)
                 {
-                    return makeErrorStatus("[SplineOptimizer Error] 'sample_cost' must not be null.");
+                    return makeErrorStatus(ErrorCode::NullSampleCost,
+                                           "[SplineOptimizer Error] 'sample_cost' must not be null.");
                 }
             }
             if constexpr (!std::is_same_v<TrajectoryCostFunc, VoidTrajectoryCost<SplineType, DIM>>)
             {
                 if (spec.trajectory_cost == nullptr)
                 {
-                    return makeErrorStatus("[SplineOptimizer Error] 'trajectory_cost' must not be null.");
+                    return makeErrorStatus(ErrorCode::NullTrajectoryCost,
+                                           "[SplineOptimizer Error] 'trajectory_cost' must not be null.");
                 }
             }
             return makeOkStatus();
@@ -1663,7 +1717,7 @@ namespace SplineTrajectory
                         IntegralSample &sample = ws.integral_samples[sample_index];
                         sample.seg_idx = i;
                         sample.step_in_seg = k;
-                        sample.global_sample_index = sample_index;
+                        sample.sample_buffer_index = sample_index;
                         sample.alpha = alpha;
                         sample.t_local = t;
                         sample.t_global = t_global;

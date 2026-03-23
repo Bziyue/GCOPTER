@@ -11,6 +11,7 @@ The current optimizer API also uses a few small integration types:
 
 - `Workspace`: caller-owned mutable state used during evaluation
 - `EvaluateSpec`: binds cost functors, executor, and workspace
+- `ErrorCode`: structured failure categories for setup and evaluation
 - `Status`: returned by setup/validation style APIs
 - `EvaluationResult`: returned by `evaluate(...)`
 - `GradientCheckResult`: returned by `checkGradients(...)`
@@ -124,7 +125,7 @@ struct SampleCostProtocol
 
 - `seg_idx`: segment index
 - `step_in_seg`: sample step inside the segment
-- `global_sample_index`: index inside the recorded sample buffer
+- `sample_buffer_index`: index inside the recorded sample buffer
 - `alpha`: normalized time in the segment, in `[0, 1]`
 - `t_local`: local time within the segment
 - `t_global`: absolute time
@@ -206,6 +207,18 @@ Setup and validation style APIs use `Status`:
 auto status = optimizer.setInitState(durations, waypoints, 0.0, bc);
 if (!status)
 {
+    std::cerr << static_cast<int>(status.code) << std::endl;
     std::cerr << status.message << std::endl;
+}
+```
+
+Evaluation uses `EvaluationResult` with the same error code pattern:
+
+```cpp
+auto result = optimizer.evaluate(x, grad, spec);
+if (!result)
+{
+    std::cerr << static_cast<int>(result.code) << std::endl;
+    std::cerr << result.message << std::endl;
 }
 ```
