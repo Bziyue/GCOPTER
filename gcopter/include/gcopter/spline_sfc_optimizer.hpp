@@ -476,7 +476,7 @@ namespace gcopter
                     }
                 };
 
-                auto zero_integral = [](double /*t*/, double /*t_global*/, int /*seg_idx*/,
+                auto zero_integral = [](double /*t*/, double /*t_global*/, int /*seg_idx*/, int /*step_in_seg*/,
                                         const Eigen::Vector3d &/*p*/, const Eigen::Vector3d &/*v*/,
                                         const Eigen::Vector3d &/*a*/, const Eigen::Vector3d &/*j*/,
                                         const Eigen::Vector3d &/*s*/, Eigen::Vector3d &gp,
@@ -541,7 +541,7 @@ namespace gcopter
                 run_check("integral_only", ZeroTimeCost(), integral_cost_, 0.0);
                 run_check("energy_only", ZeroTimeCost(), zero_integral, 1.0);
 
-                auto pos_quadratic = [](double /*t*/, double /*t_global*/, int /*seg_idx*/,
+                auto pos_quadratic = [](double /*t*/, double /*t_global*/, int /*seg_idx*/, int /*step_in_seg*/,
                                         const Eigen::Vector3d &p, const Eigen::Vector3d &/*v*/,
                                         const Eigen::Vector3d &/*a*/, const Eigen::Vector3d &/*j*/,
                                         const Eigen::Vector3d &/*s*/, Eigen::Vector3d &gp,

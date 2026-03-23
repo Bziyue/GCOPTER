@@ -38,7 +38,7 @@ struct GcopterPenaltyIntegralCostAdapter
         flatmap = fm;
     }
 
-    double operator()(double /*t*/, double /*t_global*/, int seg_idx,
+    double operator()(double /*t*/, double /*t_global*/, int seg_idx, int /*step_in_seg*/,
                       const VectorType &p, const VectorType &v,
                       const VectorType &a, const VectorType &j,
                       const VectorType & /*s*/, VectorType &gp,
