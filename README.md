@@ -53,7 +53,7 @@ This is a minimal yet non-trivial example of our trajectory optimizer for real-t
     sudo cpufreq-set -g performance
     mkdir -p ~/ROS/src
     cd ~/ROS/src
-    git clone https://github.com/ZJU-FAST-Lab/GCOPTER.git
+    git clone https://github.com/Bziyue/GCOPTER.git
     cd ..
     catkin_make
     source devel/setup.bash
@@ -64,7 +64,7 @@ For the ROS 2 port, switch to the `ros2` branch after cloning and use a colcon w
     source /opt/ros/<ros2_distro>/setup.bash
     mkdir -p ~/ros2_ws/src
     cd ~/ros2_ws/src
-    git clone https://github.com/ZJU-FAST-Lab/GCOPTER.git
+    git clone https://github.com/Bziyue/GCOPTER.git
     cd GCOPTER
     git checkout ros2
     cd ..
