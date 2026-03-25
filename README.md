@@ -14,6 +14,12 @@ __GCOPTER__ is an efficient and versatile multicopter trajectory optimizer built
 
 * **Plan** - __More examples are on the way__, including uniform MINCO (s=2,3,4), trajectory generation for tube-shaped and sphere-shaped corridors, local replanner, whole-body SE(3) planner, interfaces for external constraints, augmented Lagrangian, and so on.
 
+## Branches
+
+- `main`: ROS 1 version of GCOPTER. Build with `catkin_make` in a catkin workspace and run with `roslaunch`.
+- `ros2`: ROS 2 port of GCOPTER. Build with `colcon build` in a colcon workspace and run with `ros2 launch`.
+- When switching between `main` and `ros2`, use separate workspaces or clean the previous `build` and setup artifacts before rebuilding. `catkin_make` and `colcon` should not share the same workspace outputs.
+
 ## About
 
 If our repo helps your academic projects, please cite our paper. Thank you!
@@ -38,20 +44,35 @@ __Paper__: [Geometrically Constrained Trajectory Optimization for Multicopters](
 
 ### Example 1: Global Trajectory Planning
 
-This is a minimal yet non-trivial example of our trajectory optimizer for real-time high-quality corridor and global trajectory generation subject to dynamic constraints. For installation, the following terminal commands are helpful.
+This is a minimal yet non-trivial example of our trajectory optimizer for real-time high-quality corridor and global trajectory generation subject to dynamic constraints. The commands below are for the ROS 1 `main` branch.
     
     sudo apt update
     sudo apt install cpufrequtils
     sudo apt install libompl-dev
+    source /opt/ros/<ros1_distro>/setup.bash
     sudo cpufreq-set -g performance
-    mkdir ROS; cd ROS; mkdir src; cd src
+    mkdir -p ~/ROS/src
+    cd ~/ROS/src
     git clone https://github.com/ZJU-FAST-Lab/GCOPTER.git
     cd ..
     catkin_make
     source devel/setup.bash
     roslaunch gcopter global_planning.launch
 
-After conduct the command, you will see the windows for rviz and rqt_plot. Please follow the gif below for global trajectory planning in a random map.
+For the ROS 2 port, switch to the `ros2` branch after cloning and use a colcon workspace instead:
+
+    source /opt/ros/<ros2_distro>/setup.bash
+    mkdir -p ~/ros2_ws/src
+    cd ~/ros2_ws/src
+    git clone https://github.com/ZJU-FAST-Lab/GCOPTER.git
+    cd GCOPTER
+    git checkout ros2
+    cd ..
+    colcon build --packages-up-to mockamap gcopter
+    source install/setup.bash
+    ros2 launch gcopter global_planning.launch.py
+
+On the ROS 1 `main` branch, the launch file opens rviz and rqt_plot. On the `ros2` branch, the launch file opens rviz2. Please follow the gif below for global trajectory planning in a random map.
 <p align="center">
     <img src="misc/application1_global_planning.gif" width="600" height="407" />
 </p>
