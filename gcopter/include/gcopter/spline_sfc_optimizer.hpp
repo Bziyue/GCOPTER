@@ -37,7 +37,7 @@ namespace gcopter
 
     private:
         OptimizerType optimizer_;
-        typename OptimizerType::Workspace workspace_;
+        typename OptimizerType::OptimizationContext context_;
         traj_opt_components::PolytopeSpatialMap spatial_map_;
         LinearTimeCost time_cost_;
         PenaltyIntegralCost integral_cost_;
@@ -315,7 +315,7 @@ namespace gcopter
         auto makeEvaluateSpec(const TimeCostFunc &time_cost,
                               const IntegralCostFunc &integral_cost)
         {
-            return OptimizerType::makeEvaluateSpec(time_cost, integral_cost, workspace_);
+            return OptimizerType::makeEvaluateSpec(time_cost, integral_cost);
         }
 
         static inline double costFunctional(void *ptr,
@@ -324,7 +324,7 @@ namespace gcopter
         {
             auto &obj = *(SplineSFCOptimizer *)ptr;
             auto spec = obj.makeEvaluateSpec(obj.time_cost_, obj.integral_cost_);
-            const auto evaluation = obj.optimizer_.evaluate(x, g, spec);
+            const auto evaluation = obj.optimizer_.evaluate(obj.context_, x, g, spec);
             if (!evaluation)
             {
                 g.setZero();
@@ -408,9 +408,11 @@ namespace gcopter
             }
 
             spatial_map_.reset(&vPolytopes_, &vPolyIdx_, pieceN_);
-            optimizer_.setSpatialMap(&spatial_map_);
-            optimizer_.setEnergyWeights(1.0);
-            if (!optimizer_.setIntegralNumSteps(integralRes_))
+            typename OptimizerType::OptimizerConfig config;
+            config.spatial_map = &spatial_map_;
+            config.rho_energy = 1.0;
+            config.integral_num_steps = integralRes_;
+            if (!optimizer_.setConfig(config))
             {
                 return false;
             }
@@ -433,10 +435,12 @@ namespace gcopter
             bc.end_velocity = tailPVA_.col(1);
             bc.end_acceleration = tailPVA_.col(2);
 
-            if (!optimizer_.setInitState(std::vector<double>(timeAlloc.data(), timeAlloc.data() + timeAlloc.size()),
-                                         waypoints,
-                                         0.0,
-                                         bc))
+            typename OptimizerType::ProblemDefinition problem;
+            problem.time_segments.assign(timeAlloc.data(), timeAlloc.data() + timeAlloc.size());
+            problem.waypoints = waypoints;
+            problem.start_time = 0.0;
+            problem.bc = bc;
+            if (!optimizer_.prepareContext(problem, context_))
             {
                 return false;
             }
@@ -455,7 +459,7 @@ namespace gcopter
 
         double optimize(SplineType &spline, const double &relCostTol)
         {
-            Eigen::VectorXd x = optimizer_.generateInitialGuess();
+            Eigen::VectorXd x = optimizer_.generateInitialGuess(context_);
 
             double minCostFunctional = 0.0;
             lbfgs_params_.mem_size = 256;
@@ -497,9 +501,11 @@ namespace gcopter
                                      auto &&integral_func,
                                      double energy_weight)
                 {
-                    optimizer_.setEnergyWeights(energy_weight);
-                    auto spec = OptimizerType::makeEvaluateSpec(time_func, integral_func, workspace_);
-                    auto check = optimizer_.checkGradients(x, spec);
+                    auto config = optimizer_.getActiveConfig();
+                    config.rho_energy = energy_weight;
+                    optimizer_.setConfig(config);
+                    auto spec = OptimizerType::makeEvaluateSpec(time_func, integral_func);
+                    auto check = optimizer_.checkGradients(context_, x, spec);
                     std::cerr << "[GradCheck] " << tag << " -> " << check.makeReport();
                     std::cerr << "[GradCheck] " << tag << " rel error: " << check.rel_error
                               << " | norm: " << check.error_norm << std::endl;
@@ -563,30 +569,42 @@ namespace gcopter
                                                                           SplineTrajectory::QuadInvTimeMap,
                                                                           SplineTrajectory::IdentitySpatialMap<3>>;
                     IdentityOpt identity_opt;
-                    typename IdentityOpt::Workspace identity_workspace;
-                    identity_opt.setEnergyWeights(0.0);
-                    if (!identity_opt.setIntegralNumSteps(integralRes_))
+                    typename IdentityOpt::OptimizationContext identity_context;
+                    typename IdentityOpt::OptimizerConfig identity_config;
+                    identity_config.rho_energy = 0.0;
+                    identity_config.integral_num_steps = integralRes_;
+                    if (!identity_opt.setConfig(identity_config))
                     {
                         std::cerr << "[GradCheck] pos_quadratic_identity step setup failed" << std::endl;
                     }
-                    else if (identity_opt.setInitState(ref_times_, ref_waypoints_, 0.0, ref_bc_))
-                    {
-                        Eigen::VectorXd x_id = identity_opt.generateInitialGuess();
-                        ZeroTimeCost zero_time_cost;
-                        auto spec = IdentityOpt::makeEvaluateSpec(zero_time_cost, pos_quadratic, identity_workspace);
-                        auto check = identity_opt.checkGradients(x_id, spec);
-                        std::cerr << "[GradCheck] pos_quadratic_identity -> " << check.makeReport();
-                        std::cerr << "[GradCheck] pos_quadratic_identity rel error: " << check.rel_error
-                                  << " | norm: " << check.error_norm << std::endl;
-                        std::cerr.flush();
-                    }
                     else
                     {
-                        std::cerr << "[GradCheck] pos_quadratic_identity init failed" << std::endl;
+                        typename IdentityOpt::ProblemDefinition identity_problem;
+                        identity_problem.time_segments = ref_times_;
+                        identity_problem.waypoints = ref_waypoints_;
+                        identity_problem.start_time = 0.0;
+                        identity_problem.bc = ref_bc_;
+                        if (!identity_opt.prepareContext(identity_problem, identity_context))
+                        {
+                            std::cerr << "[GradCheck] pos_quadratic_identity init failed" << std::endl;
+                        }
+                        else
+                        {
+                            Eigen::VectorXd x_id = identity_opt.generateInitialGuess(identity_context);
+                            ZeroTimeCost zero_time_cost;
+                            auto spec = IdentityOpt::makeEvaluateSpec(zero_time_cost, pos_quadratic);
+                            auto check = identity_opt.checkGradients(identity_context, x_id, spec);
+                            std::cerr << "[GradCheck] pos_quadratic_identity -> " << check.makeReport();
+                            std::cerr << "[GradCheck] pos_quadratic_identity rel error: " << check.rel_error
+                                      << " | norm: " << check.error_norm << std::endl;
+                            std::cerr.flush();
+                        }
                     }
                 }
 
-                optimizer_.setEnergyWeights(1.0);
+                auto config = optimizer_.getActiveConfig();
+                config.rho_energy = 1.0;
+                optimizer_.setConfig(config);
             }
 
             const int ret = lbfgs::lbfgs_optimize(x,
@@ -601,14 +619,14 @@ namespace gcopter
             {
                 Eigen::VectorXd grad(x.size());
                 auto spec = makeEvaluateSpec(time_cost_, integral_cost_);
-                const auto evaluation = optimizer_.evaluate(x, grad, spec);
+                const auto evaluation = optimizer_.evaluate(context_, x, grad, spec);
                 if (!evaluation)
                 {
                     spline = SplineType();
                     return INFINITY;
                 }
                 minCostFunctional = evaluation.cost;
-                spline = optimizer_.getWorkingSpline(workspace_);
+                spline = optimizer_.getWorkingSpline(context_);
             }
             else
             {
