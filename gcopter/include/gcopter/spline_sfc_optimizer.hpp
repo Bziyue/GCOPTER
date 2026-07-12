@@ -330,7 +330,6 @@ namespace gcopter
                 g.setZero();
                 return 1.0e20;
             }
-
             double cost = evaluation.cost;
             if (!std::isfinite(cost) || !g.allFinite())
             {
@@ -480,7 +479,7 @@ namespace gcopter
                     }
                 };
 
-                auto zero_integral = [](double /*t*/, double /*t_global*/, int /*seg_idx*/, int /*step_in_seg*/,
+                auto zero_integral = [](const SplineTrajectory::IntegralPointInfo & /*point*/,
                                         const Eigen::Vector3d &/*p*/, const Eigen::Vector3d &/*v*/,
                                         const Eigen::Vector3d &/*a*/, const Eigen::Vector3d &/*j*/,
                                         const Eigen::Vector3d &/*s*/, Eigen::Vector3d &gp,
@@ -547,7 +546,7 @@ namespace gcopter
                 run_check("integral_only", ZeroTimeCost(), integral_cost_, 0.0);
                 run_check("energy_only", ZeroTimeCost(), zero_integral, 1.0);
 
-                auto pos_quadratic = [](double /*t*/, double /*t_global*/, int /*seg_idx*/, int /*step_in_seg*/,
+                auto pos_quadratic = [](const SplineTrajectory::IntegralPointInfo & /*point*/,
                                         const Eigen::Vector3d &p, const Eigen::Vector3d &/*v*/,
                                         const Eigen::Vector3d &/*a*/, const Eigen::Vector3d &/*j*/,
                                         const Eigen::Vector3d &/*s*/, Eigen::Vector3d &gp,
@@ -617,15 +616,18 @@ namespace gcopter
 
             if (ret >= 0)
             {
-                Eigen::VectorXd grad(x.size());
-                auto spec = makeEvaluateSpec(time_cost_, integral_cost_);
-                const auto evaluation = optimizer_.evaluate(context_, x, grad, spec);
-                if (!evaluation)
+                const auto sync_status = optimizer_.synchronizeWorkingState(context_, x);
+                if (!sync_status)
                 {
                     spline = SplineType();
                     return INFINITY;
                 }
-                minCostFunctional = evaluation.cost;
+                // Preserve the historical public return value, which excluded
+                // the auxiliary unit-sphere norm penalty even though LBFGS sees it.
+                Eigen::VectorXd norm_grad = Eigen::VectorXd::Zero(x.size());
+                double norm_penalty = 0.0;
+                applyNormPenalty(x, norm_grad, norm_penalty);
+                minCostFunctional -= norm_penalty;
                 spline = optimizer_.getWorkingSpline(context_);
             }
             else

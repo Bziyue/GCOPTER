@@ -1,5 +1,6 @@
 #pragma once
 
+#include "SplineTrajectory/IntegralPointInfo.hpp"
 #include "TrajectoryOptComponents/PenaltyUtils.hpp"
 #include "TrajectoryOptComponents/SFCCommonTypes.hpp"
 #include "TrajectoryOptComponents/SpatialCosts/AngularRateBoundPenalty.hpp"
@@ -38,7 +39,7 @@ struct GcopterPenaltyIntegralCostAdapter
         flatmap = fm;
     }
 
-    double operator()(double /*t*/, double /*t_global*/, int seg_idx, int /*step_in_seg*/,
+    double operator()(const SplineTrajectory::IntegralPointInfo &point,
                       const VectorType &p, const VectorType &v,
                       const VectorType &a, const VectorType &j,
                       const VectorType & /*s*/, VectorType &gp,
@@ -65,7 +66,7 @@ struct GcopterPenaltyIntegralCostAdapter
         double gradThr = 0.0;
         Eigen::Vector4d gradQuat = Eigen::Vector4d::Zero();
 
-        const int poly_id = (*h_poly_idx)(seg_idx);
+        const int poly_id = (*h_poly_idx)(point.segment_index);
         const traj_opt_components::PolyhedronH &poly = (*h_polys)[poly_id];
         double pena = 0.0;
 
