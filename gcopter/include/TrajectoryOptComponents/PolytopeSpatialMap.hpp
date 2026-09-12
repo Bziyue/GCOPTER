@@ -51,25 +51,24 @@ public:
         return (*v_polys)[(*v_poly_idx)(index - 1)].cols();
     }
 
-    VectorType toPhysical(const Eigen::VectorXd &xi, int index) const
+    /** @brief Map a borrowed variable block to position without temporary vectors.
+     * @param xi Variables of getUnconstrainedDim(index); borrowed for this call.
+     * @param index Waypoint index on the prepared trajectory.
+     * @return Position in the corridor frame; near-zero normalized coordinates select its first vertex. */
+    VectorType toPhysical(const Eigen::Ref<const Eigen::VectorXd> &xi, int index) const
     {
         if (identity_mode || !v_polys || !v_poly_idx || index <= 0 || index > num_segments)
-        {
             return xi.head<3>();
-        }
-
-        const int poly_id = (*v_poly_idx)(index - 1);
-        const auto &poly = (*v_polys)[poly_id];
-        const int k = poly.cols();
+        const auto &poly = (*v_polys)[(*v_poly_idx)(index - 1)];
         const double norm = xi.norm();
-        if (norm < 1e-12)
+        if (norm < 1e-12) return poly.col(0);
+        VectorType position = poly.col(0);
+        for (int i = 0; i + 1 < xi.size(); ++i)
         {
-            return poly.col(0);
+            const double q = xi(i) / norm;
+            position.noalias() += (q * q) * poly.col(i + 1);
         }
-
-        const Eigen::VectorXd unit_xi = xi / norm;
-        const Eigen::VectorXd r = unit_xi.head(k - 1);
-        return poly.rightCols(k - 1) * r.cwiseProduct(r) + poly.col(0);
+        return position;
     }
 
     Eigen::VectorXd toUnconstrained(const Eigen::VectorXd &p, int index) const
@@ -89,26 +88,53 @@ public:
         return xi;
     }
 
-    Eigen::VectorXd backwardGrad(const Eigen::VectorXd &xi,
-                                 const Eigen::VectorXd &grad_p,
-                                 int index) const
+    /** @brief Return an owning gradient for callers outside the optimizer's reusable path.
+     * @param xi Current waypoint variables, borrowed for this call.
+     * @param grad_p Position gradient in the corridor frame.
+     * @param index Waypoint index.
+     * @return Independent variable gradient; evaluation uses backwardGradInto to avoid this allocation. */
+    Eigen::VectorXd backwardGrad(const Eigen::VectorXd &xi, const Eigen::VectorXd &grad_p, int index) const
+    {
+        Eigen::VectorXd gradient(xi.size());
+        backwardGradInto(xi, grad_p.head<3>(), index, gradient);
+        return gradient;
+    }
+
+    /** @brief Write the normalized-square-map pullback into caller-owned storage.
+     * @param xi Current waypoint variables, borrowed for this call.
+     * @param grad_p Position gradient in the corridor frame.
+     * @param index Waypoint index.
+     * @param[out] gradient Same-sized output, exclusive and non-overlapping with xi.
+     * @note No allocation; near-zero coordinates have the constant first-vertex fallback's zero gradient. */
+    void backwardGradInto(const Eigen::Ref<const Eigen::VectorXd> &xi, const VectorType &grad_p,
+                          int index, Eigen::Ref<Eigen::VectorXd> gradient) const
     {
         if (identity_mode || !v_polys || !v_poly_idx || index <= 0 || index > num_segments)
         {
-            return grad_p;
+            gradient = grad_p;
+            return;
         }
-
-        Eigen::Matrix3Xd grad_p_mat(3, 1);
-        grad_p_mat.col(0) = grad_p.head<3>();
-        Eigen::VectorXd grad_xi;
-        backwardGradP(xi,
-                      Eigen::VectorXi::Constant(1, (*v_poly_idx)(index - 1)),
-                      *v_polys,
-                      grad_p_mat,
-                      grad_xi);
-        return grad_xi;
+        const auto &poly = (*v_polys)[(*v_poly_idx)(index - 1)];
+        const double norm = xi.norm();
+        gradient.setZero();
+        if (norm < 1e-12) return;
+        double radial = 0.0;
+        for (int i = 0; i + 1 < xi.size(); ++i)
+        {
+            const double q = xi(i) / norm;
+            gradient(i) = 2.0 * q * poly.col(i + 1).dot(grad_p);
+            radial += q * gradient(i);
+        }
+        for (int i = 0; i < xi.size(); ++i)
+            gradient(i) = (gradient(i) - radial * (xi(i) / norm)) / norm;
     }
 
+    /** @brief Add the unit-sphere penalty without overwriting physical objective gradients.
+     * @param x Complete decision vector, borrowed for this call.
+     * @param spatial_offset Beginning of spatial variables.
+     * @param spatial_dim Number of spatial variables.
+     * @param[in,out] grad Complete gradient, preserving all prior contributions.
+     * @param[in,out] cost Objective accumulator. */
     void addNormPenalty(const Eigen::VectorXd &x,
                         int spatial_offset,
                         int spatial_dim,
@@ -120,29 +146,25 @@ public:
             return;
         }
 
-        const Eigen::VectorXd xi = x.segment(spatial_offset, spatial_dim);
-        Eigen::VectorXd grad_xi = grad.segment(spatial_offset, spatial_dim);
+        const auto xi = x.segment(spatial_offset, spatial_dim);
+        auto grad_xi = grad.segment(spatial_offset, spatial_dim);
         normRestrictionLayer(xi, *v_poly_idx, *v_polys, cost, grad_xi);
-        grad.segment(spatial_offset, spatial_dim) = grad_xi;
     }
 
 private:
-    static inline void normRestrictionLayer(const Eigen::VectorXd &xi,
+    static inline void normRestrictionLayer(const Eigen::Ref<const Eigen::VectorXd> &xi,
                                             const Eigen::VectorXi &v_idx,
                                             const PolyhedraV &v_polys,
                                             double &cost,
-                                            Eigen::VectorXd &grad_xi)
+                                            Eigen::Ref<Eigen::VectorXd> grad_xi)
     {
         const long size_p = v_idx.size();
-        grad_xi.resize(xi.size());
-        grad_xi.setZero();
 
         double sqr_norm_q, sqr_norm_violation, c, dc;
-        Eigen::VectorXd q;
         for (long i = 0, j = 0, k; i < size_p; ++i, j += k)
         {
             k = v_polys[v_idx(i)].cols();
-            q = xi.segment(j, k);
+            const auto q = xi.segment(j, k);
             sqr_norm_q = q.squaredNorm();
             sqr_norm_violation = sqr_norm_q - 1.0;
             if (sqr_norm_violation > 0.0)
@@ -153,32 +175,6 @@ private:
                 cost += c;
                 grad_xi.segment(j, k) += dc * 2.0 * q;
             }
-        }
-    }
-
-    static inline void backwardGradP(const Eigen::VectorXd &xi,
-                                     const Eigen::VectorXi &v_idx,
-                                     const PolyhedraV &v_polys,
-                                     const Eigen::Matrix3Xd &grad_p,
-                                     Eigen::VectorXd &grad_xi)
-    {
-        const long size_p = v_idx.size();
-        grad_xi.resize(xi.size());
-
-        double norm_inv;
-        Eigen::VectorXd q, grad_q, unit_q;
-        for (long i = 0, j = 0, k, l; i < size_p; ++i, j += k)
-        {
-            l = v_idx(i);
-            k = v_polys[l].cols();
-            q = xi.segment(j, k);
-            norm_inv = 1.0 / q.norm();
-            unit_q = q * norm_inv;
-            grad_q.resize(k);
-            grad_q.head(k - 1) = (v_polys[l].rightCols(k - 1).transpose() * grad_p.col(i)).array() *
-                                 unit_q.head(k - 1).array() * 2.0;
-            grad_q(k - 1) = 0.0;
-            grad_xi.segment(j, k) = (grad_q - unit_q * unit_q.dot(grad_q)) * norm_inv;
         }
     }
 

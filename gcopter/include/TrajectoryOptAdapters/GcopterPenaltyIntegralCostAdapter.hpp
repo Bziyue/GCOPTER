@@ -1,6 +1,6 @@
 #pragma once
 
-#include "SplineTrajectory/IntegralPointInfo.hpp"
+#include "SplineTrajectory/SplineOptimizer.hpp"
 #include "TrajectoryOptComponents/PenaltyUtils.hpp"
 #include "TrajectoryOptComponents/SFCCommonTypes.hpp"
 #include "TrajectoryOptComponents/SpatialCosts/AngularRateBoundPenalty.hpp"
@@ -39,13 +39,23 @@ struct GcopterPenaltyIntegralCostAdapter
         flatmap = fm;
     }
 
+    static constexpr int kDerivativeOrder = 3;
+
+    /** @brief Evaluate physical penalties and accumulate unweighted sample partials.
+     * @param point Piece/quadrature metadata on the current trajectory time axis.
+     * @param state Position, velocity, acceleration and jerk in the planner frame and SI units.
+     * @param[in,out] gradient Zero-initialized integrand partials, accumulated by this adapter.
+     * @return Nonnegative penalty; referenced geometry/flatness data must outlive evaluation.
+     * @note Serial evaluation only: diagnostics and the borrowed flatness map are mutable. */
     double operator()(const SplineTrajectory::IntegralPointInfo &point,
-                      const VectorType &p, const VectorType &v,
-                      const VectorType &a, const VectorType &j,
-                      const VectorType & /*s*/, VectorType &gp,
-                      VectorType &gv, VectorType &ga, VectorType &gj,
-                      VectorType & /*gs*/, double & /*gt*/) const
+                      const SplineTrajectory::SampleState<3> &state,
+                      SplineTrajectory::SampleGradient<3> &gradient) const
     {
+        const auto &p = state.p; const auto &v = state.v;
+        const auto &a = state.a; const auto &j = state.j;
+        auto &gp = gradient.p; auto &gv = gradient.v;
+        auto &ga = gradient.a; auto &gj = gradient.j;
+
         if (!h_polys || !h_poly_idx || !flatmap)
         {
             return 0.0;

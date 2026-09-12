@@ -43,3 +43,5 @@ install(TARGETS global_planning
 install(DIRECTORY config launch
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
+
+add_executable(gcopter_spline_map_regression tests/spline_map_regression.cpp)

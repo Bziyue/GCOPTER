@@ -411,10 +411,6 @@ namespace gcopter
             config.spatial_map = &spatial_map_;
             config.rho_energy = 1.0;
             config.integral_num_steps = integralRes_;
-            if (!optimizer_.setConfig(config))
-            {
-                return false;
-            }
 
             typename OptimizerType::WaypointsType waypoints(pieceN_ + 1, 3);
             waypoints.row(0) = headPVA_.col(0).transpose();
@@ -439,7 +435,7 @@ namespace gcopter
             problem.waypoints = waypoints;
             problem.start_time = 0.0;
             problem.bc = bc;
-            if (!optimizer_.prepareContext(problem, context_))
+            if (!optimizer_.prepareContext(problem, context_, config))
             {
                 return false;
             }
@@ -500,11 +496,15 @@ namespace gcopter
                                      auto &&integral_func,
                                      double energy_weight)
                 {
-                    auto config = optimizer_.getActiveConfig();
-                    config.rho_energy = energy_weight;
-                    optimizer_.setConfig(config);
+                    typename OptimizerType::OptimizerConfig check_config;
+                    check_config.spatial_map = &spatial_map_;
+                    check_config.integral_num_steps = integralRes_;
+                    check_config.rho_energy = energy_weight;
+                    typename OptimizerType::OptimizationContext check_context;
+                    if (!optimizer_.prepareContext(context_.prepared.problem, check_context, check_config))
+                        throw std::runtime_error("Cannot prepare gradient-check context");
                     auto spec = OptimizerType::makeEvaluateSpec(time_func, integral_func);
-                    auto check = optimizer_.checkGradients(context_, x, spec);
+                    auto check = optimizer_.checkGradients(check_context, x, spec);
                     std::cerr << "[GradCheck] " << tag << " -> " << check.makeReport();
                     std::cerr << "[GradCheck] " << tag << " rel error: " << check.rel_error
                               << " | norm: " << check.error_norm << std::endl;
@@ -572,18 +572,13 @@ namespace gcopter
                     typename IdentityOpt::OptimizerConfig identity_config;
                     identity_config.rho_energy = 0.0;
                     identity_config.integral_num_steps = integralRes_;
-                    if (!identity_opt.setConfig(identity_config))
-                    {
-                        std::cerr << "[GradCheck] pos_quadratic_identity step setup failed" << std::endl;
-                    }
-                    else
                     {
                         typename IdentityOpt::ProblemDefinition identity_problem;
                         identity_problem.time_segments = ref_times_;
                         identity_problem.waypoints = ref_waypoints_;
                         identity_problem.start_time = 0.0;
                         identity_problem.bc = ref_bc_;
-                        if (!identity_opt.prepareContext(identity_problem, identity_context))
+                        if (!identity_opt.prepareContext(identity_problem, identity_context, identity_config))
                         {
                             std::cerr << "[GradCheck] pos_quadratic_identity init failed" << std::endl;
                         }
@@ -601,9 +596,6 @@ namespace gcopter
                     }
                 }
 
-                auto config = optimizer_.getActiveConfig();
-                config.rho_energy = 1.0;
-                optimizer_.setConfig(config);
             }
 
             const int ret = lbfgs::lbfgs_optimize(x,
