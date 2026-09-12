@@ -24,7 +24,8 @@ int main()
             map.addNormPenalty(point, 0, 4, ignored, value);
             return value;
         };
-        Eigen::VectorXd gradient = map.backwardGrad(x, 2.0 * map.toPhysical(x, 1), 1);
+        Eigen::VectorXd gradient(x.size());
+        map.backwardInto(x, 2.0 * map.toPhysical(x, 1), 1, gradient);
         const auto before = gradient;
         double value = map.toPhysical(x, 1).squaredNorm();
         map.addNormPenalty(x, 0, 4, gradient, value);

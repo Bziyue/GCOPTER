@@ -31,14 +31,25 @@ namespace gcopter
     {
     public:
         using SplineType = SplineTrajectory::QuinticSplineND<3>;
-        using OptimizerType = SplineTrajectory::SplineOptimizer<3, SplineType,
-                                                                SplineTrajectory::QuadInvTimeMap,
-                                                                traj_opt_components::PolytopeSpatialMap>;
+        using Polynomial = SplineType::Polynomial;
+        struct Parameterization
+        {
+            SplineTrajectory::QuadInvTimeMap time;
+            std::reference_wrapper<const traj_opt_components::PolytopeSpatialMap> space;
+            SplineTrajectory::NoAuxiliaryMap auxiliary;
+        };
+        using OptimizerType = SplineTrajectory::SplineOptimizer<SplineType, Parameterization>;
+
+        SplineSFCOptimizer() = default;
+        // Maps and costs borrow this solve's geometry; its address stays fixed.
+        SplineSFCOptimizer(const SplineSFCOptimizer &) = delete;
+        SplineSFCOptimizer &operator=(const SplineSFCOptimizer &) = delete;
+        SplineSFCOptimizer(SplineSFCOptimizer &&) = delete;
+        SplineSFCOptimizer &operator=(SplineSFCOptimizer &&) = delete;
 
     private:
-        OptimizerType optimizer_;
-        typename OptimizerType::OptimizationContext context_;
         traj_opt_components::PolytopeSpatialMap spatial_map_;
+        OptimizerType optimizer_{Parameterization{{}, std::cref(spatial_map_), {}}};
         LinearTimeCost time_cost_;
         PenaltyIntegralCost integral_cost_;
         flatness::FlatnessMap flatmap_;
@@ -66,9 +77,6 @@ namespace gcopter
 
         lbfgs::lbfgs_parameter_t lbfgs_params_{};
 
-        std::vector<double> ref_times_;
-        typename OptimizerType::WaypointsType ref_waypoints_;
-        SplineTrajectory::BoundaryConditions<3> ref_bc_;
 
     private:
         static inline double costDistance(void *ptr,
@@ -282,7 +290,7 @@ namespace gcopter
         }
 
         void applyNormPenalty(const Eigen::VectorXd &x,
-                              Eigen::VectorXd &grad,
+                              Eigen::Ref<Eigen::VectorXd> grad,
                               double &cost) const
         {
             if (pieceN_ <= 1)
@@ -311,38 +319,33 @@ namespace gcopter
             }
         }
 
-        template <typename TimeCostFunc, typename IntegralCostFunc>
-        auto makeEvaluateSpec(const TimeCostFunc &time_cost,
-                              const IntegralCostFunc &integral_cost)
+        /** @brief Add mapped-domain costs after the physical parameter pullback. */
+        struct NormCost
         {
-            return OptimizerType::makeEvaluateSpec(time_cost, integral_cost);
-        }
+            const SplineSFCOptimizer &owner;
+            double operator()(const SplineTrajectory::DecisionView &state,
+                              Eigen::Ref<Eigen::VectorXd> gradient) const
+            {
+                double cost = 0.0;
+                owner.applyNormPenalty(state.variables, gradient, cost);
+                return cost;
+            }
+        };
+
+        struct Objective
+        {
+            const LinearTimeCost &duration;
+            const PenaltyIntegralCost &integral;
+            NormCost decision;
+        };
 
         static inline double costFunctional(void *ptr,
                                             const Eigen::VectorXd &x,
                                             Eigen::VectorXd &g)
         {
-            auto &obj = *(SplineSFCOptimizer *)ptr;
-            auto spec = obj.makeEvaluateSpec(obj.time_cost_, obj.integral_cost_);
-            const auto evaluation = obj.optimizer_.evaluate(obj.context_, x, g, spec);
-            if (!evaluation)
-            {
-                g.setZero();
-                return 1.0e20;
-            }
-            double cost = evaluation.cost;
-            if (!std::isfinite(cost) || !g.allFinite())
-            {
-                g.setZero();
-                return 1.0e20;
-            }
-            obj.applyNormPenalty(x, g, cost);
-            if (!std::isfinite(cost) || !g.allFinite())
-            {
-                g.setZero();
-                return 1.0e20;
-            }
-            return cost;
+            auto &self = *static_cast<SplineSFCOptimizer *>(ptr);
+            Objective objective{self.time_cost_, self.integral_cost_, {self}};
+            return self.optimizer_.costAndGradient(x, g, objective);
         }
 
     public:
@@ -407,12 +410,11 @@ namespace gcopter
             }
 
             spatial_map_.reset(&vPolytopes_, &vPolyIdx_, pieceN_);
-            typename OptimizerType::OptimizerConfig config;
-            config.spatial_map = &spatial_map_;
-            config.rho_energy = 1.0;
-            config.integral_num_steps = integralRes_;
+            SplineTrajectory::OptimizerOptions config;
+            config.energy_weight = 1.0;
+            config.integration_steps = integralRes_;
 
-            typename OptimizerType::WaypointsType waypoints(pieceN_ + 1, 3);
+            SplineType::CoefficientMatrix waypoints(pieceN_ + 1, 3);
             waypoints.row(0) = headPVA_.col(0).transpose();
 
             Eigen::Matrix3Xd innerPoints;
@@ -430,19 +432,16 @@ namespace gcopter
             bc.end_velocity = tailPVA_.col(1);
             bc.end_acceleration = tailPVA_.col(2);
 
-            typename OptimizerType::ProblemDefinition problem;
-            problem.time_segments.assign(timeAlloc.data(), timeAlloc.data() + timeAlloc.size());
+            OptimizerType::Problem problem;
+            problem.durations.assign(timeAlloc.data(), timeAlloc.data() + timeAlloc.size());
             problem.waypoints = waypoints;
             problem.start_time = 0.0;
-            problem.bc = bc;
-            if (!optimizer_.prepareContext(problem, context_, config))
+            problem.boundary = bc;
+            if (!optimizer_.prepare(problem, config))
             {
                 return false;
             }
 
-            ref_times_ = std::vector<double>(timeAlloc.data(), timeAlloc.data() + timeAlloc.size());
-            ref_waypoints_ = waypoints;
-            ref_bc_ = bc;
 
             time_cost_.weight = timeWeight;
             flatmap_.reset(physicalPm_(0), physicalPm_(1), physicalPm_(2),
@@ -452,9 +451,14 @@ namespace gcopter
             return true;
         }
 
-        double optimize(SplineType &spline, const double &relCostTol)
+        /** @brief Solve a prepared corridor and copy its accepted polynomial.
+         * @param[out] spline Owning trajectory on a time axis starting at zero seconds; cleared on failure.
+         * @param relCostTol Relative past-cost stopping tolerance passed to L-BFGS.
+         * @return Objective excluding the mapped norm penalty, or positive infinity on failure.
+         * @note setup() must succeed first; concurrent solves on this object are unsupported. */
+        double optimize(Polynomial &spline, const double &relCostTol)
         {
-            Eigen::VectorXd x = optimizer_.generateInitialGuess(context_);
+            Eigen::VectorXd x = optimizer_.initialGuess();
 
             double minCostFunctional = 0.0;
             lbfgs_params_.mem_size = 256;
@@ -466,136 +470,31 @@ namespace gcopter
             const char *grad_check_env = std::getenv("GCOPTER_GRAD_CHECK");
             if (grad_check_env && std::string(grad_check_env) == "1")
             {
-                struct ZeroTimeCost
+                auto run_check = [&](const char *tag, auto &objective, double energy_weight)
                 {
-                    double operator()(const std::vector<double> &/*Ts*/, Eigen::VectorXd &grad) const
-                    {
-                        grad.setZero();
-                        return 0.0;
-                    }
+                    OptimizerType check_optimizer{Parameterization{{}, std::cref(spatial_map_), {}}};
+                    SplineTrajectory::OptimizerOptions options;
+                    options.energy_weight = energy_weight;
+                    options.integration_steps = integralRes_;
+                    if (!check_optimizer.prepare(optimizer_.problem(), options))
+                        throw std::runtime_error("Cannot prepare gradient check");
+                    const auto check = SplineTrajectory::checkGradients(check_optimizer, x, objective);
+                    std::cerr << "[GradCheck] " << tag << " relative error=" << check.relative_error
+                              << " maximum error=" << check.max_absolute_error << '\n';
+                    if (!check && check.status.code != SplineTrajectory::OptimizationError::GradientMismatch)
+                        throw std::runtime_error(check.status.message);
+                    // Large penalty weights require a relative diagnostic tolerance.
+                    if (!(check.relative_error <= 1e-6))
+                        throw std::runtime_error("Relative gradient error exceeds 1e-6");
                 };
-
-                auto zero_integral = [](const SplineTrajectory::IntegralPointInfo & /*point*/,
-                                        const Eigen::Vector3d &/*p*/, const Eigen::Vector3d &/*v*/,
-                                        const Eigen::Vector3d &/*a*/, const Eigen::Vector3d &/*j*/,
-                                        const Eigen::Vector3d &/*s*/, Eigen::Vector3d &gp,
-                                        Eigen::Vector3d &gv, Eigen::Vector3d &ga,
-                                        Eigen::Vector3d &gj, Eigen::Vector3d &gs, double &gt)
-                {
-                    gp.setZero();
-                    gv.setZero();
-                    ga.setZero();
-                    gj.setZero();
-                    gs.setZero();
-                    gt = 0.0;
-                    return 0.0;
-                };
-
-                auto run_check = [&](const char *tag,
-                                     auto &&time_func,
-                                     auto &&integral_func,
-                                     double energy_weight)
-                {
-                    typename OptimizerType::OptimizerConfig check_config;
-                    check_config.spatial_map = &spatial_map_;
-                    check_config.integral_num_steps = integralRes_;
-                    check_config.rho_energy = energy_weight;
-                    typename OptimizerType::OptimizationContext check_context;
-                    if (!optimizer_.prepareContext(context_.prepared.problem, check_context, check_config))
-                        throw std::runtime_error("Cannot prepare gradient-check context");
-                    auto spec = OptimizerType::makeEvaluateSpec(time_func, integral_func);
-                    auto check = optimizer_.checkGradients(check_context, x, spec);
-                    std::cerr << "[GradCheck] " << tag << " -> " << check.makeReport();
-                    std::cerr << "[GradCheck] " << tag << " rel error: " << check.rel_error
-                              << " | norm: " << check.error_norm << std::endl;
-                    if (check.analytical.size() == check.numerical.size() && check.analytical.size() > 0)
-                    {
-                        const int time_dim = pieceN_;
-                        const int total_dim = static_cast<int>(check.analytical.size());
-                        const int spatial_dim = std::max(0, total_dim - time_dim);
-
-                        if (time_dim > 0 && total_dim >= time_dim)
-                        {
-                            Eigen::VectorXd diff = check.analytical - check.numerical;
-                            double time_err = diff.head(time_dim).norm();
-                            double time_norm = check.analytical.head(time_dim).norm();
-                            double time_rel = (time_norm > 1e-9) ? (time_err / time_norm) : time_err;
-
-                            std::cerr << "[GradCheck] " << tag
-                                      << " time rel: " << time_rel
-                                      << " | time norm: " << time_err << std::endl;
-                        }
-
-                        if (spatial_dim > 0)
-                        {
-                            Eigen::VectorXd diff = check.analytical - check.numerical;
-                            double spatial_err = diff.tail(spatial_dim).norm();
-                            double spatial_norm = check.analytical.tail(spatial_dim).norm();
-                            double spatial_rel = (spatial_norm > 1e-9) ? (spatial_err / spatial_norm) : spatial_err;
-
-                            std::cerr << "[GradCheck] " << tag
-                                      << " spatial rel: " << spatial_rel
-                                      << " | spatial norm: " << spatial_err << std::endl;
-                        }
-                    }
-                    std::cerr.flush();
-                };
-
-                run_check("time+integral+energy", time_cost_, integral_cost_, 1.0);
-                run_check("time_only", time_cost_, zero_integral, 0.0);
-                run_check("integral_only", ZeroTimeCost(), integral_cost_, 0.0);
-                run_check("energy_only", ZeroTimeCost(), zero_integral, 1.0);
-
-                auto pos_quadratic = [](const SplineTrajectory::IntegralPointInfo & /*point*/,
-                                        const Eigen::Vector3d &p, const Eigen::Vector3d &/*v*/,
-                                        const Eigen::Vector3d &/*a*/, const Eigen::Vector3d &/*j*/,
-                                        const Eigen::Vector3d &/*s*/, Eigen::Vector3d &gp,
-                                        Eigen::Vector3d &gv, Eigen::Vector3d &ga,
-                                        Eigen::Vector3d &gj, Eigen::Vector3d &gs, double &gt)
-                {
-                    gp += 2.0 * p;
-                    gv.setZero();
-                    ga.setZero();
-                    gj.setZero();
-                    gs.setZero();
-                    gt = 0.0;
-                    return p.squaredNorm();
-                };
-                run_check("pos_quadratic", ZeroTimeCost(), pos_quadratic, 0.0);
-
-                {
-                    using IdentityOpt = SplineTrajectory::SplineOptimizer<3, SplineType,
-                                                                          SplineTrajectory::QuadInvTimeMap,
-                                                                          SplineTrajectory::IdentitySpatialMap<3>>;
-                    IdentityOpt identity_opt;
-                    typename IdentityOpt::OptimizationContext identity_context;
-                    typename IdentityOpt::OptimizerConfig identity_config;
-                    identity_config.rho_energy = 0.0;
-                    identity_config.integral_num_steps = integralRes_;
-                    {
-                        typename IdentityOpt::ProblemDefinition identity_problem;
-                        identity_problem.time_segments = ref_times_;
-                        identity_problem.waypoints = ref_waypoints_;
-                        identity_problem.start_time = 0.0;
-                        identity_problem.bc = ref_bc_;
-                        if (!identity_opt.prepareContext(identity_problem, identity_context, identity_config))
-                        {
-                            std::cerr << "[GradCheck] pos_quadratic_identity init failed" << std::endl;
-                        }
-                        else
-                        {
-                            Eigen::VectorXd x_id = identity_opt.generateInitialGuess(identity_context);
-                            ZeroTimeCost zero_time_cost;
-                            auto spec = IdentityOpt::makeEvaluateSpec(zero_time_cost, pos_quadratic);
-                            auto check = identity_opt.checkGradients(identity_context, x_id, spec);
-                            std::cerr << "[GradCheck] pos_quadratic_identity -> " << check.makeReport();
-                            std::cerr << "[GradCheck] pos_quadratic_identity rel error: " << check.rel_error
-                                      << " | norm: " << check.error_norm << std::endl;
-                            std::cerr.flush();
-                        }
-                    }
-                }
-
+                Objective complete{time_cost_, integral_cost_, {*this}};
+                struct DurationObjective { const LinearTimeCost &duration; } duration{time_cost_};
+                struct IntegralObjective { const PenaltyIntegralCost &integral; } integral{integral_cost_};
+                SplineTrajectory::NoObjective energy;
+                run_check("complete", complete, 1.0);
+                run_check("duration", duration, 0.0);
+                run_check("integral", integral, 0.0);
+                run_check("energy", energy, 1.0);
             }
 
             const int ret = lbfgs::lbfgs_optimize(x,
@@ -608,10 +507,10 @@ namespace gcopter
 
             if (ret >= 0)
             {
-                const auto sync_status = optimizer_.synchronizeWorkingState(context_, x);
+                const auto sync_status = optimizer_.updateAccepted(x);
                 if (!sync_status)
                 {
-                    spline = SplineType();
+                    spline = Polynomial();
                     return INFINITY;
                 }
                 // Preserve the historical public return value, which excluded
@@ -620,11 +519,11 @@ namespace gcopter
                 double norm_penalty = 0.0;
                 applyNormPenalty(x, norm_grad, norm_penalty);
                 minCostFunctional -= norm_penalty;
-                spline = optimizer_.getWorkingSpline(context_);
+                spline = optimizer_.copyPolynomial();
             }
             else
             {
-                spline = SplineType();
+                spline = Polynomial();
                 minCostFunctional = INFINITY;
                 std::cout << "Optimization Failed: "
                           << lbfgs::lbfgs_strerror(ret)

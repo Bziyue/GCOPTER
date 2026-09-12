@@ -1,27 +1,71 @@
 # SplineTrajectory integration
 
-Source: SplineTrajectory main, commit `d5041355f08e28a9a62d088388f27af147d1a16c` (2026-09-12).
-The three public headers are byte-identical to that source. See [protocols](https://github.com/Bziyue/SplineTrajectory/blob/d5041355f08e28a9a62d088388f27af147d1a16c/include/SplineOptimizerProtocols.md),
-[usage](https://github.com/Bziyue/SplineTrajectory/blob/d5041355f08e28a9a62d088388f27af147d1a16c/README.md) and [measured validation](https://github.com/Bziyue/SplineTrajectory/blob/d5041355f08e28a9a62d088388f27af147d1a16c/docs/refactor_validation.md).
-MIT license and MINVO notices are preserved alongside this file.
+Source: SplineTrajectory main, commit `126525e49a43b0548bc6960e4979dd6b6258f289` (2026-09-12).
+The three public headers, including comments and formatting, are byte-identical to upstream.
+[Optimizer protocols](https://github.com/Bziyue/SplineTrajectory/blob/126525e49a43b0548bc6960e4979dd6b6258f289/docs/optimizer.md) · [Migration guide](https://github.com/Bziyue/SplineTrajectory/blob/126525e49a43b0548bc6960e4979dd6b6258f289/docs/api_migration.md) ·
+[Examples](https://github.com/Bziyue/SplineTrajectory/blob/126525e49a43b0548bc6960e4979dd6b6258f289/examples/README.md). MIT and MINVO notices are preserved alongside this file.
 
 | Header | SHA-256 |
 | --- | --- |
-| `SplineTrajectory.hpp` | `7038992eadbc72f0a821ea849a1e16a0397606416c22f33a254becfe42885364` |
-| `SplineOptimizer.hpp` | `e476a73f313a5a219dc06d451a0c3e622dec0e034eb5fae3350ed53f26573af9` |
-| `SplineConvexHull.hpp` | `84ba9dbc060b8d24ff4c1803a0c8c5d8201e497f4871ef4e7e658aa62efcb47c` |
+| `SplineTrajectory.hpp` | `9d5c3eca996a13104e13bcc668cf73e50367db5cb53faf4713f0cd1c041106dc` |
+| `SplineOptimizer.hpp` | `6f4ae9c547903264b726f7bf1f28a683a02426cdf8197ee4719b04b9d541e7bf` |
+| `SplineConvexHull.hpp` | `221a30e2247f6c71218d7e02e7228e802a60c820574f11f24b442da9bbb09c33` |
 
-Configuration is supplied to `prepareContext`; structured sample callbacks declare their required derivative order.
-Coefficient costs bind statically. The internal quadrature call chain uses a local GCC/Clang flatten annotation
-because GCC 9 otherwise loses flatness inlining. Other compilers retain the ordinary C++ path.
-Independent samplers borrow immutable polynomials; rebuild them after source mutation or move. No shared prewarming is needed.
-`backwardGradInto` writes preallocated spatial gradients; domain penalties add to existing gradients.
-The regression reproduces the previous domain-penalty overwrite and checks complete mapped finite differences.
+The optimizer owns preparation, layout, polynomial and evaluation buffers. Concrete parameterizations
+borrow immutable planner maps for one solve; ordinary named objective structs bind duration,
+integral and decision costs. Preparation fixes integration options and encodes the initial coordinates once; `initialGuess()`
+returns a copy without repeating inverse-map solves, and callbacks reuse storage.
+`backwardInto()` writes spatial gradients directly and domain penalties accumulate in those same
+slices. The public polynomial and diagnostic parameter views are read-only. Independent samplers
+own their traversal state and require no source warm-up.
 
-To synchronize, copy the three source headers and license notices from the recorded upstream commit,
-update these hashes, migrate adapters if protocols changed, and run the mapped-gradient and planner regressions.
-Do not restore an older snapshot over the merged numerical failure, interval or convex-hull functionality.
+To synchronize, copy the three original headers from the recorded upstream commit, verify their
+hashes, update this record and migrate application adapters. Preserve the existing numerical-failure,
+interval and convex-hull behavior; do not introduce downstream header variants.
 
-Validation: Ubuntu 20.04 / GCC 9.4 / Noetic Release global_planning builds, `gcopter_spline_map_regression` passes,
-and `tests/spline_solve_benchmark.cpp` completes three fixed corridors. Medians improve by about 6%--7% against the old integration.
-The benchmark also compiles against the historical MINCO implementation; see the upstream report for its const-comparator compatibility include.
+## Planner integration
+
+`SplineSFCOptimizer::optimize()` returns a `Polynomial` snapshot, avoiding copies of solver
+factorization and adjoint scratch. The historical returned cost still excludes the mapped norm
+penalty that L-BFGS minimizes. The complete callback includes that penalty through the named
+`decision` stage, so finite checks and gradient propagation have one evaluation path.
+Visualization samples sequentially; state publication obtains P/V/A/J in one polynomial query.
+The optional gradient diagnostic uses relative tolerance `1e-6` for strongly weighted penalties.
+
+## Validation (2026-09-12)
+
+GCC 9.4, C++17 Release and ROS1 Noetic: `global_planning` and the mapped-gradient regression
+built successfully; the mapped-gradient regression passed. The three fixed corridor perturbations
+passed complete, duration, integral and energy finite differences (maximum relative error `5.49e-9`).
+The upstream optimizer regressions passed 3/3, including failures, ownership and one-time initial encoding.
+
+## Paired integration benchmark
+
+Baseline: GCOPTER `9f999be`, using the preceding SplineTrajectory integration. Both versions use the
+same [fixed corridor benchmark](../../tests/spline_solve_benchmark.cpp), compiler, flags and inputs.
+AMD Ryzen 9 7945HX, one pinned logical CPU; three alternating blocks of 21 trials per perturbation.
+The table gives medians in microseconds, each cell **before / after**.
+
+| Perturbation | Prepare | Solve | Prepare + solve |
+| --- | ---: | ---: | ---: |
+| -1 | 20.18 / 32.06 | 356.19 / 339.57 | 383.50 / 374.00 |
+| +0 | 19.00 / 32.06 | 407.25 / 395.37 | 426.24 / 425.06 |
+| +1 | 19.00 / 30.87 | 358.57 / 343.13 | 376.38 / 372.81 |
+
+Final costs and durations matched exactly at printed double precision in all paired trials.
+Mapped initial validation now occurs during preparation. Initial coordinates are reused by the solver,
+so compare the total column when assessing the complete operation. Total latency stayed within
+roughly 0–3% of baseline; this small workload does not establish a general speedup.
+
+From the repository root, build and run the standalone benchmark with Eigen available:
+
+```sh
+c++ -std=c++17 -O3 -DNDEBUG -fno-fast-math $(pkg-config --cflags eigen3) \
+    -Igcopter/include gcopter/tests/spline_solve_benchmark.cpp -o /tmp/gcopter-spline-benchmark
+GCOPTER_GRAD_CHECK=1 /tmp/gcopter-spline-benchmark 1
+/tmp/gcopter-spline-benchmark 21
+```
+
+Raw logs and paired CSV files are retained in the integration workspace's
+`.scratch/downstream-sync/paired-final/`; they are local artifacts, not repository attachments.
+This validation covers optimization and ROS compilation; no flight or collision simulation was run.

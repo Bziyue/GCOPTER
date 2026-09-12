@@ -7,7 +7,7 @@ using Corridor = Optimizer::PolyhedraH;
 #else
 #include "gcopter/spline_sfc_optimizer.hpp"
 using Optimizer = gcopter::SplineSFCOptimizer;
-using Output = Optimizer::SplineType;
+using Output = Optimizer::Polynomial;
 using Corridor = gcopter::PolyhedraH;
 #endif
 #include <chrono>
@@ -53,9 +53,9 @@ int main(int argc, char **argv)
             const int pieces = output.getPieceNum();
             const Eigen::Vector3d endpoint = output.getPos(duration);
 #else
-            const double duration = output.getTrajectory().getEndTime();
-            const int pieces = output.getTrajectory().getNumSegments();
-            const Eigen::Vector3d endpoint = output.getTrajectory().evaluate(duration);
+            const double duration = output.endTime();
+            const int pieces = output.numSegments();
+            const Eigen::Vector3d endpoint = output.evaluate(duration);
 #endif
             if (!std::isfinite(cost) || pieces < 1 || (endpoint-end.col(0)).norm() > 1e-7) return 2;
             std::cout << perturbation << ',' << trial << ','

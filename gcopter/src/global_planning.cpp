@@ -99,7 +99,7 @@ private:
     Visualizer visualizer;
     std::vector<Eigen::Vector3d> startGoal;
 
-    SplineTrajectory::QuinticSpline3D traj;
+    SplineTrajectory::QuinticSpline3D::Polynomial traj;
     double trajStamp;
 
 public:
@@ -212,7 +212,7 @@ public:
                 physicalParams(5) = config.speedEps;
                 const int quadratureRes = config.integralIntervs;
 
-                traj = SplineTrajectory::QuinticSpline3D();
+                traj = SplineTrajectory::QuinticSpline3D::Polynomial();
 
                 if (!gcopter.setup(config.weightT,
                                    iniState, finState,
@@ -231,7 +231,7 @@ public:
                     return;
                 }
 
-                if (traj.isInitialized() && traj.getNumSegments() > 0)
+                if (traj.isValid() && traj.numSegments() > 0)
                 {
                     trajStamp = ros::Time::now().toSec();
                     visualizer.visualize(traj, route);
@@ -280,20 +280,20 @@ public:
         flatmap.reset(physicalParams(0), physicalParams(1), physicalParams(2),
                       physicalParams(3), physicalParams(4), physicalParams(5));
 
-        if (traj.isInitialized() && traj.getNumSegments() > 0)
+        if (traj.isValid() && traj.numSegments() > 0)
         {
             const double delta = ros::Time::now().toSec() - trajStamp;
-            if (delta > 0.0 && delta < traj.getDuration())
+            if (delta > 0.0 && delta < traj.duration())
             {
                 double thr;
                 Eigen::Vector4d quat;
                 Eigen::Vector3d omg;
 
-                const auto &ppoly = traj.getTrajectory();
-                const Eigen::Vector3d vel = ppoly.evaluate(delta, SplineTrajectory::Deriv::Vel);
-                const Eigen::Vector3d acc = ppoly.evaluate(delta, SplineTrajectory::Deriv::Acc);
-                const Eigen::Vector3d jer = ppoly.evaluate(delta, SplineTrajectory::Deriv::Jerk);
-                const Eigen::Vector3d pos = ppoly.evaluate(delta, SplineTrajectory::Deriv::Pos);
+                const auto state = traj.evaluateDerivatives<3>(delta);
+                const auto &pos = state[0];
+                const auto &vel = state[1];
+                const auto &acc = state[2];
+                const auto &jer = state[3];
 
                 flatmap.forward(vel,
                                 acc,

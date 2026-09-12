@@ -42,7 +42,7 @@ public:
         reset(&owned_polys, &owned_poly_idx, segments, identity);
     }
 
-    int getUnconstrainedDim(int index) const
+    int dimension(int index) const
     {
         if (identity_mode || !v_polys || !v_poly_idx || index <= 0 || index > num_segments)
         {
@@ -52,7 +52,7 @@ public:
     }
 
     /** @brief Map a borrowed variable block to position without temporary vectors.
-     * @param xi Variables of getUnconstrainedDim(index); borrowed for this call.
+     * @param xi Variables of dimension(index); borrowed for this call.
      * @param index Waypoint index on the prepared trajectory.
      * @return Position in the corridor frame; near-zero normalized coordinates select its first vertex. */
     VectorType toPhysical(const Eigen::Ref<const Eigen::VectorXd> &xi, int index) const
@@ -88,25 +88,13 @@ public:
         return xi;
     }
 
-    /** @brief Return an owning gradient for callers outside the optimizer's reusable path.
-     * @param xi Current waypoint variables, borrowed for this call.
-     * @param grad_p Position gradient in the corridor frame.
-     * @param index Waypoint index.
-     * @return Independent variable gradient; evaluation uses backwardGradInto to avoid this allocation. */
-    Eigen::VectorXd backwardGrad(const Eigen::VectorXd &xi, const Eigen::VectorXd &grad_p, int index) const
-    {
-        Eigen::VectorXd gradient(xi.size());
-        backwardGradInto(xi, grad_p.head<3>(), index, gradient);
-        return gradient;
-    }
-
     /** @brief Write the normalized-square-map pullback into caller-owned storage.
      * @param xi Current waypoint variables, borrowed for this call.
      * @param grad_p Position gradient in the corridor frame.
      * @param index Waypoint index.
      * @param[out] gradient Same-sized output, exclusive and non-overlapping with xi.
      * @note No allocation; near-zero coordinates have the constant first-vertex fallback's zero gradient. */
-    void backwardGradInto(const Eigen::Ref<const Eigen::VectorXd> &xi, const VectorType &grad_p,
+    void backwardInto(const Eigen::Ref<const Eigen::VectorXd> &xi, const VectorType &grad_p,
                           int index, Eigen::Ref<Eigen::VectorXd> gradient) const
     {
         if (identity_mode || !v_polys || !v_poly_idx || index <= 0 || index > num_segments)
