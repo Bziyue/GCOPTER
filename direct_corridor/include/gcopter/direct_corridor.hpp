@@ -103,6 +103,10 @@ struct Options {
   double numerical_guard = 1e-8;
   double budget_ms = 1000;
   double max_offset = 1.5;  // transverse center displacement at Hermite nodes
+  // Optional seed-segment AABBs, expanded by local_range in each world axis.
+  // Zero disables these limits. Long seed edges are split at local_progress.
+  double local_range = 0;
+  double local_progress = 7;
   double certificate_margin =
       .002;  // additional metric margin, not a radius scale
   int inflation_iterations = 2;

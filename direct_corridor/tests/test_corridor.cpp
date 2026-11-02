@@ -109,6 +109,35 @@ int main() {
                    o.max_radius) < 1e-7,
           "open-space maximum radius");
     derivatives(straight.corridor);
+    // Local range is a world-axis box expansion, not an ellipse-radius cap.
+    // Exercise a 7 m box transition inside a nonaligned Hermite interval.
+    Options ranged = opts();
+    ranged.max_radius = 10;
+    ranged.max_offset = 20;
+    ranged.local_range = 3;
+    ranged.local_progress = 7;
+    ranged.control_spacing = 2.3;
+    auto expanded =
+        generate({Vec3(0, 0, 0), Vec3(10, 0, 0)}, empty, box(), ranged);
+    success(expanded);
+    derivatives(expanded.corridor);
+    check(expanded.corridor.section(.5).shape.col(0).norm() > 2.9,
+          "local range removes the old 1.5 m cutoff");
+    for (int k = 0; k <= 500; ++k) {
+      const double u = k / 500.;
+      const auto section = expanded.corridor.section(u);
+      const Bounds local = u * 10 < 7 ? Bounds{Vec3(-3, -3, -3), Vec3(10, 3, 3)}
+                                      : Bounds{Vec3(4, -3, -3), Vec3(13, 3, 3)};
+      const Vec3 extent = section.shape.rowwise().norm();
+      check((section.center - extent - local.lower).minCoeff() >= -1e-8 &&
+                (local.upper - section.center - extent).minCoeff() >= -1e-8,
+            "entire section stays in its local expansion box");
+    }
+    ranged.local_range = -1;
+    check(
+        generate({Vec3::Zero(), Vec3(10, 0, 0)}, empty, box(), ranged).status ==
+            Status::InvalidInput,
+        "negative local expansion rejected");
     auto denseSeed =
         generate({Vec3(-2, 0, 0), Vec3(-2, 0, 0), Vec3(0, 0, 0), Vec3(2, 0, 0)},
                  empty, box(), o);

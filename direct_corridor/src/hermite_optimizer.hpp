@@ -34,6 +34,10 @@ struct Patch {
   std::array<Vec3, 6> reference;
   std::array<double, 6> w{{0, 0, 0, 1, 1, 1}};
 };
+struct LocalBox {
+  double begin, end;  // seed arc length interval
+  Bounds bounds;
+};
 struct Cut {
   int span;
   V2 a, b;
@@ -67,7 +71,7 @@ inline Patch patch(const std::vector<Node>& n, int i) {
                  b.reference};
   return p;
 }
-inline std::pair<Patch, Patch> split(Patch p) {
+inline std::pair<Patch, Patch> split(Patch p, double t = .5) {
   Patch a, b;
   a.span = b.span = p.span;
   a.reference[0] = p.reference[0];
@@ -76,8 +80,8 @@ inline std::pair<Patch, Patch> split(Patch p) {
   b.w[5] = p.w[5];
   for (int k = 1; k <= 5; ++k) {
     for (int j = 0; j <= 5 - k; ++j) {
-      p.reference[j] = .5 * (p.reference[j] + p.reference[j + 1]);
-      p.w[j] = .5 * (p.w[j] + p.w[j + 1]);
+      p.reference[j] = (1 - t) * p.reference[j] + t * p.reference[j + 1];
+      p.w[j] = (1 - t) * p.w[j] + t * p.w[j + 1];
     }
     a.reference[k] = p.reference[0];
     b.reference[5 - k] = p.reference[5 - k];
@@ -148,6 +152,7 @@ struct Certificates {
   const ObstacleIndex& map;
   const Bounds& bounds;
   const Options& options;
+  const std::vector<LocalBox>& local_boxes;
   const Stop& stop;
   Metrics& metrics;
   std::vector<Cut> cuts;
@@ -156,8 +161,13 @@ struct Certificates {
   // subdivide this obstacle/patch pair; no obstacle is discarded by clustering.
   std::array<Vec3, 729> directions;
   Certificates(const ObstacleIndex& m, const Bounds& b, const Options& o,
-               const Stop& s, Metrics& me)
-      : map(m), bounds(b), options(o), stop(s), metrics(me) {
+               const Stop& s, Metrics& me, const std::vector<LocalBox>& boxes)
+      : map(m),
+        bounds(b),
+        options(o),
+        local_boxes(boxes),
+        stop(s),
+        metrics(me) {
     for (int x = -4; x <= 4; ++x)
       for (int y = -4; y <= 4; ++y)
         for (int z = -4; z <= 4; ++z) {
@@ -296,6 +306,30 @@ struct Certificates {
         add(p, Vec3::Unit(axis), bounds.upper[axis] - pad, nodes);
         add(p, -Vec3::Unit(axis), -bounds.lower[axis] - pad, nodes);
       }
+      Vec3 local_lo = Vec3::Constant(INFINITY), local_hi = -local_lo;
+      if (!local_boxes.empty()) {
+        const double start = nodes[i].s, end = nodes[i + 1].s, h = end - start;
+        auto at = std::upper_bound(
+            local_boxes.begin(), local_boxes.end(), start,
+            [](double s, const LocalBox& box) { return s < box.end; });
+        for (; at != local_boxes.end() && at->begin < end; ++at) {
+          const double from = std::clamp((at->begin - start) / h, 0., 1.);
+          const double to = std::clamp((at->end - start) / h, 0., 1.);
+          if (to <= from) continue;
+          Patch part = p;
+          if (to < 1) part = split(part, to).first;
+          if (from > 0) part = split(part, from / to).second;
+          for (int axis = 0; axis < 3; ++axis) {
+            add(part, Vec3::Unit(axis), at->bounds.upper[axis], nodes);
+            add(part, -Vec3::Unit(axis), -at->bounds.lower[axis], nodes);
+          }
+          local_lo = local_lo.cwiseMin(at->bounds.lower);
+          local_hi = local_hi.cwiseMax(at->bounds.upper);
+        }
+        if (!local_lo.allFinite())
+          throw Failure{Status::VerificationFailed,
+                        "missing local expansion interval"};
+      }
       // Linear forward-progress constraints at derivative Bezier controls.
       // They prevent center offsets from reversing the parameterization.
       for (const Vec3& normal :
@@ -327,7 +361,15 @@ struct Certificates {
                                     nodes[i + 1].frame.row(axis).norm()) +
                        pad;
       std::vector<int> ids;
-      map.query(lo - extent, hi + extent, ids);
+      Vec3 query_lo = lo - extent, query_hi = hi + extent;
+      if (!local_boxes.empty()) {
+        // The local support constraints already certify the entire curve is
+        // in these boxes. This keeps loose algebraic radius/offset bounds
+        // from turning each BVH query into a full-map scan.
+        query_lo = query_lo.cwiseMax(local_lo - Vec3::Constant(pad));
+        query_hi = query_hi.cwiseMin(local_hi + Vec3::Constant(pad));
+      }
+      map.query(query_lo, query_hi, ids);
       pairCuts(p, ids, nodes, 0);
     }
     // Merge identical node-only rows shared by adjacent patches. Scaling a

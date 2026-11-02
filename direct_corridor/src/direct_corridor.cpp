@@ -230,9 +230,10 @@ Result generate(const std::vector<Vec3>& seed, const ObstacleIndex& index,
       throw Failure{Status::Timeout, "generation budget exhausted"};
   };
   try {
-    for (double v : {o.control_spacing, o.min_radius, o.max_radius,
-                     o.max_offset, o.robot_radius, o.safety_margin,
-                     o.numerical_guard, o.certificate_margin, o.budget_ms})
+    for (double v :
+         {o.control_spacing, o.min_radius, o.max_radius, o.max_offset,
+          o.robot_radius, o.safety_margin, o.numerical_guard,
+          o.certificate_margin, o.budget_ms, o.local_range, o.local_progress})
       if (!std::isfinite(v))
         throw Failure{Status::InvalidInput, "nonfinite generator option"};
     if (seed.size() < 2 || !bounds.lower.allFinite() ||
@@ -240,7 +241,8 @@ Result generate(const std::vector<Vec3>& seed, const ObstacleIndex& index,
         (bounds.upper.array() <= bounds.lower.array()).any() ||
         o.control_spacing <= 0 || o.min_radius <= 0 ||
         o.max_radius <= o.min_radius || o.max_offset <= 0 ||
-        o.robot_radius < 0 || o.safety_margin < 0 || o.numerical_guard <= 0 ||
+        o.local_range < 0 || o.local_progress < 1e-6 || o.robot_radius < 0 ||
+        o.safety_margin < 0 || o.numerical_guard <= 0 ||
         o.certificate_margin < o.numerical_guard || o.budget_ms <= 0 ||
         o.max_refinements < 0 || o.max_refinements > 20 || o.max_controls < 2 ||
         o.max_controls > 1000000 || o.max_constraints < 1 ||
@@ -289,6 +291,38 @@ Result generate(const std::vector<Vec3>& seed, const ObstacleIndex& index,
                   .normalized()
                   .dot((clean[i + 1] - clean[i]).normalized()) < -.999999)
         throw Failure{Status::DegeneratePath, "seed reverses through a cusp"};
+    }
+    std::vector<LocalBox> local_boxes;
+    if (o.local_range > 0) {
+      const double clearance = pad + o.certificate_margin;
+      for (std::size_t i = 1; i < clean.size(); ++i) {
+        Vec3 a = clean[i - 1];
+        double start = arc[i - 1];
+        while (start < arc[i]) {
+          stop();
+          const double remaining = (clean[i] - a).norm();
+          const bool last = remaining <= o.local_progress;
+          const Vec3 b =
+              last ? clean[i]
+                   : Vec3(a + (clean[i] - a) * (o.local_progress / remaining));
+          const double end = last ? arc[i] : start + (b - a).norm();
+          if (end <= start)
+            throw Failure{Status::InvalidInput,
+                          "local progress below coordinate resolution"};
+          if (local_boxes.size() >= o.max_controls)
+            throw Failure{Status::Capacity,
+                          "local expansion box capacity exceeded"};
+          local_boxes.push_back(
+              {start,
+               end,
+               {(a.cwiseMin(b) - Vec3::Constant(o.local_range))
+                    .cwiseMax(bounds.lower + Vec3::Constant(clearance)),
+                (a.cwiseMax(b) + Vec3::Constant(o.local_range))
+                    .cwiseMin(bounds.upper - Vec3::Constant(clearance))}});
+          a = b;
+          start = end;
+        }
+      }
     }
     Failure last{Status::InsufficientClearance,
                  "no certifiable Hermite reference"};
@@ -376,7 +410,8 @@ Result generate(const std::vector<Vec3>& seed, const ObstacleIndex& index,
           if (iteration && elapsed() > .5 * o.budget_ms) break;
           try {
             double timer = elapsed();
-            Certificates certificates(index, bounds, o, stop, result.metrics);
+            Certificates certificates(index, bounds, o, stop, result.metrics,
+                                      local_boxes);
             certificates.build(nodes);
             result.metrics.certificate_ms += elapsed() - timer;
             for (const auto& c : certificates.cuts)

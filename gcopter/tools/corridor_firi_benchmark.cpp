@@ -1,0 +1,359 @@
+// SPDX-License-Identifier: MIT
+#include <chrono>
+#include <filesystem>
+#include <fstream>
+#include <iomanip>
+#include <iostream>
+#include <sstream>
+
+#include "corridor_volume.hpp"
+#include "gcopter/sfc_gen.hpp"
+
+using namespace gcopter::direct;
+using Clock = std::chrono::steady_clock;
+using Polys = traj_opt_components::PolyhedraH;
+double ms(Clock::time_point start) {
+  return std::chrono::duration<double, std::milli>(Clock::now() - start)
+      .count();
+}
+std::vector<Vec3> read(const char* path) {
+  std::ifstream input(path);
+  if (!input) throw std::runtime_error("input not found");
+  std::vector<Vec3> values;
+  std::string line;
+  while (std::getline(input, line)) {
+    if (line.empty() || line[0] == '#') continue;
+    std::istringstream row(line);
+    Vec3 p;
+    if (!(row >> p.x() >> p.y() >> p.z()) || !p.allFinite())
+      throw std::runtime_error("invalid XYZ");
+    values.push_back(p);
+  }
+  return values;
+}
+// Same segment stepping, full-cloud filtering and gap insertion as the
+// repository's convexCover. Only fix empty-cloud indexing and check return
+// values; firi::firi itself and its four iterations are unchanged.
+Polys cover(const std::vector<Vec3>& path, const std::vector<Vec3>& points,
+            const Bounds& bounds, double progress, double range) {
+  Polys result;
+  Eigen::Matrix<double, 6, 4> bd = Eigen::Matrix<double, 6, 4>::Zero();
+  for (int j = 0; j < 3; ++j) {
+    bd(2 * j, j) = 1;
+    bd(2 * j + 1, j) = -1;
+  }
+  Vec3 a, b = path.front();
+  std::vector<Vec3> selected;
+  selected.reserve(points.size());
+  for (std::size_t i = 1; i < path.size();) {
+    a = b;
+    if ((a - path[i]).norm() > progress)
+      b = a + (path[i] - a).normalized() * progress;
+    else
+      b = path[i++];
+    for (int j = 0; j < 3; ++j) {
+      bd(2 * j, 3) = -std::min(std::max(a[j], b[j]) + range, bounds.upper[j]);
+      bd(2 * j + 1, 3) =
+          std::max(std::min(a[j], b[j]) - range, bounds.lower[j]);
+    }
+    selected.clear();
+    for (const auto& p : points)
+      if ((bd.leftCols<3>() * p + bd.rightCols<1>()).maxCoeff() < 0)
+        selected.push_back(p);
+    Eigen::Map<const Eigen::Matrix3Xd> pc(
+        selected.empty() ? nullptr : selected.front().data(), 3,
+        selected.size());
+    Eigen::MatrixX4d hp, gap;
+    if (!firi::firi(bd, pc, a, b, hp) || !hp.allFinite())
+      throw std::runtime_error("FIRI returned invalid polytope");
+    if (!result.empty()) {
+      const Eigen::Vector4d ah(a[0], a[1], a[2], 1);
+      if (3 <= ((hp * ah).array() > -1e-6).cast<int>().sum() +
+                   ((result.back() * ah).array() > -1e-6).cast<int>().sum()) {
+        if (!firi::firi(bd, pc, a, a, gap, 1) || !gap.allFinite())
+          throw std::runtime_error("FIRI gap failure");
+        result.push_back(gap);
+      }
+    }
+    result.push_back(hp);
+  }
+  return result;
+}
+struct FiriResult {
+  Polys polys;
+  double cover_ms = 0, erosion_ms = 0, shortcut_ms = 0, total_ms = 0;
+  int before_shortcut = 0;
+};
+struct ExpansionBox {
+  double begin, end;
+  Bounds bounds;
+};
+std::vector<ExpansionBox> expansionBoxes(const std::vector<Vec3>& seed,
+                                         const Bounds& bounds, double range,
+                                         double pad) {
+  std::vector<ExpansionBox> boxes;
+  Vec3 a, b = seed.front();
+  double arc = 0;
+  for (std::size_t i = 1; i < seed.size();) {
+    a = b;
+    if ((a - seed[i]).norm() > 7)
+      b = a + (seed[i] - a).normalized() * 7;
+    else
+      b = seed[i++];
+    const double end = arc + (b - a).norm();
+    boxes.push_back({arc,
+                     end,
+                     {(a.cwiseMin(b) - Vec3::Constant(range))
+                          .cwiseMax(bounds.lower + Vec3::Constant(pad)),
+                      (a.cwiseMax(b) + Vec3::Constant(range))
+                          .cwiseMin(bounds.upper - Vec3::Constant(pad))}});
+    arc = end;
+  }
+  return boxes;
+}
+FiriResult generateFiri(const std::vector<Vec3>& seed,
+                        const std::vector<Vec3>& points, Bounds bounds,
+                        double obstacle_radius, double pad, bool solid,
+                        double range) {
+  const auto start = Clock::now();
+  FiriResult out;
+  const double erosion = solid ? obstacle_radius + pad + .002 : 0;
+  // Expand artificial local limits before erosion, so their final nominal
+  // range remains 3 m; adjust world bounds to end at the same robot clearance.
+  if (solid) {
+    bounds.lower.array() -= obstacle_radius;
+    bounds.upper.array() += obstacle_radius;
+  }
+  out.polys = cover(seed, points, bounds, 7., range + erosion);
+  out.cover_ms = ms(start);
+  auto timer = Clock::now();
+  for (auto& h : out.polys)
+    for (int j = 0; j < h.rows(); ++j) {
+      h.row(j) /= h.row(j).head<3>().norm();
+      h(j, 3) += erosion;
+    }
+  out.erosion_ms = ms(timer);
+  out.before_shortcut = out.polys.size();
+  timer = Clock::now();
+  sfc_gen::shortCut(out.polys);
+  out.shortcut_ms = ms(timer);
+  out.total_ms = ms(start);
+  return out;
+}
+double quantile(std::vector<double> values, double q) {
+  std::sort(values.begin(), values.end());
+  return values[std::min(values.size() - 1,
+                         std::size_t(std::ceil(q * values.size()) - 1))];
+}
+void list(std::ostream& out, const std::vector<double>& values) {
+  out << '[';
+  for (std::size_t i = 0; i < values.size(); ++i)
+    out << (i ? "," : "") << values[i];
+  out << ']';
+}
+int main(int argc, char** argv) {
+  try {
+    if (argc < 14 || argc > 16)
+      throw std::runtime_error(
+          "usage: benchmark seed.xyz map.xyz output_dir points|solid xmin ymin "
+          "zmin xmax ymax zmax resolution repeats samples_per_shift "
+          "[legacy|matched-box [range]]");
+    const auto seed = read(argv[1]), points = read(argv[2]);
+    const std::filesystem::path dir = argv[3];
+    const std::string mode = argv[4];
+    if (mode != "points" && mode != "solid")
+      throw std::runtime_error("invalid model");
+    const bool solid = mode == "solid";
+    const std::string policy = argc > 14 ? argv[14] : "legacy";
+    const double range = argc > 15 ? std::stod(argv[15]) : 3.;
+    if ((policy != "legacy" && policy != "matched-box") ||
+        !std::isfinite(range) || range <= 0)
+      throw std::runtime_error("invalid expansion policy/range");
+    Bounds bounds{
+        Vec3(std::stod(argv[5]), std::stod(argv[6]), std::stod(argv[7])),
+        Vec3(std::stod(argv[8]), std::stod(argv[9]), std::stod(argv[10]))};
+    const double resolution = std::stod(argv[11]),
+                 obstacle_radius = solid ? std::sqrt(3) * resolution / 2 : 0;
+    const int repeats = std::stoi(argv[12]), samples = std::stoi(argv[13]);
+    if (seed.size() < 2 || points.empty() || repeats < 1 || samples < 1)
+      throw std::runtime_error("invalid benchmark input");
+    Options options;
+    options.control_spacing = .4;
+    options.min_radius = .03;
+    options.budget_ms = 10000;
+    options.robot_radius = solid ? .2 : 0;
+    options.safety_margin = solid ? .05 : 0;
+    options.certificate_margin = solid ? .002 : 1e-8;
+    const auto expansion =
+        expansionBoxes(seed, bounds, range,
+                       options.robot_radius + options.safety_margin +
+                           options.certificate_margin);
+    if (policy == "matched-box") {
+      double diagonal = 0;
+      for (const auto& box : expansion)
+        diagonal =
+            std::max(diagonal, (box.bounds.upper - box.bounds.lower).norm());
+      // These algebraic bounds cannot bind before the shared local boxes:
+      // an ellipse's diameter is no larger than its containing box diagonal;
+      // a center's displacement from a seed point in that box is <= diagonal.
+      options.max_radius = .5 * diagonal + .001;
+      options.max_offset = diagonal + .001;
+      options.local_range = range;
+      options.local_progress = 7;
+    }
+    std::vector<Sphere> spheres;
+    for (const auto& p : points) spheres.push_back({p, obstacle_radius});
+    auto timer = Clock::now();
+    ObstacleIndex map(std::move(spheres));
+    const double index_ms = ms(timer);
+    Result hermite;
+    FiriResult firi;
+    std::vector<double> ht, ft, ct, et, st;
+    for (int rep = -1; rep < repeats; ++rep) {
+      auto h = [&] { hermite = generate(seed, map, bounds, options); };
+      auto f = [&] {
+        firi = generateFiri(seed, points, bounds, obstacle_radius,
+                            options.robot_radius + options.safety_margin, solid,
+                            range);
+      };
+      if (rep % 2 == 0) {
+        h();
+        f();
+      } else {
+        f();
+        h();
+      }
+      if (!hermite)
+        throw std::runtime_error(std::string("Hermite: ") +
+                                 statusName(hermite.status) + " " +
+                                 hermite.message);
+      if (rep >= 0) {
+        ht.push_back(hermite.metrics.total_ms);
+        ft.push_back(firi.total_ms);
+        ct.push_back(firi.cover_ms);
+        et.push_back(firi.erosion_ms);
+        st.push_back(firi.shortcut_ms);
+      }
+    }
+    double max_axis = 0, box_violation = 0;
+    for (int k = 0; k <= 1000; ++k) {
+      const auto section = hermite.corridor.section(k / 1000.);
+      Eigen::SelfAdjointEigenSolver<Eigen::Matrix2d> eig(
+          section.shape.transpose() * section.shape);
+      max_axis = std::max(max_axis, std::sqrt(eig.eigenvalues()[1]));
+      if (policy == "matched-box") {
+        const double arc = k / 1000. * expansion.back().end;
+        auto at = std::upper_bound(
+            expansion.begin(), expansion.end(), arc,
+            [](double s, const ExpansionBox& box) { return s < box.end; });
+        if (at == expansion.end()) --at;
+        const Vec3 extent = section.shape.rowwise().norm();
+        box_violation =
+            std::max({box_violation,
+                      (section.center + extent - at->bounds.upper).maxCoeff(),
+                      (at->bounds.lower - section.center + extent).maxCoeff()});
+      }
+    }
+    if (box_violation > 1e-7)
+      throw std::runtime_error("independent local expansion audit failed");
+    std::vector<corridor_volume::Poly> polys;
+    int empty = 0;
+    bool connected = true;
+    for (const auto& h : firi.polys) {
+      polys.emplace_back(h);
+      empty += !polys.back().valid;
+    }
+    if (empty) connected = false;
+    for (std::size_t i = 1; i < firi.polys.size(); ++i) {
+      Eigen::MatrixX4d joined(firi.polys[i - 1].rows() + firi.polys[i].rows(),
+                              4);
+      joined << firi.polys[i - 1], firi.polys[i];
+      connected &= corridor_volume::Poly(joined).valid;
+    }
+    const bool endpoints = polys.front().contains(seed.front()) &&
+                           polys.back().contains(seed.back());
+    connected &= endpoints;
+    // Continuous half-space separation audit against the SAME solid spheres.
+    bool safe = true;
+    if (solid)
+      for (const auto& poly : polys)
+        if (poly.valid) {
+          std::vector<int> ids;
+          const double pad = options.robot_radius + options.safety_margin;
+          map.query(poly.box.lo - Vec3::Constant(pad),
+                    poly.box.hi + Vec3::Constant(pad), ids);
+          for (int id : ids)
+            if ((poly.h.leftCols<3>() * map.obstacles()[id].center +
+                 poly.h.col(3))
+                    .maxCoeff() < obstacle_radius + pad - 1e-7)
+              safe = false;
+          if ((poly.box.lo.array() < bounds.lower.array() + pad - 2e-7).any() ||
+              (poly.box.hi.array() > bounds.upper.array() - pad + 2e-7).any())
+            safe = false;
+        }
+    timer = Clock::now();
+    const auto volume =
+        corridor_volume::measure(corridor_volume::patches(hermite.corridor),
+                                 polys, seed, samples, 8, 1., range);
+    const double volume_ms = ms(timer);
+    std::filesystem::create_directories(dir);
+    std::ofstream out(dir / "metrics.json");
+    out << std::setprecision(12);
+    out << "{\"model\":\"" << mode << "\",\"seed_points\":" << seed.size()
+        << ",\"expansion_policy\":\"" << policy
+        << "\",\"local_range_m\":" << range
+        << ",\"local_boxes\":" << expansion.size()
+        << ",\"hermite_radius_bound_m\":" << options.max_radius
+        << ",\"hermite_offset_bound_m\":" << options.max_offset
+        << ",\"hermite_max_axis_m\":" << max_axis
+        << ",\"hermite_max_center_shift_m\":"
+        << hermite.metrics.max_center_shift
+        << ",\"hermite_box_violation_m\":" << box_violation
+        << ",\"hermite_optimization_ms\":" << hermite.metrics.optimization_ms
+        << ",\"hermite_certificate_ms\":" << hermite.metrics.certificate_ms
+        << ",\"hermite_constraints\":" << hermite.metrics.constraints
+        << ",\"hermite_refinements\":" << hermite.metrics.refinements
+        << ",\"obstacles\":" << points.size() << ",\"index_ms\":" << index_ms
+        << ",\"hermite_nodes\":" << hermite.metrics.nodes
+        << ",\"firi_before_shortcut\":" << firi.before_shortcut
+        << ",\"firi_polys\":" << polys.size() << ",\"firi_empty\":" << empty
+        << ",\"firi_connected\":" << (connected ? "true" : "false")
+        << ",\"firi_endpoints\":" << (endpoints ? "true" : "false")
+        << ",\"firi_sphere_safe\":" << (safe ? "true" : "false")
+        << ",\"hermite_median_ms\":" << quantile(ht, .5)
+        << ",\"hermite_p95_ms\":" << quantile(ht, .95)
+        << ",\"firi_median_ms\":" << quantile(ft, .5)
+        << ",\"firi_p95_ms\":" << quantile(ft, .95)
+        << ",\"firi_cover_ms\":" << quantile(ct, .5)
+        << ",\"firi_erosion_ms\":" << quantile(et, .5)
+        << ",\"firi_shortcut_ms\":" << quantile(st, .5)
+        << ",\"hermite_times_ms\":";
+    list(out, ht);
+    out << ",\"firi_times_ms\":";
+    list(out, ft);
+    out << ",\"volume_samples\":" << volume.samples
+        << ",\"volume_cells\":" << volume.cells
+        << ",\"volume_ms\":" << volume_ms
+        << ",\"unresolved_roots\":" << volume.unresolved;
+    const char* names[] = {"hermite_union", "firi_union", "hermite_roi",
+                           "firi_roi", "intersection"};
+    for (int i = 0; i < 5; ++i)
+      out << ",\"" << names[i] << "_m3\":" << volume.volume[i].mean << ",\""
+          << names[i] << "_ci95\":" << volume.volume[i].ci95;
+    out << "}\n";
+    std::ofstream hp(dir / "firi_planes.csv");
+    hp << "poly,nx,ny,nz,d\n" << std::setprecision(17);
+    for (std::size_t i = 0; i < polys.size(); ++i)
+      for (int j = 0; j < polys[i].h.rows(); ++j)
+        hp << i << ',' << polys[i].h(j, 0) << ',' << polys[i].h(j, 1) << ','
+           << polys[i].h(j, 2) << ',' << polys[i].h(j, 3) << '\n';
+    std::cout << mode << " H=" << quantile(ht, .5)
+              << "ms F=" << quantile(ft, .5) << "ms V=" << volume.volume[0].mean
+              << '/' << volume.volume[1].mean << " connected=" << connected
+              << " safe=" << safe << " volume_ms=" << volume_ms << '\n';
+    return safe && volume.unresolved == 0 ? 0 : 1;
+  } catch (const std::exception& e) {
+    std::cerr << e.what() << '\n';
+    return 2;
+  }
+}

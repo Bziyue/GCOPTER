@@ -10,7 +10,7 @@
 
 ```bash
 cmake -S direct_corridor -B build/direct_corridor -DCMAKE_BUILD_TYPE=Release
-cmake --build build/direct_corridor -j4
+cmake --build build/direct_corridor -j1
 ctest --test-dir build/direct_corridor --output-on-failure
 build/direct_corridor/direct_corridor_benchmark 30
 python3 direct_corridor/tools/example.py \
@@ -39,6 +39,8 @@ else {
 ```
 
 本地工程可 `add_subdirectory(.../direct_corridor)`，链接 `gcopter::direct_corridor`。独立安装后也支持 `find_package(gcopter_direct_corridor CONFIG REQUIRED)`。所有位置、半径为米；导数对归一化 `u∈[0,1]` 求导，不是弧长或时间导数。`evaluate()` 的梯度/Hessian 顺序是 `[u,x,y,z]`；**`q<=0` 还必须搭配截面平面条件**，不能把无限柱体误当成截面。
+
+可选 `Options::local_range > 0` 将整个扫掠约束在沿种子线段扩张的轴对齐局部盒内，`local_progress` 控制长种子边的切分长度（默认 7 m）。范围默认关闭；它与 `max_radius`、`max_offset` 同时生效，不会自动取消这两个上限。若要复现 FIRI 相同 3 m 扩张范围并放开原 1.5 m 限制，参见[同范围体积与耗时对照](../docs/FIRI同范围扩张对照.md)及基准的 `matched-box` 模式。
 
 ## 命令行与结果
 

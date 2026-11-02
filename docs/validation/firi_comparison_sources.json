@@ -1,0 +1,27 @@
+{
+  "base_commit": "d7b9cbc",
+  "paths": 3,
+  "generation_repeats": 3,
+  "warmup_per_model": 1,
+  "volume_samples_per_model": 524288,
+  "qmc_shifts": 8,
+  "firi_iterations": 4,
+  "firi_progress_m": 7,
+  "firi_nominal_range_m": 3,
+  "hermite_max_radius_m": 1.5,
+  "hermite_max_offset_m": 1.5,
+  "solid_robot_radius_m": 0.2,
+  "solid_safety_margin_m": 0.05,
+  "solid_extra_margin_m": 0.002,
+  "memory_limit_mib": 512,
+  "run_mode": "sequential",
+  "sha256": {
+    "gcopter/include/gcopter/firi.hpp": "e47441312b31dff209a59798a8414cbdf310534720e984c73894cb7ea1beb6ee",
+    "gcopter/include/gcopter/sfc_gen.hpp": "023377b199cbd4fa04a14668343dcbcb23d130be698c968867d1bd5536daecea",
+    "direct_corridor/src/direct_corridor.cpp": "c2f9d33915478f2645c6995843917159c896f33d5be42dbd5f25d49d8cd10953",
+    "direct_corridor/src/hermite_optimizer.hpp": "274cd2dfaa30bfd55546256a10f37944df59669e472b0734ab469a4dd4cca4ea",
+    "gcopter/tools/corridor_firi_benchmark.cpp": "c1dfd761f60a13a5e1d78f06f752f318515d2e0429f0217a6037a3ae70690d88",
+    "gcopter/tools/corridor_volume.hpp": "11709d2a21e31967787c86999f14ca2945c298c8601760cc98688bbec9d800ef",
+    "gcopter/tools/run_firi_comparison.py": "1ec2deb25dd01054e141181fa6a231370fdc684f564e6c21048fe783dacad829"
+  }
+}
