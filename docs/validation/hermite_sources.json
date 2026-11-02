@@ -1,0 +1,10 @@
+{
+  "baseline_kind": "previous uncommitted B-spline generator; CLI adapted only to pass matched options",
+  "source_sha256": {
+    ".scratch/hermite_baseline/direct_corridor.cpp": "fbfd26ba73b035d0f6d78c9dc3fca2aa01ce16bd807b3c77fd2d1af08e96b4a4",
+    ".scratch/hermite_baseline/direct_corridor.hpp": "4f5b9aa4dc79a084c117df592356bdcdd0036452f48ff37db64f7104febec7d5",
+    "direct_corridor/src/direct_corridor.cpp": "c2f9d33915478f2645c6995843917159c896f33d5be42dbd5f25d49d8cd10953",
+    "direct_corridor/src/hermite_optimizer.hpp": "274cd2dfaa30bfd55546256a10f37944df59669e472b0734ab469a4dd4cca4ea",
+    "direct_corridor/include/gcopter/direct_corridor.hpp": "877affa93c242e0587a9d4ab43c50870a215cd563d275bac5911c7bb7a105104"
+  }
+}

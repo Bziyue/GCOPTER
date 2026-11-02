@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.16)
 project(gcopter)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -15,6 +15,8 @@ find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
+find_package(gcopter_direct_corridor REQUIRED)
 
 include_directories(
   include
@@ -23,19 +25,28 @@ include_directories(
 )
 
 add_executable(global_planning src/global_planning.cpp)
-ament_target_dependencies(global_planning
-  rclcpp
-  std_msgs
-  geometry_msgs
-  sensor_msgs
-  visualization_msgs
-)
-
 target_link_libraries(global_planning
+  rclcpp::rclcpp ${std_msgs_TARGETS} ${geometry_msgs_TARGETS}
+  ${sensor_msgs_TARGETS} ${visualization_msgs_TARGETS}
   ${OMPL_LIBRARIES}
 )
+target_link_directories(global_planning PRIVATE ${OMPL_LIBRARY_DIRS})
 
-install(TARGETS global_planning
+add_executable(direct_corridor_demo src/direct_corridor_demo.cpp)
+target_link_libraries(direct_corridor_demo PRIVATE gcopter::direct_corridor
+  ${OMPL_LIBRARIES} rclcpp::rclcpp ${std_msgs_TARGETS} ${geometry_msgs_TARGETS}
+  ${sensor_msgs_TARGETS} ${visualization_msgs_TARGETS} ${nav_msgs_TARGETS})
+target_link_directories(direct_corridor_demo PRIVATE ${OMPL_LIBRARY_DIRS})
+include(CTest)
+if(BUILD_TESTING)
+  enable_testing()
+  add_executable(direct_search_test tests/direct_search_test.cpp)
+  target_link_libraries(direct_search_test PRIVATE gcopter::direct_corridor ${OMPL_LIBRARIES})
+  target_link_directories(direct_search_test PRIVATE ${OMPL_LIBRARY_DIRS})
+  add_test(NAME direct_search_test COMMAND direct_search_test)
+endif()
+
+install(TARGETS global_planning direct_corridor_demo
   DESTINATION lib/${PROJECT_NAME}
 )
 

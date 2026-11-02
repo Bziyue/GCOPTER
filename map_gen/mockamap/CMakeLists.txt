@@ -1,7 +1,7 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.16)
 project(mockamap)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(ament_cmake REQUIRED)
@@ -22,15 +22,13 @@ add_executable(mockamap_node
   src/perlinnoise.cpp
 )
 
-ament_target_dependencies(mockamap_node
-  rclcpp
-  sensor_msgs
-  pcl_conversions
-)
-
 target_link_libraries(mockamap_node
+  rclcpp::rclcpp
+  ${sensor_msgs_TARGETS}
+  ${pcl_conversions_TARGETS}
   ${PCL_LIBRARIES}
 )
+target_include_directories(mockamap_node PRIVATE ${pcl_conversions_INCLUDE_DIRS})
 
 install(TARGETS mockamap_node
   DESTINATION lib/${PROJECT_NAME}

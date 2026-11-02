@@ -1,0 +1,98 @@
+[
+  {
+    "request": ".scratch/interactive/perlin_final/run_1793605176741410828_3715435/request_10",
+    "seed_sha256": "bd82e7f1ab28edfbbf014898b2be7a49c30e1d6f30ec09aaa488134aa9b62cf2",
+    "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+    "new": {
+      "status": "SUCCESS",
+      "total_ms": 140.059,
+      "representation": "quintic_hermite_v2",
+      "nodes": 214,
+      "max_center_shift": 1.49061,
+      "optimization_ms": 76.8982,
+      "certificate_ms": 61.3392,
+      "active_constraints": 26294,
+      "newton_steps": 48,
+      "optimization_passes": 2,
+      "inflation_steps": 2,
+      "controls": 1278,
+      "constraints": 26294,
+      "refinements": 0,
+      "min_minor": 0.22734355118717853,
+      "median_minor": 1.1300277779083678,
+      "mean_area": 4.494875717518081,
+      "median_ms": 140.059,
+      "times_ms": [
+        140.059
+      ],
+      "audit": {
+        "sample_points": 80160,
+        "minimum_observed_clearance": 0.010145220707754365
+      }
+    }
+  },
+  {
+    "request": ".scratch/interactive/rviz/run_1793605002598226995_3712673/request_1",
+    "seed_sha256": "db505c46bc24c061128416d4f673259c3be655ecc474b1840790fac39c43fb00",
+    "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+    "new": {
+      "status": "SUCCESS",
+      "total_ms": 60.7829,
+      "representation": "quintic_hermite_v2",
+      "nodes": 122,
+      "max_center_shift": 1.49609,
+      "optimization_ms": 38.0737,
+      "certificate_ms": 21.7951,
+      "active_constraints": 13343,
+      "newton_steps": 48,
+      "optimization_passes": 2,
+      "inflation_steps": 2,
+      "controls": 726,
+      "constraints": 13343,
+      "refinements": 0,
+      "min_minor": 0.287464592039543,
+      "median_minor": 1.3369616783648979,
+      "mean_area": 5.246703061059881,
+      "median_ms": 60.7829,
+      "times_ms": [
+        60.7829
+      ],
+      "audit": {
+        "sample_points": 80160,
+        "minimum_observed_clearance": 0.011304600069513948
+      }
+    }
+  },
+  {
+    "request": ".scratch/interactive/rviz/run_1793605002598226995_3712673/request_2",
+    "seed_sha256": "e2034ad4c38b68bedb80983603b4358364b5bc00ab5cebd93f07269a8353d32c",
+    "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+    "new": {
+      "status": "SUCCESS",
+      "total_ms": 145.575,
+      "representation": "quintic_hermite_v2",
+      "nodes": 204,
+      "max_center_shift": 1.4986,
+      "optimization_ms": 78.6845,
+      "certificate_ms": 65.0738,
+      "active_constraints": 25809,
+      "newton_steps": 48,
+      "optimization_passes": 2,
+      "inflation_steps": 2,
+      "controls": 1218,
+      "constraints": 25809,
+      "refinements": 0,
+      "min_minor": 0.2492601371285204,
+      "median_minor": 1.1183140312675262,
+      "mean_area": 4.54794634584639,
+      "median_ms": 145.575,
+      "times_ms": [
+        145.575
+      ],
+      "audit": {
+        "sample_points": 80160,
+        "minimum_observed_clearance": 0.008131699322996955
+      }
+    }
+  }
+]

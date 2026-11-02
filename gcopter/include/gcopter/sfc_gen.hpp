@@ -38,6 +38,7 @@
 
 #include <deque>
 #include <memory>
+#include <functional>
 #include <Eigen/Eigen>
 
 namespace sfc_gen
@@ -50,8 +51,11 @@ namespace sfc_gen
                            const Eigen::Vector3d &hb,
                            const Map *mapPtr,
                            const double &timeout,
-                           std::vector<Eigen::Vector3d> &p)
+                           std::vector<Eigen::Vector3d> &p,
+                           const std::function<bool(const Eigen::Vector3d &, const Eigen::Vector3d &)> &segmentValid = {},
+                           const double range = 0.0)
     {
+        p.clear();
         auto space(std::make_shared<ompl::base::RealVectorStateSpace>(3));
 
         ompl::base::RealVectorBounds bounds(3);
@@ -74,6 +78,46 @@ namespace sfc_gen
                                                lb(2) + (*pos)[2]);
                 return mapPtr->query(position) == 0;
             });
+        // Optional solid-segment oracle for callers with continuous geometry.
+        // Existing callers retain OMPL's discrete motion validator.
+        if (segmentValid)
+        {
+            class SolidMotionValidator final : public ompl::base::MotionValidator
+            {
+                Eigen::Vector3d origin;
+                std::function<bool(const Eigen::Vector3d &, const Eigen::Vector3d &)> valid;
+                Eigen::Vector3d point(const ompl::base::State *s) const
+                {
+                    const auto *p = s->as<ompl::base::RealVectorStateSpace::StateType>();
+                    return origin + Eigen::Vector3d((*p)[0], (*p)[1], (*p)[2]);
+                }
+            public:
+                SolidMotionValidator(const ompl::base::SpaceInformationPtr &si,
+                    const Eigen::Vector3d &lb, decltype(valid) fn)
+                    : MotionValidator(si), origin(lb), valid(std::move(fn)) {}
+                bool checkMotion(const ompl::base::State *a, const ompl::base::State *b) const override
+                {
+                    const bool ok = valid(point(a), point(b));
+                    ok ? ++valid_ : ++invalid_;
+                    return ok;
+                }
+                bool checkMotion(const ompl::base::State *a, const ompl::base::State *b,
+                    std::pair<ompl::base::State *, double> &last) const override
+                {
+                    if (checkMotion(a, b)) return true;
+                    const Eigen::Vector3d start = point(a), delta = point(b) - start;
+                    double lo = 0, hi = 1;
+                    for (int i = 0; i < 32; ++i) {
+                        const double mid = (lo + hi) * 0.5;
+                        if (valid(start, start + mid * delta)) lo = mid; else hi = mid;
+                    }
+                    last.second = lo;
+                    if (last.first) si_->getStateSpace()->interpolate(a, b, lo, last.first);
+                    return false;
+                }
+            };
+            si->setMotionValidator(std::make_shared<SolidMotionValidator>(si, lb, segmentValid));
+        }
         si->setup();
 
         ompl::msg::setLogLevel(ompl::msg::LOG_NONE);
@@ -90,6 +134,7 @@ namespace sfc_gen
         pdef->setStartAndGoalStates(start, goal);
         pdef->setOptimizationObjective(std::make_shared<ompl::base::PathLengthOptimizationObjective>(si));
         auto planner(std::make_shared<ompl::geometric::InformedRRTstar>(si));
+        if (range > 0.0) planner->setRange(range);
         planner->setProblemDefinition(pdef);
         planner->setup();
 
@@ -97,7 +142,8 @@ namespace sfc_gen
         solved = planner->ompl::base::Planner::solve(timeout);
 
         double cost = INFINITY;
-        if (solved)
+        // A partial/approximate path is not a route to the selected goal.
+        if (solved && pdef->hasExactSolution())
         {
             p.clear();
             const ompl::geometric::PathGeometric path_ =
