@@ -9,6 +9,7 @@
 #include <stdexcept>
 
 #include "gcopter/direct_corridor.hpp"
+#include "../src/hermite_optimizer.hpp"
 using namespace gcopter::direct;
 namespace {
 void check(bool pass, const std::string& message) {
@@ -97,6 +98,47 @@ void derivatives(const Corridor& c) {
 }  // namespace
 int main() {
   try {
+    // Polar redundancy is invariant to translating the feasible center, and
+    // removes loose faces while retaining every edge of a square plus SOC
+    // rows coupling two different nodes.
+    for (const Eigen::Vector2d offset :
+         {Eigen::Vector2d(0, 0), Eigen::Vector2d(3, -2)}) {
+      std::vector<detail::Node> nodes(2);
+      for (auto& n : nodes) {
+        n.x = detail::circle(.1);
+        n.x.head<2>() = offset;
+      }
+      std::vector<detail::Cut> cuts;
+      for (int j = 0; j < 4; ++j) {
+        const Eigen::Vector2d a =
+            (j < 2 ? Eigen::Vector2d::UnitX() : Eigen::Vector2d::UnitY()) *
+            (j % 2 ? -1 : 1);
+        cuts.push_back({0, a, Eigen::Vector2d::Zero(), 1 + a.dot(offset)});
+      }
+      for (int j = 0; j < 40; ++j) {
+        const double angle = j * 2 * std::acos(-1.) / 40;
+        const Eigen::Vector2d a(std::cos(angle), std::sin(angle));
+        cuts.push_back({0, a, Eigen::Vector2d::Zero(), 2 + a.dot(offset)});
+      }
+      cuts.push_back({0, Eigen::Vector2d::UnitX(), Eigen::Vector2d::UnitY(),
+                      4 + offset.sum()});
+      const auto active = detail::irredundant(nodes, cuts);
+      check(active == std::vector<int>({0, 1, 2, 3, 44}),
+            "polar removes only redundant support faces");
+      // Right-end-only constraints use the same translation, while rows very
+      // close to the dual hull boundary are conservatively retained.
+      cuts.push_back({0, Eigen::Vector2d(1, 0), Eigen::Vector2d::Zero(),
+                      1 + 1e-14 + offset.x()});
+      for (int j = 0; j < 44; ++j) {
+        auto c = cuts[j];
+        c.b = c.a;
+        c.a.setZero();
+        cuts.push_back(c);
+      }
+      const auto both = detail::irredundant(nodes, cuts);
+      check(both == std::vector<int>({0, 1, 2, 3, 44, 45, 46, 47, 48, 49}),
+            "polar keeps ambiguous boundary and handles right endpoints");
+    }
     Options o = opts();
     ObstacleIndex empty({});
     auto straight = generate({Vec3(-2, 0, 0), Vec3(2, 0, 0)}, empty, box(), o);
@@ -109,6 +151,23 @@ int main() {
                    o.max_radius) < 1e-7,
           "open-space maximum radius");
     derivatives(straight.corridor);
+    // Analytic empty rectangular tunnel with a 2000:1 axis ratio. Constraint
+    // curvature has very different scales, but the large axis must still grow.
+    Options slender = opts();
+    slender.robot_radius = slender.safety_margin = 0;
+    slender.numerical_guard = 1e-10;
+    slender.certificate_margin = 1e-9;
+    slender.min_radius = 1e-5;
+    slender.max_radius = 2;
+    const Bounds slit{Vec3(-3, -.001, -3), Vec3(3, .001, 3)};
+    const auto scaled = generate({Vec3(-2,0,0), Vec3(2,0,0)}, empty, slit, slender);
+    sampleSafety(scaled, empty, slit, slender);
+    Eigen::SelfAdjointEigenSolver<Eigen::Matrix2d> slitAxes(
+        scaled.corridor.section(.5).shape.transpose() *
+        scaled.corridor.section(.5).shape);
+    check(slitAxes.eigenvalues()[1] > 1.8*1.8 &&
+              slitAxes.eigenvalues()[0] > .0008*.0008,
+          "equilibrated solver expands highly anisotropic section");
     // Local range is a world-axis box expansion, not an ellipse-radius cap.
     // Exercise a 7 m box transition inside a nonaligned Hermite interval.
     Options ranged = opts();
@@ -187,6 +246,20 @@ int main() {
         tunnel.corridor.section(.5).shape);
     check(eig.eigenvalues()[1] > 4 * eig.eigenvalues()[0],
           "anisotropic passage retains tall ellipse");
+    // A farther sphere may protrude in front of a smaller near sphere. The
+    // greedy separator must test its whole inflated radius before skipping it.
+    std::vector<Sphere> varied;
+    for (int i = -3; i <= 3; ++i)
+      for (int sign : {-1, 1}) {
+        varied.push_back({Vec3(i * .4, sign * 1.4, 0), .1});
+        varied.push_back({Vec3(i * .4, sign * 2.8, 0), 1.8});
+        varied.push_back({Vec3(i * .4, sign * 3.5, 0), .2});
+      }
+    ObstacleIndex differentRadii(varied);
+    const auto occluded =
+        generate({Vec3(-3, 0, 0), Vec3(3, 0, 0)}, differentRadii, box(), o);
+    sampleSafety(occluded, differentRadii, box(), o);
+    derivatives(occluded.corridor);
     // Regressions for the two freedoms missing from the original generator.
     std::vector<Sphere> oneSide, rotatedWalls;
     const Eigen::Matrix3d roll =

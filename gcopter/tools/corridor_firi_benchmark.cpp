@@ -256,6 +256,30 @@ int main(int argc, char** argv) {
     }
     if (box_violation > 1e-7)
       throw std::runtime_error("independent local expansion audit failed");
+    bool hermite_sample_safe = true;
+    std::size_t hermite_audit_samples = 0;
+    if (solid) {
+      const double pad = options.robot_radius + options.safety_margin;
+      std::vector<int> ids;
+      for (int k = 0; k <= 256; ++k) {
+        const auto section = hermite.corridor.section(k / 256.);
+        for (double radius : {0., .5, 1.})
+          for (int j = 0; j < 32; ++j) {
+            const double theta = j * 2 * std::acos(-1.) / 32;
+            const Vec3 p = section.point(
+                radius * Eigen::Vector2d(std::cos(theta), std::sin(theta)));
+            ++hermite_audit_samples;
+            map.query(p - Vec3::Constant(pad), p + Vec3::Constant(pad), ids);
+            for (int id : ids)
+              if ((p - map.obstacles()[id].center).norm() <
+                  map.obstacles()[id].radius + pad - 1e-7)
+                hermite_sample_safe = false;
+            if ((p.array() < bounds.lower.array() + pad - 1e-7).any() ||
+                (p.array() > bounds.upper.array() - pad + 1e-7).any())
+              hermite_sample_safe = false;
+          }
+      }
+    }
     std::vector<corridor_volume::Poly> polys;
     int empty = 0;
     bool connected = true;
@@ -312,6 +336,11 @@ int main(int argc, char** argv) {
         << ",\"hermite_optimization_ms\":" << hermite.metrics.optimization_ms
         << ",\"hermite_certificate_ms\":" << hermite.metrics.certificate_ms
         << ",\"hermite_constraints\":" << hermite.metrics.constraints
+        << ",\"hermite_active_constraints\":" << hermite.metrics.active_constraints
+        << ",\"hermite_newton_steps\":" << hermite.metrics.newton_steps
+        << ",\"hermite_obstacle_pairs\":" << hermite.metrics.obstacle_pairs
+        << ",\"hermite_sample_safe\":" << (hermite_sample_safe ? "true" : "false")
+        << ",\"hermite_audit_samples\":" << hermite_audit_samples
         << ",\"hermite_refinements\":" << hermite.metrics.refinements
         << ",\"obstacles\":" << points.size() << ",\"index_ms\":" << index_ms
         << ",\"hermite_nodes\":" << hermite.metrics.nodes
@@ -351,7 +380,8 @@ int main(int argc, char** argv) {
               << "ms F=" << quantile(ft, .5) << "ms V=" << volume.volume[0].mean
               << '/' << volume.volume[1].mean << " connected=" << connected
               << " safe=" << safe << " volume_ms=" << volume_ms << '\n';
-    return safe && volume.unresolved == 0 ? 0 : 1;
+    return safe && connected && hermite_sample_safe && volume.unresolved == 0
+               ? 0 : 1;
   } catch (const std::exception& e) {
     std::cerr << e.what() << '\n';
     return 2;

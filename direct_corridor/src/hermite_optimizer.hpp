@@ -156,10 +156,6 @@ struct Certificates {
   const Stop& stop;
   Metrics& metrics;
   std::vector<Cut> cuts;
-  // Fixed directions are used only when they already separate the current
-  // entire patch. Otherwise retain the actual nearest-ellipse direction or
-  // subdivide this obstacle/patch pair; no obstacle is discarded by clustering.
-  std::array<Vec3, 729> directions;
   Certificates(const ObstacleIndex& m, const Bounds& b, const Options& o,
                const Stop& s, Metrics& me, const std::vector<LocalBox>& boxes)
       : map(m),
@@ -167,15 +163,7 @@ struct Certificates {
         options(o),
         local_boxes(boxes),
         stop(s),
-        metrics(me) {
-    for (int x = -4; x <= 4; ++x)
-      for (int y = -4; y <= 4; ++y)
-        for (int z = -4; z <= 4; ++z) {
-          Vec3 n(x, y, z);
-          directions[(x + 4) * 81 + (y + 4) * 9 + z + 4] =
-              n.norm() > 0 ? n.normalized() : Vec3::Zero();
-        }
-  }
+        metrics(me) {}
   void add(const Patch& p, const Vec3& normal, double bound,
            const std::vector<Node>& nodes) {
     const auto &a = nodes[p.span], &b = nodes[p.span + 1];
@@ -205,6 +193,10 @@ struct Certificates {
   void pairCuts(const Patch& p, const std::vector<int>& ids,
                 const std::vector<Node>& nodes, int depth) {
     stop();
+    if (ids.empty()) {
+      ++metrics.certificate_leaves;
+      return;
+    }
     std::array<Vec3, 6> c;
     std::array<Mat32, 6> m;
     controls(p, nodes, c, m);
@@ -212,47 +204,60 @@ struct Certificates {
     const Mat32 mm = middle(m);
     Eigen::SelfAdjointEigenSolver<M2> eig(mm.transpose() * mm);
     const V2 lambda = eig.eigenvalues();
+    if (eig.info() != Eigen::Success || !lambda.allFinite() ||
+        lambda[0] <= 1e-24)
+      throw Failure{Status::DegeneratePath,
+                    "degenerate section in separator metric"};
     const M2 u = eig.eigenvectors();
-    const Eigen::Matrix<double, 2, 3> transform =
-        u.transpose() * mm.transpose();
-    auto support = [&](const Vec3& n) {
-      double v = -std::numeric_limits<double>::infinity();
-      for (int j = 0; j < 6; ++j)
-        v = std::max(v, n.dot(c[j]) + (m[j].transpose() * n).norm());
-      return v;
+    const Eigen::Matrix<double, 2, 3> transform = u.transpose() * mm.transpose();
+    const Vec3 normal = mm.col(0).cross(mm.col(1)).normalized();
+    const double longitudinal =
+        std::max(.5 * (c[5] - c[0]).norm(), options.min_radius);
+    const double min_scale = std::min(std::sqrt(lambda[0]), longitudinal);
+    const double pad = options.robot_radius + options.safety_margin +
+                       options.certificate_margin;
+    struct Candidate {
+      int id;
+      double distance;
     };
-    std::array<double, 729> planes, cached_support;
-    planes.fill(std::numeric_limits<double>::infinity());
-    cached_support.fill(std::numeric_limits<double>::quiet_NaN());
-    std::vector<int> failed;
+    std::vector<Candidate> remaining;
+    remaining.reserve(ids.size());
+    // The ellipsoidal metric determines only the processing order. Every
+    // accepted plane is checked against all six control ellipses, and every
+    // discarded obstacle must lie wholly behind such an accepted plane.
     for (int id : ids) {
-      ++metrics.obstacle_pairs;
-      const auto& s = map.obstacles()[id];
-      const double radius = s.radius + options.robot_radius +
-                            options.safety_margin + options.certificate_margin;
-      const Vec3 delta = s.center - cm;
-      // Interior map voxels often lie behind an already accepted separator.
-      // Reuse that exact half-space certificate before solving another closest
-      // ellipse problem. The test covers the whole inflated sphere.
-      if (delta.cwiseAbs().maxCoeff() > 1e-12) {
-        const Eigen::Vector3i radial = (4 * delta / delta.cwiseAbs().maxCoeff())
-                                           .array()
-                                           .round()
-                                           .cast<int>();
-        const int radial_key =
-            (radial.x() + 4) * 81 + (radial.y() + 4) * 9 + radial.z() + 4;
-        if (planes[radial_key] <= directions[radial_key].dot(s.center) - radius)
-          continue;
-      }
+      const auto& sphere = map.obstacles()[id];
+      const Vec3 delta = sphere.center - cm;
+      const V2 projection = (transform * delta).cwiseQuotient(lambda);
+      const double axial = normal.dot(delta) / longitudinal;
+      remaining.push_back(
+          {id, std::sqrt(projection.squaredNorm() + axial * axial) -
+                   (sphere.radius + pad) / min_scale});
+    }
+    auto nearest = [&] {
+      return std::min_element(
+                 remaining.begin(), remaining.end(),
+                 [](const Candidate& a, const Candidate& b) {
+                   return a.distance < b.distance ||
+                          (a.distance == b.distance && a.id < b.id);
+                 }) - remaining.begin();
+    };
+    std::vector<int> failed;
+    std::size_t next = nearest();
+    while (!remaining.empty()) {
+      stop();
+      const int id = remaining[next].id;
+      const auto& sphere = map.obstacles()[id];
+      const Vec3 delta = sphere.center - cm;
       const V2 rhs = transform * delta;
       V2 v = rhs.cwiseQuotient(lambda);
       if (v.squaredNorm() > 1) {
-        if (lambda[1] < 1.001 * lambda[0])
+        if (lambda[1] < 1.001 * lambda[0]) {
           v.normalize();
-        else {
+        } else {
           double lo = 0, hi = rhs.norm();
           for (int it = 0; it < 18; ++it) {
-            double t = .5 * (lo + hi);
+            const double t = .5 * (lo + hi);
             if ((rhs.array() / (lambda.array() + t)).matrix().squaredNorm() > 1)
               lo = t;
             else
@@ -262,37 +267,46 @@ struct Certificates {
         }
       }
       Vec3 n = delta - mm * (u * v);
-      if (n.norm() < 1e-12) {
-        failed.push_back(id);
-        continue;
+      double h = -INFINITY, support = INFINITY;
+      if (n.norm() > 1e-12) {
+        n.normalize();
+        h = n.dot(sphere.center) - sphere.radius - pad;
+        support = -INFINITY;
+        for (int j = 0; j < 6; ++j)
+          support =
+              std::max(support, n.dot(c[j]) + (m[j].transpose() * n).norm());
       }
-      n.normalize();
-      Eigen::Vector3i q =
-          (4 * n / n.cwiseAbs().maxCoeff()).array().round().cast<int>();
-      int key = (q.x() + 4) * 81 + (q.y() + 4) * 9 + q.z() + 4;
-      const Vec3 nq = directions[key];
-      const double h = nq.dot(s.center) - radius;
-      if (std::isnan(cached_support[key])) cached_support[key] = support(nq);
-      if (cached_support[key] < h - 1e-10)
-        planes[key] = std::min(planes[key], h);
-      else {
-        const double exact = n.dot(s.center) - radius;
-        if (support(n) < exact - 1e-10)
-          add(p, n, exact, nodes);
-        else
-          failed.push_back(id);
+      ++metrics.obstacle_pairs;
+      if (support < h - 1e-10) {
+        add(p, n, h, nodes);
+        std::size_t count = 0;
+        double best = INFINITY;
+        for (const auto& candidate : remaining) {
+          if (candidate.id == id) continue;
+          ++metrics.obstacle_pairs;
+          const auto& other = map.obstacles()[candidate.id];
+          if (n.dot(other.center) - other.radius - pad >= h) continue;
+          remaining[count] = candidate;
+          if (count == 0 || candidate.distance < best) {
+            best = candidate.distance;
+            next = count;
+          }
+          ++count;
+        }
+        remaining.resize(count);
+      } else {
+        failed.push_back(id);
+        remaining[next] = remaining.back();
+        remaining.pop_back();
+        if (!remaining.empty()) next = nearest();
       }
     }
-    for (int key = 0; key < 729; ++key)
-      if (std::isfinite(planes[key]))
-        add(p, directions[key], planes[key], nodes);
     ++metrics.certificate_leaves;
     if (!failed.empty()) {
       if (depth >= options.certificate_depth)
-        throw Failure{
-            Status::InsufficientClearance,
-            "Hermite patch cannot be separated from an inflated obstacle"};
-      auto halves = split(p);
+        throw Failure{Status::InsufficientClearance,
+                      "Hermite patch cannot be separated from an inflated obstacle"};
+      const auto halves = split(p);
       pairCuts(halves.first, failed, nodes, depth + 1);
       pairCuts(halves.second, failed, nodes, depth + 1);
     }
@@ -413,6 +427,81 @@ struct Certificates {
   }
 };
 
+// A node-only support row says its ellipse lies in a 2-D half-plane.
+// Translate by a strictly feasible center d, then polarize:
+//   a.y <= h  <=>  q.(y-d) <= 1, q=a/(h-a.d).
+// A q strictly inside conv({0,q_j}) is redundant for EVERY ellipse, not just
+// the current one. Keep coupled rows and numerically ambiguous boundary rows.
+// Original rows remain available for the full residual audit after solving.
+inline std::vector<int> irredundant(const std::vector<Node>& nodes,
+                                  const std::vector<Cut>& cuts) {
+  struct Point {
+    V2 q;
+    int id;
+  };
+  std::vector<std::vector<Point>> groups(nodes.size());
+  std::vector<bool> keep(cuts.size(), true);
+  for (int id = 0; id < int(cuts.size()); ++id) {
+    const auto& c = cuts[id];
+    if (c.linear || (c.a.squaredNorm() > 0 && c.b.squaredNorm() > 0)) continue;
+    const bool left = c.a.squaredNorm() > 0;
+    const V2 a = left ? c.a : c.b;
+    const int i = c.span + !left;
+    const double h = c.h - a.dot(nodes[i].x.head<2>());
+    if (h > 0 && (a / h).allFinite()) groups[i].push_back({a / h, id});
+  }
+  auto cross = [](const V2& a, const V2& b, const V2& c) {
+    return (static_cast<long double>(b[0]) - a[0]) *
+               (static_cast<long double>(c[1]) - a[1]) -
+           (static_cast<long double>(b[1]) - a[1]) *
+               (static_cast<long double>(c[0]) - a[0]);
+  };
+  for (auto& points : groups) {
+    if (points.size() < 4) continue;
+    points.push_back({V2::Zero(), -1});
+    std::sort(points.begin(), points.end(), [](const Point& a, const Point& b) {
+      return std::make_tuple(a.q[0], a.q[1], a.id) <
+             std::make_tuple(b.q[0], b.q[1], b.id);
+    });
+    std::vector<Point> hull;
+    for (const auto& p : points) {
+      while (hull.size() >= 2 &&
+             cross(hull[hull.size() - 2].q, hull.back().q, p.q) <= 0)
+        hull.pop_back();
+      hull.push_back(p);
+    }
+    const auto lower = hull.size();
+    for (int j = int(points.size()) - 2; j >= 0; --j) {
+      const auto& p = points[j];
+      while (hull.size() > lower &&
+             cross(hull[hull.size() - 2].q, hull.back().q, p.q) <= 0)
+        hull.pop_back();
+      hull.push_back(p);
+    }
+    if (hull.size() < 4) continue;
+    hull.pop_back();
+    for (const auto& p : points) {
+      if (p.id < 0) continue;
+      bool inside = true;
+      for (std::size_t j = 0; j < hull.size(); ++j) {
+        const V2& a = hull[j].q;
+        const V2& b = hull[(j + 1) % hull.size()].q;
+        const double guard = 1e-12 *
+            (1 + (b - a).lpNorm<1>() * (p.q - a).lpNorm<1>());
+        if (cross(a, b, p.q) <= guard) {
+          inside = false;
+          break;
+        }
+      }
+      if (inside) keep[p.id] = false;
+    }
+  }
+  std::vector<int> active;
+  for (int id = 0; id < int(cuts.size()); ++id)
+    if (keep[id]) active.push_back(id);
+  return active;
+}
+
 // Five variables per knot: offset x/y and the full symmetric positive shape
 // matrix xx/xy/yy. The off-diagonal entry optimizes ellipse orientation.
 // Neighboring knots are coupled by SOC support constraints; the Newton matrix
@@ -420,8 +509,9 @@ struct Certificates {
 struct Optimizer {
   const Options& o;
   const Stop& stop;
-  std::vector<H5> diagonal, upper, inverse;
-  std::vector<V5> gradient, rhs, step;
+  std::vector<H5> diagonal, upper;
+  std::vector<Eigen::LDLT<H5>> factors;
+  std::vector<V5> gradient, rhs, step, scaling;
   std::array<M2, 3> basis;
   Optimizer(const Options& options, const Stop& s) : o(options), stop(s) {
     basis[0] << 1, 0, 0, 0;
@@ -537,11 +627,12 @@ struct Optimizer {
   void solve(std::vector<Node>& nodes, const std::vector<Cut>& cuts,
              const std::vector<int>& active, Metrics& metrics) {
     const int count = nodes.size();
-    inverse.resize(count);
+    factors.resize(count);
     rhs.resize(count);
     step.resize(count);
+    scaling.resize(count);
     for (double mu : {.003, .0001, .00001}) {
-      for (int iteration = 0; iteration < 8; ++iteration) {
+      for (int iteration = 0; iteration < 12; ++iteration) {
         stop();
         ++metrics.newton_steps;
         const double before = objective(nodes, cuts, active, mu, true);
@@ -558,26 +649,55 @@ struct Optimizer {
             if (i < count - 1) upper[i].row(k).setZero();
             if (i > 0) upper[i - 1].col(k).setZero();
           }
+        // Equilibrate the Newton system before block elimination. Near-active
+        // support barriers can differ by many orders of magnitude; an absolute
+        // 1e-10 diagonal shift does not stabilize their Schur complements.
+        for (int i = 0; i < count; ++i)
+          scaling[i] = diagonal[i].diagonal().cwiseMax(1e-30).cwiseSqrt();
         for (int i = 0; i < count; ++i) {
-          H5 h = diagonal[i];
-          rhs[i] = -gradient[i];
-          if (i) {
-            const H5 l = upper[i - 1].transpose() * inverse[i - 1];
-            h -= l * upper[i - 1];
-            rhs[i] -= l * rhs[i - 1];
+          diagonal[i] = scaling[i].cwiseInverse().asDiagonal() * diagonal[i] *
+                        scaling[i].cwiseInverse().asDiagonal();
+          if (i + 1 < count)
+            upper[i] = scaling[i].cwiseInverse().asDiagonal() * upper[i] *
+                       scaling[i + 1].cwiseInverse().asDiagonal();
+        }
+        bool factored = false;
+        // Solve through factors instead of forming inverses. If roundoff still
+        // destroys a Schur pivot, restart the SAME system with larger relative
+        // damping. The original objective and all support constraints remain
+        // unchanged; the line search must accept the resulting descent step.
+        for (double damping : {1e-10, 1e-8, 1e-6, 1e-4}) {
+          factored = true;
+          for (int i = 0; i < count; ++i) {
+            H5 h = diagonal[i];
+            rhs[i] = -gradient[i].cwiseQuotient(scaling[i]);
+            if (i) {
+              h -= upper[i - 1].transpose() *
+                   factors[i - 1].solve(upper[i - 1]);
+              rhs[i] -= upper[i - 1].transpose() *
+                        factors[i - 1].solve(rhs[i - 1]);
+            }
+            h.diagonal().array() += damping;
+            factors[i].compute(h);
+            if (!h.allFinite() || factors[i].info() != Eigen::Success ||
+                !factors[i].isPositive()) {
+              factored = false;
+              break;
+            }
           }
-          h.diagonal().array() += 1e-10;
-          Eigen::LDLT<H5> ldlt(h);
-          if (ldlt.info() != Eigen::Success || !ldlt.isPositive())
-            throw Failure{Status::VerificationFailed,
-                          "Hermite Newton factorization failed"};
-          inverse[i] = ldlt.solve(H5::Identity());
+          if (factored) break;
+        }
+        if (!factored)
+          throw Failure{Status::VerificationFailed,
+                        "Hermite Newton factorization failed after scaling"};
+        for (int i = count - 1; i >= 0; --i) {
+          step[i] = factors[i].solve(
+              rhs[i] - (i + 1 < count ? V5(upper[i] * step[i + 1])
+                                     : V5::Zero()));
         }
         double slope = 0;
-        for (int i = count - 1; i >= 0; --i) {
-          step[i] =
-              inverse[i] * (rhs[i] - (i + 1 < count ? V5(upper[i] * step[i + 1])
-                                                    : V5::Zero()));
+        for (int i = 0; i < count; ++i) {
+          step[i] = step[i].cwiseQuotient(scaling[i]);
           slope += gradient[i].dot(step[i]);
         }
         if (-slope < 1e-7 * count) break;
@@ -624,8 +744,7 @@ struct Optimizer {
         }
       if (feasible) nodes.swap(candidate);
     }
-    std::vector<int> active(cuts.size());
-    std::iota(active.begin(), active.end(), 0);
+    const auto active = irredundant(nodes, cuts);
     ++metrics.optimization_passes;
     solve(nodes, cuts, active, metrics);
     metrics.active_constraints = active.size();

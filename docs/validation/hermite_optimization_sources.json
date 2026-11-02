@@ -1,0 +1,66 @@
+{
+  "baseline_commit": "661dd28e1269515f5195c9b09efd1d09bbb6643e",
+  "date": "2026-11-02",
+  "generation_repeats": 3,
+  "warmup_per_model": 1,
+  "models": [
+    "points",
+    "solid"
+  ],
+  "paths_for_volume_comparison": 3,
+  "saved_path_replay": 26,
+  "replay_repeats": 1,
+  "replay_radius_cap_m": 1.5,
+  "expansion_policy": "matched-box",
+  "local_range_m": 3,
+  "local_progress_m": 7,
+  "control_spacing_m": 0.4,
+  "hermite_inflation_rounds": 2,
+  "newton_barrier_parameters": [
+    0.003,
+    0.0001,
+    1e-05
+  ],
+  "newton_max_steps_per_parameter": 12,
+  "scaled_damping_retries": [
+    1e-10,
+    1e-08,
+    1e-06,
+    0.0001
+  ],
+  "firi_iterations": 4,
+  "solid_robot_radius_m": 0.2,
+  "solid_safety_margin_m": 0.05,
+  "solid_extra_margin_m": 0.002,
+  "volume_samples_per_model": 524288,
+  "qmc_shifts": 8,
+  "pilot_samples_per_model": 131072,
+  "solid_independent_sample_checks": 24672,
+  "source_model_unchanged": true,
+  "volume_definition": "geometric union, duplicates counted once; randomized QMC estimate",
+  "memory_limit_mib": 512,
+  "cpu_seconds": [
+    25,
+    30
+  ],
+  "wall_seconds": 40,
+  "run_mode": "sequential",
+  "build": "GCC Release -O3, -j1, 2 GiB address-space limit",
+  "baseline_library_sha256": "9b1e977ef95c1d4f1504090814a7d126ec7b0bc135fd2f26622748602ebc92e8",
+  "sha256": {
+    "direct_corridor/include/gcopter/direct_corridor.hpp": "cfcb5fbdddefeabbe9acb6f47565fc47c7e2837d53882fa474fd514b2f8d61e2",
+    "direct_corridor/src/direct_corridor.cpp": "778953bb7cc7ed49ce31eb3e20332c42973bf5c33c2679a1f1a0722a36459cce",
+    "direct_corridor/src/hermite_optimizer.hpp": "a302d8d90fceaeffdad1b55324de742f0ee454d8d293a222a3923203b1f2adb2",
+    "direct_corridor/tests/test_corridor.cpp": "2cc4fab091a6f8773ee67181083615a5f7c7736693ae758f1b5c6da4c9019e0d",
+    "gcopter/tools/corridor_firi_benchmark.cpp": "fda29cb32f0272a80c22f9e4ea9ade5f4dc242b147b958ddab52a6581d1ef0f0",
+    "gcopter/tools/corridor_volume.hpp": "11709d2a21e31967787c86999f14ca2945c298c8601760cc98688bbec9d800ef",
+    "gcopter/tools/run_firi_comparison.py": "025d8564a76f63338ef4f2b66826334d5ca16bf9568a6af24d068bd7ebbbfb8e",
+    "direct_corridor/tools/replay_comparison.py": "597711817a61e48be464e0d41a1c1b7635e099259192f14885bd5dd7354745a9",
+    "gcopter/include/gcopter/firi.hpp": "e47441312b31dff209a59798a8414cbdf310534720e984c73894cb7ea1beb6ee",
+    "gcopter/include/gcopter/sfc_gen.hpp": "023377b199cbd4fa04a14668343dcbcb23d130be698c968867d1bd5536daecea"
+  },
+  "artifact_sha256": {
+    "install/gcopter_direct_corridor/lib/libgcopter_direct_corridor.so": "9056f41e3d6774acc6c9b84611a5149f9b4a874033241309dca4455d620f8afa",
+    "build/gcopter/corridor_firi_benchmark": "d246fc59fa96cdea4f89ad93b73b0aa666c5dcffa0d8481938df8787017050b5"
+  }
+}
