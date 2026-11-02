@@ -405,13 +405,17 @@ Result generate(const std::vector<Vec3>& seed, const ObstacleIndex& index,
           previous = tangent;
         }
         std::vector<Node> best;
+        QueryCache query_cache;
         for (int iteration = 0; iteration < o.inflation_iterations;
              ++iteration) {
           if (iteration && elapsed() > .5 * o.budget_ms) break;
           try {
             double timer = elapsed();
             Certificates certificates(index, bounds, o, stop, result.metrics,
-                                      local_boxes);
+                                      local_boxes, query_cache);
+            // The tiny initial circles carry no useful free-space shape.
+            // Use the learned metric only after the first inflation solve.
+            certificates.use_shape_metric = iteration > 0;
             certificates.build(nodes);
             result.metrics.certificate_ms += elapsed() - timer;
             for (const auto& c : certificates.cuts)

@@ -8,6 +8,7 @@
 #include <cmath>
 #include <functional>
 #include <limits>
+#include <map>
 #include <numeric>
 #include <tuple>
 
@@ -148,6 +149,70 @@ inline double value(const Cut& c, const std::vector<Node>& nodes) {
   return v;
 }
 
+// The reference, frames and query bounds are fixed throughout an inflation
+// run. Share identical query boxes between spans as well as inflation rounds;
+// never retain data across requests or reference refinements. A full cache
+// simply falls back to ordinary queries.
+struct QueryCache {
+  static constexpr std::size_t byte_limit = 16 * 1024 * 1024;
+  std::vector<std::vector<int>> ids;
+  std::vector<int> spans;
+  std::map<std::array<double, 6>, int> boxes;
+  std::size_t bytes = 0;
+
+  const std::vector<int>& query(int span, const Vec3& lower, const Vec3& upper,
+                               const ObstacleIndex& map,
+                               std::vector<int>& scratch) {
+    if (span < int(spans.size()) && spans[span] >= 0) return ids[spans[span]];
+    const std::array<double, 6> key{lower[0], lower[1], lower[2],
+                                    upper[0], upper[1], upper[2]};
+    int entry = -1;
+    const auto found = boxes.find(key);
+    if (found != boxes.end()) {
+      entry = found->second;
+    } else {
+      map.query(lower, upper, scratch);
+      const std::size_t size = scratch.capacity() * sizeof(int);
+      if (size <= byte_limit - bytes) {
+        bytes += size;
+        entry = int(ids.size());
+        ids.push_back(std::move(scratch));
+        boxes.emplace(key, entry);
+      }
+    }
+    if (span == int(spans.size())) spans.push_back(entry);
+    return entry >= 0 ? ids[entry] : scratch;
+  }
+};
+
+// Closest point of a sphere in an ellipsoidal metric. In principal axes the
+// KKT equation is sum((t*delta_i/(axes2_i+t))^2)=radius^2, with a monotone
+// bracket. Eight safeguarded Newton steps only propose a normal: the caller
+// still certifies the whole Bezier patch against the original sphere.
+inline Vec3 metricSphereNormal(const Vec3& delta, const Vec3& axes2,
+                               double radius) {
+  const double distance = delta.norm();
+  if (distance <= radius) return delta;
+  double lo = radius * axes2.minCoeff() / (distance - radius);
+  double hi = radius * axes2.maxCoeff() / (distance - radius);
+  double t = lo;
+  for (int it = 0; it < 8; ++it) {
+    const Vec3 inverse = (axes2.array() + t).inverse().matrix();
+    const Vec3 v = delta.cwiseProduct(inverse);
+    const double f = t * t * v.squaredNorm() - radius * radius;
+    if (std::abs(f) <= 1e-10 * radius * radius) break;
+    if (f < 0)
+      lo = t;
+    else
+      hi = t;
+    const double derivative =
+        2 * t * v.cwiseAbs2().dot(axes2.cwiseProduct(inverse));
+    const double next = t - f / derivative;
+    t = next > lo && next < hi ? next : .5 * (lo + hi);
+  }
+  return delta.cwiseQuotient(axes2 + Vec3::Constant(t));
+}
+
 struct Certificates {
   const ObstacleIndex& map;
   const Bounds& bounds;
@@ -155,15 +220,19 @@ struct Certificates {
   const std::vector<LocalBox>& local_boxes;
   const Stop& stop;
   Metrics& metrics;
+  QueryCache& query_cache;
+  bool use_shape_metric = false;
   std::vector<Cut> cuts;
   Certificates(const ObstacleIndex& m, const Bounds& b, const Options& o,
-               const Stop& s, Metrics& me, const std::vector<LocalBox>& boxes)
+               const Stop& s, Metrics& me, const std::vector<LocalBox>& boxes,
+               QueryCache& cache)
       : map(m),
         bounds(b),
         options(o),
         local_boxes(boxes),
         stop(s),
-        metrics(me) {}
+        metrics(me),
+        query_cache(cache) {}
   void add(const Patch& p, const Vec3& normal, double bound,
            const std::vector<Node>& nodes) {
     const auto &a = nodes[p.span], &b = nodes[p.span + 1];
@@ -223,6 +292,11 @@ struct Certificates {
     Eigen::Matrix3d metric;
     metric.topRows<2>() = lambda.cwiseInverse().asDiagonal() * transform;
     metric.row(2) = normal.transpose() / longitudinal;
+    Eigen::Matrix3d rotation;
+    rotation.topRows<2>() = lambda.cwiseSqrt().cwiseInverse().asDiagonal() *
+                           transform;
+    rotation.row(2) = normal.transpose();
+    const Vec3 axes2(lambda[0], lambda[1], longitudinal * longitudinal);
     const double first_radius = map.obstacles()[ids.front()].radius;
     bool uniform_radius = true;
     struct Candidate {
@@ -256,40 +330,50 @@ struct Certificates {
     };
     std::vector<int> failed;
     std::size_t next = nearest();
+    unsigned processed = 0;
     while (!remaining.empty()) {
-      stop();
+      if ((++processed & 31u) == 0) stop();
       const int id = remaining[next].id;
       const auto& sphere = map.obstacles()[id];
       const Vec3 delta = sphere.center - cm;
-      const V2 rhs = transform * delta;
-      V2 v = rhs.cwiseQuotient(lambda);
-      if (v.squaredNorm() > 1) {
-        if (lambda[1] < 1.001 * lambda[0]) {
-          v.normalize();
-        } else {
-          double lo = 0, hi = rhs.norm();
-          for (int it = 0; it < 18; ++it) {
-            const double t = .5 * (lo + hi);
-            if ((rhs.array() / (lambda.array() + t)).matrix().squaredNorm() > 1)
-              lo = t;
-            else
-              hi = t;
-          }
-          v = (rhs.array() / (lambda.array() + hi)).matrix();
-        }
-      }
-      Vec3 n = delta - mm * (u * v);
-      double h = -INFINITY, support = INFINITY;
-      if (n.norm() > 1e-12) {
-        n.normalize();
+      Vec3 n;
+      double h;
+      auto separate = [&](const Vec3& direction) {
+        const double length = direction.norm();
+        if (length <= 1e-12) return false;
+        n = direction / length;
         h = n.dot(sphere.center) - sphere.radius - pad;
-        support = -INFINITY;
+        double support = -INFINITY;
         for (int j = 0; j < 6; ++j)
           support =
               std::max(support, n.dot(c[j]) + (m[j].transpose() * n).norm());
+        return support < h - 1e-10;
+      };
+      bool separated = use_shape_metric &&
+          separate(rotation.transpose() * metricSphereNormal(
+              rotation * delta, axes2, sphere.radius + pad));
+      if (!separated) {
+        const V2 rhs = transform * delta;
+        V2 v = rhs.cwiseQuotient(lambda);
+        if (v.squaredNorm() > 1) {
+          if (lambda[1] < 1.001 * lambda[0]) {
+            v.normalize();
+          } else {
+            double lo = 0, hi = rhs.norm();
+            for (int it = 0; it < 18; ++it) {
+              const double t = .5 * (lo + hi);
+              if ((rhs.array() / (lambda.array() + t)).matrix().squaredNorm() > 1)
+                lo = t;
+              else
+                hi = t;
+            }
+            v = (rhs.array() / (lambda.array() + hi)).matrix();
+          }
+        }
+        separated = separate(delta - mm * (u * v));
       }
       ++metrics.obstacle_pairs;
-      if (support < h - 1e-10) {
+      if (separated) {
         add(p, n, h, nodes);
         std::size_t count = 0;
         double best = INFINITY;
@@ -395,8 +479,7 @@ struct Certificates {
         query_lo = query_lo.cwiseMax(local_lo - Vec3::Constant(pad));
         query_hi = query_hi.cwiseMin(local_hi + Vec3::Constant(pad));
       }
-      map.query(query_lo, query_hi, ids);
-      pairCuts(p, ids, nodes, 0);
+      pairCuts(p, query_cache.query(i, query_lo, query_hi, map, ids), nodes, 0);
     }
     // Merge identical node-only rows shared by adjacent patches. Scaling a
     // row does not change its feasible set; duplicate barriers otherwise also
@@ -692,7 +775,7 @@ struct Optimizer {
             }
             h.diagonal().array() += damping;
             factors[i].compute(h);
-            if (!h.allFinite() || factors[i].info() != Eigen::Success) {
+            if (factors[i].info() != Eigen::Success) {
               factored = false;
               break;
             }

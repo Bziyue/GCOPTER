@@ -98,6 +98,59 @@ void derivatives(const Corridor& c) {
 }  // namespace
 int main() {
   try {
+    // Query identity is independent of the changing section shapes. Check
+    // cross-span sharing, round reuse and the memory-cap fallback explicitly.
+    {
+      ObstacleIndex map({{Vec3(0, 0, 0), .1}, {Vec3(2, 0, 0), .2}});
+      detail::QueryCache cache;
+      std::vector<int> scratch, expected;
+      const Vec3 lo(-1, -1, -1), hi(1, 1, 1);
+      map.query(lo, hi, expected);
+      check(cache.query(0, lo, hi, map, scratch) == expected,
+            "first cached query matches BVH");
+      check(cache.query(1, lo, hi, map, scratch) == expected &&
+                cache.ids.size() == 1 && cache.spans[0] == cache.spans[1],
+            "identical boxes share candidate storage across spans");
+      check(cache.query(0, lo, hi, map, scratch) == expected,
+            "later inflation round reuses candidate indices");
+      cache.bytes = detail::QueryCache::byte_limit;
+      const Vec3 wider(3, 1, 1);
+      map.query(lo, wider, expected);
+      check(cache.query(2, lo, wider, map, scratch) == expected &&
+                cache.ids.size() == 1 && cache.spans[2] == -1,
+            "full cache falls back without omitting obstacles");
+      check(cache.query(2, lo, wider, map, scratch) == expected,
+            "uncached span remains correct in later rounds");
+    }
+    // Independent bisection checks the sphere-metric KKT direction, including
+    // point obstacles and isotropic metrics. Actual safety uses support planes.
+    {
+      std::mt19937 random(19);
+      std::uniform_real_distribution<double> value(-2, 2), ratio(.05, .8);
+      for (int k = 0; k < 200; ++k) {
+        const Vec3 delta(value(random), value(random), value(random));
+        const Vec3 axes(std::exp(value(random)), std::exp(value(random)),
+                        std::exp(value(random)));
+        const double radius = k == 0 ? 0 : ratio(random) * delta.norm();
+        double lo = 0, hi = radius * axes.maxCoeff() / (delta.norm() - radius);
+        for (int it = 0; it < 100; ++it) {
+          const double t = .5 * (lo + hi);
+          if ((t * delta.array() / (axes.array() + t)).square().sum() <
+              radius * radius)
+            lo = t;
+          else
+            hi = t;
+        }
+        const Vec3 expected = delta.cwiseQuotient(axes + Vec3::Constant(hi));
+        const Vec3 actual = detail::metricSphereNormal(delta, axes, radius);
+        check((actual.normalized() - expected.normalized()).norm() < 1e-7,
+              "sphere metric normal matches independent bisection");
+      }
+      const Vec3 delta(1, 2, -3);
+      check((detail::metricSphereNormal(delta, Vec3::Constant(.7), .4)
+                 .normalized() - delta.normalized()).norm() < 1e-12,
+            "isotropic metric gives radial sphere normal");
+    }
     // Independent finite differences of the full barrier objective check the
     // closed-form logdet derivatives together with SOC and coupling terms.
     {

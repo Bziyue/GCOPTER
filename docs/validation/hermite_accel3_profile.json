@@ -1,0 +1,13 @@
+{
+  "method": "gprof -pg sampling; separate serial Release build; timing is not comparable to production",
+  "request": ".scratch/interactive/perlin_final/run_1793605176741410828_3715435/request_10",
+  "generations": 120,
+  "sampling_interval_seconds": 0.01,
+  "top_flat_profile_rows": [
+    "45.01      2.84     2.84    51120     0.06     0.06  gcopter::direct::detail::Certificates::pairCuts(gcopter::direct::detail::Patch const&, std::vector<int, std::allocator<int> > const&, std::vector<gcopter::direct::detail::Node, std::allocator<gcopter::direct::detail::Node> > const&, int)",
+    "18.07      3.98     1.14    57000     0.02     0.02  gcopter::direct::ObstacleIndex::query(Eigen::Matrix<double, 3, 1, 0, 3, 1> const&, Eigen::Matrix<double, 3, 1, 0, 3, 1> const&, std::vector<int, std::allocator<int> >&) const",
+    "12.52      4.77     0.79     8640     0.09     0.09  gcopter::direct::detail::Optimizer::objective(std::vector<gcopter::direct::detail::Node, std::allocator<gcopter::direct::detail::Node> > const&, std::vector<gcopter::direct::detail::Cut, std::allocator<gcopter::direct::detail::Cut> > const&, std::vector<int, std::allocator<int> > const&, double, bool)"
+  ],
+  "hardware_perf": "unavailable: perf_event_paranoid=4",
+  "address_space_limit_mib": 512
+}
