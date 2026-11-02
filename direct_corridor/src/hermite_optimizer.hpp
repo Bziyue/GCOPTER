@@ -216,6 +216,15 @@ struct Certificates {
     const double min_scale = std::min(std::sqrt(lambda[0]), longitudinal);
     const double pad = options.robot_radius + options.safety_margin +
                        options.certificate_margin;
+    // Whitening is constant over this patch. Hoist all divisions out of the
+    // obstacle loop. Equal-radius spheres have the same additive priority
+    // offset, so ordering by the squared metric needs neither sqrt nor radius
+    // division. These scores affect order only, never geometric acceptance.
+    Eigen::Matrix3d metric;
+    metric.topRows<2>() = lambda.cwiseInverse().asDiagonal() * transform;
+    metric.row(2) = normal.transpose() / longitudinal;
+    const double first_radius = map.obstacles()[ids.front()].radius;
+    bool uniform_radius = true;
     struct Candidate {
       int id;
       double distance;
@@ -227,12 +236,15 @@ struct Certificates {
     // discarded obstacle must lie wholly behind such an accepted plane.
     for (int id : ids) {
       const auto& sphere = map.obstacles()[id];
-      const Vec3 delta = sphere.center - cm;
-      const V2 projection = (transform * delta).cwiseQuotient(lambda);
-      const double axial = normal.dot(delta) / longitudinal;
-      remaining.push_back(
-          {id, std::sqrt(projection.squaredNorm() + axial * axial) -
-                   (sphere.radius + pad) / min_scale});
+      uniform_radius &= sphere.radius == first_radius;
+      remaining.push_back({id, (metric * (sphere.center - cm)).squaredNorm()});
+    }
+    if (!uniform_radius) {
+      const double inverse_scale = 1 / min_scale;
+      for (auto& candidate : remaining)
+        candidate.distance = std::sqrt(candidate.distance) -
+                             (map.obstacles()[candidate.id].radius + pad) *
+                                 inverse_scale;
     }
     auto nearest = [&] {
       return std::min_element(
@@ -510,14 +522,9 @@ struct Optimizer {
   const Options& o;
   const Stop& stop;
   std::vector<H5> diagonal, upper;
-  std::vector<Eigen::LDLT<H5>> factors;
+  std::vector<Eigen::LLT<H5>> factors;
   std::vector<V5> gradient, rhs, step, scaling;
-  std::array<M2, 3> basis;
-  Optimizer(const Options& options, const Stop& s) : o(options), stop(s) {
-    basis[0] << 1, 0, 0, 0;
-    basis[1] << 0, 1, 1, 0;
-    basis[2] << 0, 0, 0, 1;
-  }
+  Optimizer(const Options& options, const Stop& s) : o(options), stop(s) {}
   double objective(const std::vector<Node>& n, const std::vector<Cut>& cuts,
                    const std::vector<int>& active, double mu,
                    bool derivatives) {
@@ -529,16 +536,20 @@ struct Optimizer {
     }
     double cost = 0;
     auto logdet = [&](int i, const M2& p, double weight, double sign) {
-      if (p(0, 0) <= 0 || p.determinant() <= 0) return false;
-      cost -= weight * std::log(p.determinant());
+      const double determinant = p.determinant();
+      if (p(0, 0) <= 0 || determinant <= 0) return false;
+      cost -= weight * std::log(determinant);
       if (derivatives) {
-        const M2 inv = p.inverse();
-        for (int a = 0; a < 3; ++a) {
-          gradient[i][a + 2] -= weight * sign * (inv * basis[a]).trace();
-          for (int b = 0; b < 3; ++b)
-            diagonal[i](a + 2, b + 2) +=
-                weight * (inv * basis[a] * inv * basis[b]).trace();
-        }
+        // For P^-1=[[a,b],[b,c]], expand -log det P in the symmetric
+        // coordinates (P00,P01,P11), avoiding nine tiny matrix products.
+        const double a = p(1, 1) / determinant, b = -p(0, 1) / determinant,
+                     c = p(0, 0) / determinant;
+        gradient[i].tail<3>() -= weight * sign * Vec3(a, 2 * b, c);
+        Eigen::Matrix3d h;
+        h << a * a, 2 * a * b, b * b,
+             2 * a * b, 2 * (a * c + b * b), 2 * b * c,
+             b * b, 2 * b * c, c * c;
+        diagonal[i].bottomRightCorner<3, 3>() += weight * h;
       }
       return true;
     };
@@ -662,7 +673,9 @@ struct Optimizer {
                        scaling[i + 1].cwiseInverse().asDiagonal();
         }
         bool factored = false;
-        // Solve through factors instead of forming inverses. If roundoff still
+        // The convex barrier Hessian is positive definite; use Cholesky rather
+        // than pivoted LDLT, and solve through factors without forming inverses.
+        // If roundoff still
         // destroys a Schur pivot, restart the SAME system with larger relative
         // damping. The original objective and all support constraints remain
         // unchanged; the line search must accept the resulting descent step.
@@ -679,8 +692,7 @@ struct Optimizer {
             }
             h.diagonal().array() += damping;
             factors[i].compute(h);
-            if (!h.allFinite() || factors[i].info() != Eigen::Success ||
-                !factors[i].isPositive()) {
+            if (!h.allFinite() || factors[i].info() != Eigen::Success) {
               factored = false;
               break;
             }

@@ -98,6 +98,44 @@ void derivatives(const Corridor& c) {
 }  // namespace
 int main() {
   try {
+    // Independent finite differences of the full barrier objective check the
+    // closed-form logdet derivatives together with SOC and coupling terms.
+    {
+      Options options = opts();
+      detail::Stop stop = [] {};
+      detail::Optimizer optimizer(options, stop);
+      std::vector<detail::Node> nodes(2);
+      nodes[0].s = 0;
+      nodes[1].s = .7;
+      nodes[0].x << .03, -.04, .5, .07, .7;
+      nodes[1].x << -.02, .05, .6, -.03, .4;
+      const std::vector<detail::Cut> cuts{
+          {0, Eigen::Vector2d(.3, .4), Eigen::Vector2d(.1, -.2), 1.2},
+          {0, Eigen::Vector2d(-.2, .4), Eigen::Vector2d(.2, -.1), .9, true}};
+      const std::vector<int> active{0, 1};
+      optimizer.objective(nodes, cuts, active, .01, true);
+      Eigen::Matrix<double, 10, 1> gradient;
+      gradient << optimizer.gradient[0], optimizer.gradient[1];
+      Eigen::Matrix<double, 10, 10> hessian;
+      hessian << optimizer.diagonal[0], optimizer.upper[0],
+                 optimizer.upper[0].transpose(), optimizer.diagonal[1];
+      for (int j = 0; j < 10; ++j) {
+        const double delta = 1e-6;
+        auto plus = nodes, minus = nodes;
+        plus[j / 5].x[j % 5] += delta;
+        minus[j / 5].x[j % 5] -= delta;
+        const double vp = optimizer.objective(plus, cuts, active, .01, true);
+        Eigen::Matrix<double, 10, 1> gp;
+        gp << optimizer.gradient[0], optimizer.gradient[1];
+        const double vm = optimizer.objective(minus, cuts, active, .01, true);
+        Eigen::Matrix<double, 10, 1> gm;
+        gm << optimizer.gradient[0], optimizer.gradient[1];
+        check(std::abs((vp - vm) / (2 * delta) - gradient[j]) < 1e-6,
+              "optimizer gradient matches scalar finite difference");
+        check(((gp - gm) / (2 * delta) - hessian.col(j)).norm() < 1e-5,
+              "optimizer Hessian matches gradient finite difference");
+      }
+    }
     // Polar redundancy is invariant to translating the feasible center, and
     // removes loose faces while retaining every edge of a square plus SOC
     // rows coupling two different nodes.

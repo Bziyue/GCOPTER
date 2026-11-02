@@ -1,0 +1,85 @@
+{
+  "baseline_commit": "e245bc42698dc96585b38cfe91c48da1ba6b9e41",
+  "date": "2026-11-02",
+  "generation_repeats": 7,
+  "warmup_per_model": 1,
+  "models": [
+    "solid"
+  ],
+  "paths_for_comparison": 6,
+  "holdout_indices": [
+    4,
+    5,
+    6
+  ],
+  "saved_path_replay": 26,
+  "replay_repeats": 1,
+  "expansion_policy": "matched-box",
+  "local_range_m": 3,
+  "local_progress_m": 7,
+  "control_spacing_m": 0.4,
+  "hermite_inflation_rounds": 2,
+  "newton_barrier_parameters": [
+    0.003,
+    0.0001,
+    1e-05
+  ],
+  "newton_max_steps_per_parameter": 12,
+  "newton_factorization": "equilibrated block LLT",
+  "scaled_damping_retries": [
+    1e-10,
+    1e-08,
+    1e-06,
+    0.0001
+  ],
+  "firi_iterations": 4,
+  "solid_robot_radius_m": 0.2,
+  "solid_safety_margin_m": 0.05,
+  "solid_extra_margin_m": 0.002,
+  "volume_samples_per_model": 524288,
+  "qmc_shifts": 8,
+  "pilot_samples_per_model": 131072,
+  "pilot_repeats": 5,
+  "solid_independent_sample_checks": 24672,
+  "request_paths_normalized": true,
+  "memory_limit_mib": 512,
+  "cpu_seconds": [
+    25,
+    30
+  ],
+  "wall_seconds": 40,
+  "run_mode": "sequential",
+  "build": "GCC Release -O3, no fast-math or target-specific flags; -j1 with 2 GiB address-space limit",
+  "retained": [
+    "whitening precomputation",
+    "equal-radius squared-distance ordering",
+    "closed-form symmetric 2x2 logdet derivatives",
+    "block LLT"
+  ],
+  "rejected": [
+    "candidate coordinate copies",
+    "analytic SOC step hint",
+    "sphere AABB grouping",
+    "guarded float SIMD broad phase",
+    "equal-weight support norm grouping"
+  ],
+  "baseline_library_sha256": "9056f41e3d6774acc6c9b84611a5149f9b4a874033241309dca4455d620f8afa",
+  "sha256": {
+    "direct_corridor/include/gcopter/direct_corridor.hpp": "cfcb5fbdddefeabbe9acb6f47565fc47c7e2837d53882fa474fd514b2f8d61e2",
+    "direct_corridor/src/direct_corridor.cpp": "778953bb7cc7ed49ce31eb3e20332c42973bf5c33c2679a1f1a0722a36459cce",
+    "direct_corridor/src/hermite_optimizer.hpp": "5bd51d99105210887e105e915a433105ce1148557f6bbd22140009cb4d982db0",
+    "direct_corridor/tests/test_corridor.cpp": "fe4d9d5bfd7e6ef9d4e6a4aa2688be96a9e0f6f279e9e392e77b556a4372b501",
+    "gcopter/tools/corridor_firi_benchmark.cpp": "fda29cb32f0272a80c22f9e4ea9ade5f4dc242b147b958ddab52a6581d1ef0f0",
+    "gcopter/tools/corridor_volume.hpp": "11709d2a21e31967787c86999f14ca2945c298c8601760cc98688bbec9d800ef",
+    "gcopter/tools/run_firi_comparison.py": "025d8564a76f63338ef4f2b66826334d5ca16bf9568a6af24d068bd7ebbbfb8e",
+    "direct_corridor/tools/replay_comparison.py": "597711817a61e48be464e0d41a1c1b7635e099259192f14885bd5dd7354745a9",
+    "gcopter/include/gcopter/firi.hpp": "e47441312b31dff209a59798a8414cbdf310534720e984c73894cb7ea1beb6ee",
+    "gcopter/include/gcopter/sfc_gen.hpp": "023377b199cbd4fa04a14668343dcbcb23d130be698c968867d1bd5536daecea",
+    "gcopter/include/gcopter/sdlp.hpp": "d7b7bd66597ca1355d7bf16d902cf17da638ad0fd98870673f209a329ded0abf"
+  },
+  "artifact_sha256": {
+    "install/gcopter_direct_corridor/lib/libgcopter_direct_corridor.so": "f03353eceb03d4870c69ff44aad75189aa826c0c8ee7448cb2d13da8d855eb66",
+    "build/gcopter/corridor_firi_benchmark": "d246fc59fa96cdea4f89ad93b73b0aa666c5dcffa0d8481938df8787017050b5",
+    "build/direct_corridor/direct_corridor_cli": "5396002087c353003fcf2b05de8a341c59be6c14afdc0cc4a937fd2bfd172551"
+  }
+}
