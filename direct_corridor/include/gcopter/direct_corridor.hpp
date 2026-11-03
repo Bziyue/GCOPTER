@@ -7,6 +7,7 @@
 #include <vector>
 
 namespace gcopter::direct {
+namespace experiment { struct ShapeAccess; }
 using Vec3 = Eigen::Vector3d;
 using Mat32 = Eigen::Matrix<double, 3, 2>;
 
@@ -87,6 +88,7 @@ class Corridor {
 
  private:
   friend struct GeneratorAccess;
+  friend struct experiment::ShapeAccess;
   std::vector<Vec3> centers_;
   std::vector<Mat32> shapes_;
   std::vector<double> knots_;

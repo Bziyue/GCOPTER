@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <cstring>
 #include "tube_query.hpp"
+#include "refit.hpp"
 
 using Spline = SplineTrajectory::QuinticSplineND<3>;
 using Opt = SplineTrajectory::SplineOptimizer<Spline>;
@@ -153,6 +154,17 @@ int main(int argc,char**argv) {try {
   double diagonal=0;for(auto b:expansionBoxes(seed,bounds,3,.252))diagonal=std::max(diagonal,(b.bounds.upper-b.bounds.lower).norm());
   options.max_radius=.5*diagonal+.001;options.max_offset=diagonal+.001;
   Result direct=generate(seed,index,bounds,options);if(!direct)throw std::runtime_error(direct.message);
+  const char* shape_env=std::getenv("GCOPTER_SHAPE_MODE");
+  const std::string shape_mode=shape_env?shape_env:"baseline";
+  if(shape_mode!="baseline"&&shape_mode!="hermite-free"&&shape_mode!="cubic-c2")
+    throw std::runtime_error("invalid shape mode");
+  gcopter::direct::experiment::ShapeFitMetrics shape_metrics;
+  if(shape_mode!="baseline") {
+    auto fit=gcopter::direct::experiment::refitShape(direct.corridor,seed,index,bounds,options,
+        shape_mode=="hermite-free"?5:3,check);
+    direct.corridor=std::move(fit.corridor);shape_metrics=fit.metrics;
+    direct.metrics.total_ms+=shape_metrics.total_ms;
+  }
   auto firi=generateFiri(seed,points,bounds,radius,.25,true,3);
   int disconnected=0,empty_polys=0;Vec3 interior;
   for(const auto& h:firi.polys)if(!geo_utils::findInterior(h,interior))++empty_polys;
@@ -271,7 +283,9 @@ int main(int argc,char**argv) {try {
        <<",\"max_body_rate\":"<<max_rate<<",\"max_tilt\":"<<max_tilt<<",\"min_thrust\":"<<min_thrust<<",\"max_thrust\":"<<max_thrust
        <<",\"optimization_sample_violation_m\":"<<optimization_sample_violation<<",\"max_plane_error_m\":"<<max_plane<<",\"max_corridor_error_m\":"<<max_corridor<<",\"max_penetration_m\":"<<penetration
        <<",\"firi_disconnected_neighbors\":"<<disconnected<<",\"firi_empty_polys\":"<<empty_polys<<",\"firi_seed_outside_m\":"<<seed_outside
-       <<",\"inverse_failures\":"<<inverse_failures<<",\"gradient_relative_error\":"<<gradient_error<<",\"sampled_feasible\":"<<(feasible?"true":"false")<<"}\n";out.flush();
+       <<",\"inverse_failures\":"<<inverse_failures<<",\"gradient_relative_error\":"<<gradient_error<<",\"sampled_feasible\":"<<(feasible?"true":"false")
+       <<",\"shape_mode\":\""<<shape_mode<<"\"";
+    gcopter::direct::experiment::writeShapeMetrics(out,shape_metrics);out<<"}\n";out.flush();
     std::cerr<<name<<" rep "<<rep<<" "<<optimize_ms<<"ms feasible="<<feasible<<" plane="<<max_plane<<" corridor="<<max_corridor<<" collision="<<penetration<<'\n';
   }
 }catch(const std::exception&e){std::cerr<<e.what()<<'\n';return 1;}}

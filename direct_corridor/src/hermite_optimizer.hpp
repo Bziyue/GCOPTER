@@ -33,6 +33,7 @@ struct Node {
 };
 struct Patch {
   int span = 0;
+  double begin = 0, end = 1;
   std::array<Vec3, 6> reference;
   std::array<double, 6> w{{0, 0, 0, 1, 1, 1}};
 };
@@ -76,6 +77,9 @@ inline Patch patch(const std::vector<Node>& n, int i) {
 inline std::pair<Patch, Patch> split(Patch p, double t = .5) {
   Patch a, b;
   a.span = b.span = p.span;
+  a.begin = p.begin;
+  a.end = b.begin = p.begin + t * (p.end - p.begin);
+  b.end = p.end;
   a.reference[0] = p.reference[0];
   b.reference[5] = p.reference[5];
   a.w[0] = p.w[0];
@@ -273,6 +277,9 @@ inline Vec3 metricSphereNormal(const Vec3& delta, const Vec3& axes2,
 
 template <class Shape = EllipseSupport>
 struct ShapeCertificates {
+  struct Plane { int span; double begin, end; Vec3 normal; double bound; };
+  // Optional experiment output: the original, uncompressed continuous planes.
+  std::vector<Plane>* exported_planes = nullptr;
   Shape shape_support;
   const ObstacleIndex& map;
   const Bounds& bounds;
@@ -295,6 +302,8 @@ struct ShapeCertificates {
         query_cache(cache) {}
   void add(const Patch& p, const Vec3& normal, double bound,
            const std::vector<Node>& nodes) {
+    if (exported_planes)
+      exported_planes->push_back({p.span, p.begin, p.end, normal, bound});
     const auto &a = nodes[p.span], &b = nodes[p.span + 1];
     // Repeated Hermite value coefficients give identical variable rows: keep
     // only the strongest of them instead of paying for duplicate constraints.

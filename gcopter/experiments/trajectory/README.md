@@ -8,6 +8,8 @@
 
 截面查询默认 `--tube-mode fast`：保留原 Bernstein 浮点运算顺序，只计算一阶导数并使用有界精确缓存。`reference` 运行旧路径；`horner` 为可能改变非光滑优化终点的试验模式。`--profile` 单独启用细粒度计时，不用于正式速度排名；各计时字段的包含关系及六例等价验证见 `docs/截面求值与反求缓存加速.md`。
 
+`--shape-mode` 默认 `baseline`，另提供 `hermite-free`（释放形状节点导数的五次 C²）和 `cubic-c2`（三次 C² 形状场）。两者保留中心线和节点，新增连续空间约束下的 refit；生成时间包含基线与 refit。六例体积、耗时、轨迹质量及梯度失败记录见 [截面样条对照](../../../docs/截面非零导数与C2三次样条对照.md)。
+
 两边共用 vendored `SplineTrajectory::QuinticSplineND<3>` 最小 jerk 样条、IdentitySpatialMap、QuadInvTimeMap、L-BFGS 和 GCOPTER 平坦性动力学惩罚。只替换位置走廊约束。原生 `SFCOptimizer::setup` 会先从多面体构造新的 shortestPath 和分段，因此直接调用它不能保证相同初始轨迹；本实验不宣称测量了原生 GCOPTER 完整管线。
 
 ## 固定条件
