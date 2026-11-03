@@ -1,6 +1,10 @@
 # 相同初值的走廊轨迹优化对照
 
-这是实验后端，不修改 RViz 节点或生产轨迹优化器。比较 FIRI 与当前默认的五次 Hermite 椭圆扫掠走廊，不包含可选 Minkowski 截面。
+该目录提供独立的实验后端。比较 FIRI 与当前默认的五次 Hermite 椭圆扫掠走廊，不包含可选 Minkowski 截面。
+
+**2026-11-03 更新：** 后端已迁入 diff-planner-swarm `7e41f0d` 四头。运行器现在默认 `--constraint bezier --bezier-depth 2`：FIRI 细分片固定关联一个凸多面体；Hermite 使用控制点与积分点各半权重的位置惩罚；两者速度均使用 Bézier 导数凸包。其余平坦性动力学仍积分。生产 `SplineSFCOptimizer` 同时接入了位置/速度 Bézier 约束，但本实验仍不调用其独立初始化管线。
+
+下文的积分点位置约束说明及旧报告对应 `--constraint sampled`。若要重跑旧目标请显式加该参数；新版 L-BFGS 可能改变迭代结果。`--constraint bezier-controls` 仅用于非凸走廊的纯控制点消融，**不能证明曲线位于扫掠走廊内**。新原理、梯度及实测记录见 `docs/样条库迁移与Bezier约束.md`。
 
 两边共用 vendored `SplineTrajectory::QuinticSplineND<3>` 最小 jerk 样条、IdentitySpatialMap、QuadInvTimeMap、L-BFGS 和 GCOPTER 平坦性动力学惩罚。只替换位置走廊约束。原生 `SFCOptimizer::setup` 会先从多面体构造新的 shortestPath 和分段，因此直接调用它不能保证相同初始轨迹；本实验不宣称测量了原生 GCOPTER 完整管线。
 
@@ -59,12 +63,12 @@ prlimit --as=2147483648 --cpu=120 cmake --build .scratch/trajectory_comparison/b
 python3 gcopter/experiments/trajectory/run.py \
   --inputs gcopter/experiments/trajectory/inputs.json \
   --output .scratch/trajectory_comparison/final_fast \
-  --repeats 3 --check-gradients
+  --repeats 3 --check-gradients --constraint sampled
 python3 gcopter/experiments/trajectory/run.py \
   --inputs gcopter/experiments/trajectory/inputs.json \
   --output .scratch/trajectory_comparison/final_dense \
   --repeats 3 --steps 128 --max-iterations 3200 --weight 1000000 \
-  --check-gradients --cpu-seconds 120 --wall-seconds 130
+  --check-gradients --cpu-seconds 120 --wall-seconds 130 --constraint sampled
 ```
 
 运行器严格串行，每个子进程虚拟地址空间上限 512 MiB，CPU/wall 时间有上限，超时终止整个子进程组；`/usr/bin/time` 记录峰值 RSS。输入 JSON 引用本地已有的 RViz 冻结请求快照，地图未重复加入 Git；在其他机器重跑需要对应快照，并通过 manifest 中的 SHA256 核对。

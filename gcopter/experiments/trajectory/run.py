@@ -23,6 +23,9 @@ p.add_argument('--max-iterations', type=int, default=800)
 p.add_argument('--cpu-seconds', type=int, default=55)
 p.add_argument('--wall-seconds', type=int, default=60)
 p.add_argument('--check-gradients', action='store_true')
+p.add_argument('--constraint', choices=['sampled','bezier','bezier-controls'], default='bezier',
+               help='bezier retains half-weight integral position penalties for the nonconvex tube; bezier-controls is a control-only ablation')
+p.add_argument('--bezier-depth', type=int, choices=range(6), default=2)
 a = p.parse_args()
 a.output.mkdir(parents=True, exist_ok=True)
 def bounded():
@@ -47,7 +50,7 @@ for i, request in enumerate(json.loads(a.inputs.read_text())):
     dest.mkdir(exist_ok=True)
     command=[str(a.binary),str(seed),str(cloud),str(dest),
              *map(str,meta['bounds_lower']),*map(str,meta['bounds_upper']),
-             str(meta['resolution']),str(a.repeats),str(a.spacing),str(a.weight),str(a.steps),str(int(a.check_gradients)),str(a.max_iterations)]
+             str(meta['resolution']),str(a.repeats),str(a.spacing),str(a.weight),str(a.steps),str(int(a.check_gradients)),str(a.max_iterations),a.constraint,str(a.bezier_depth)]
     record=dict(case=i,request=str(request.relative_to(ROOT)),seed_sha256=sha(seed),map_sha256=sha(cloud),
                 bounds_lower=meta['bounds_lower'],bounds_upper=meta['bounds_upper'],resolution=meta['resolution'])
     with (dest/'stderr.log').open('w') as log:
@@ -65,6 +68,6 @@ for i, request in enumerate(json.loads(a.inputs.read_text())):
     manifest.append(record)
     print(f"case {i}: {record['returncode']}",flush=True)
     (a.output/'manifest.json').write_text(json.dumps(dict(parameters=dict(repeats=a.repeats,spacing=a.spacing,weight=a.weight,steps=a.steps,max_iterations=a.max_iterations,
-        memory_mib=512,cpu_seconds=a.cpu_seconds,wall_seconds=a.wall_seconds,
+        constraint=a.constraint,bezier_depth=a.bezier_depth,memory_mib=512,cpu_seconds=a.cpu_seconds,wall_seconds=a.wall_seconds,
         binary_sha256=sha(a.binary),platform=platform.platform(),processor=platform.processor()),cases=manifest),indent=2)+'\n')
 if any(r['returncode']!=0 for r in manifest): raise SystemExit(1)

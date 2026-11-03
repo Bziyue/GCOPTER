@@ -4,6 +4,7 @@
 #include "SplineTrajectory/SplineOptimizer.hpp"
 #include "SplineTrajectory/SplineTrajectory.hpp"
 #include "TrajectoryOptAdapters/GcopterPenaltyIntegralCostAdapter.hpp"
+#include "TrajectoryOptAdapters/BezierPenaltyCost.hpp"
 #include "TrajectoryOptComponents/SFCCommonTypes.hpp"
 #include "TrajectoryOptComponents/LinearTimeCost.hpp"
 #include "TrajectoryOptComponents/PolytopeSpatialMap.hpp"
@@ -45,6 +46,8 @@ namespace gcopter
         traj_opt_components::PolytopeSpatialMap spatial_map_;
         LinearTimeCost time_cost_;
         PenaltyIntegralCost integral_cost_;
+        using BezierCost = traj_opt_adapters::BezierPenaltyCost<SplineType, traj_opt_adapters::SegmentPolytopePenalty>;
+        BezierCost bezier_cost_;
         flatness::FlatnessMap flatmap_;
 
         Eigen::Matrix3d headPVA_;
@@ -326,13 +329,14 @@ namespace gcopter
         {
             LinearTimeCost &duration;
             PenaltyIntegralCost &integral;
+            BezierCost &coefficient;
             DomainCost decision;
         };
 
         static double costFunctional(void *ptr, const Eigen::VectorXd &x, Eigen::VectorXd &g)
         {
             auto &self = *static_cast<SplineSFCOptimizer *>(ptr);
-            Objective objective{self.time_cost_, self.integral_cost_, {&self}};
+            Objective objective{self.time_cost_, self.integral_cost_, self.bezier_cost_, {&self}};
             return self.optimizer_.costAndGradient(x, g, objective);
         }
 
@@ -346,7 +350,8 @@ namespace gcopter
                    const int &integralResolution,
                    const Eigen::VectorXd &magnitudeBounds,
                    const Eigen::VectorXd &penaltyWeights,
-                   const Eigen::VectorXd &physicalParams)
+                   const Eigen::VectorXd &physicalParams,
+                   int bezierSubdivisionDepth = 2)
         {
             headPVA_ = initialPVA;
             tailPVA_ = terminalPVA;
@@ -434,6 +439,10 @@ namespace gcopter
             flatmap_.reset(physicalPm_(0), physicalPm_(1), physicalPm_(2),
                            physicalPm_(3), physicalPm_(4), physicalPm_(5));
             integral_cost_.reset(&hPolytopes_, &hPolyIdx_, smoothEps_, magnitudeBd_, penaltyWt_, &flatmap_);
+            // 位置与速度转到控制点阶段；平坦性约束仍由积分阶段计算。
+            integral_cost_.penalty_weights.head<2>().setZero();
+            bezier_cost_.position = {&hPolytopes_, &hPolyIdx_, smoothEps_, penaltyWt_(0)};
+            bezier_cost_.configure(pieceN_, bezierSubdivisionDepth, magnitudeBd_(0), penaltyWt_(1), smoothEps_);
 
             return true;
         }
@@ -447,7 +456,7 @@ namespace gcopter
             lbfgs_params_.min_step = 1e-32;
             lbfgs_params_.g_epsilon = 0;
             lbfgs_params_.delta = relCostTol;
-            Objective objective{time_cost_, integral_cost_, {this}};
+            Objective objective{time_cost_, integral_cost_, bezier_cost_, {this}};
             const char *check = std::getenv("GCOPTER_GRAD_CHECK");
             if (check && std::string(check) == "1")
             {

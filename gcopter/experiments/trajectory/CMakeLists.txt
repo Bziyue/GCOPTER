@@ -10,7 +10,7 @@ target_include_directories(trajectory_comparison PRIVATE ../../include ../../too
 target_link_directories(trajectory_comparison PRIVATE ${OMPL_LIBRARY_DIRS})
 target_link_libraries(trajectory_comparison PRIVATE gcopter_direct_corridor ${OMPL_LIBRARIES})
 enable_testing()
-foreach(test library_regression native_optimizer lbfgs_recovery)
+foreach(test library_regression native_optimizer lbfgs_recovery bezier_constraints)
   add_executable(${test} tests/${test}.cpp)
   target_compile_features(${test} PRIVATE cxx_std_17)
   target_compile_options(${test} PRIVATE -UNDEBUG)

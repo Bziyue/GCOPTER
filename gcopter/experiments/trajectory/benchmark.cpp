@@ -4,6 +4,7 @@
 #include "SplineTrajectory/SplineOptimizer.hpp"
 #include "SplineTrajectory/SplineTrajectory.hpp"
 #include "TrajectoryOptAdapters/GcopterPenaltyIntegralCostAdapter.hpp"
+#include "TrajectoryOptAdapters/BezierPenaltyCost.hpp"
 #include "TrajectoryOptComponents/LinearTimeCost.hpp"
 #include <cstdint>
 #include <cstring>
@@ -94,21 +95,66 @@ struct Cost {
   int steps=16,pieces=1;
   double weight=1e5;
   bool ellipse=false;
+  bool bezier=false;
+  bool keep_tube_integral=false;
+  double positionWeight() const {return weight*(bezier&&ellipse&&keep_tube_integral?0.5:1.0);}
   static constexpr int kDerivativeOrder = 3;
   double operator()(const SplineTrajectory::IntegralPointInfo& point,
       const SplineTrajectory::SampleState<3>& state,
       SplineTrajectory::SampleGradient<3>& partial) const {
     double cost=dynamics(point,state,partial);
+    if(bezier&&!(ellipse&&keep_tube_integral)) return cost;
+    const double position_weight=positionWeight();
     const int seg=point.segment_index,step=point.step_index;
     const auto& p=state.p;auto& gp=partial.p;
     Vec3 gradient;double violation;
     if(ellipse) {
       auto tube=tubeValue(*corridor,p,(seg+double(step)/steps)/pieces);
-      cost+=weight*tube.plane*tube.plane;gp+=2*weight*tube.plane*tube.grad_plane;
+      cost+=position_weight*tube.plane*tube.plane;gp+=2*position_weight*tube.plane*tube.grad_plane;
       violation=tube.radial;gradient=tube.grad_radial;
     } else violation=polyDistance(*polys,p,gradient);
-    if(violation>0){cost+=weight*violation*violation;gp+=2*weight*violation*gradient;}
+    if(violation>0){cost+=position_weight*violation*violation;gp+=2*position_weight*violation*gradient;}
     return cost;
+  }
+};
+struct ControlPosition {
+  Cost* cost=nullptr;
+  std::vector<int> leaf_poly;
+  // 一次初始化固定片→凸区域关联，禁止每个控制点各自选择不同多面体。
+  void assign(const Spline::Polynomial& polynomial,int depth) {
+    if(cost->ellipse)return;
+    auto hull=SplineTrajectory::ConvexHullWorkspace<3>::fromPPoly(
+        polynomial,SplineTrajectory::ConvexHullBasis::Bezier,0,depth);
+    leaf_poly.resize(hull.numPieces());
+    for(int piece=0;piece<hull.numPieces();++piece) {
+      double best=std::numeric_limits<double>::infinity();int chosen=0;
+      for(int poly=0;poly<int(cost->polys->size());++poly) {
+        const auto& h=(*cost->polys)[poly];double worst=-std::numeric_limits<double>::infinity();
+        for(int cp=0;cp<Spline::kCoefficientCount;++cp)
+          worst=std::max(worst,(h.leftCols<3>()*hull.controls().row(piece*Spline::kCoefficientCount+cp).transpose()+h.col(3)).maxCoeff());
+        if(worst<best){best=worst;chosen=poly;}
+      }
+      leaf_poly[piece]=chosen;
+    }
+  }
+  double operator()(int piece,int segment,double alpha,const Vec3& p,Vec3& gradient,double& violation) const {
+    double value=0;
+    if(cost->ellipse) {
+      const double weight=cost->positionWeight();
+      const auto tube=tubeValue(*cost->corridor,p,(segment+alpha)/cost->pieces);
+      violation=std::max(std::abs(tube.plane),std::max(0.0,tube.radial));
+      value=weight*tube.plane*tube.plane;
+      gradient=2*weight*tube.plane*tube.grad_plane;
+      if(tube.radial>0){value+=weight*tube.radial*tube.radial;gradient+=2*weight*tube.radial*tube.grad_radial;}
+    } else {
+      const auto& h=(*cost->polys)[leaf_poly[piece]];
+      for(int plane=0;plane<h.rows();++plane) {
+        const Vec3 n=h.row(plane).head<3>().transpose();const double v=n.dot(p)+h(plane,3);
+        violation=std::max(violation,v);
+        if(v>0){value+=cost->weight*v*v;gradient+=2*cost->weight*v*n;}
+      }
+    }
+    return value;
   }
 };
 struct Run {
@@ -116,11 +162,18 @@ struct Run {
 
   traj_opt_components::LinearTimeCost time{20};
   Cost cost;
-  struct Objective { traj_opt_components::LinearTimeCost& duration; Cost& integral; };
+  traj_opt_adapters::BezierPenaltyCost<Spline,ControlPosition> bezier_cost;
+  struct Coefficient {
+    Run* run;
+    double operator()(const SplineTrajectory::ParameterView<Spline>& p,SplineTrajectory::CoefficientGradient<Spline>& g) {
+      return run->cost.bezier?run->bezier_cost(p,g):0;
+    }
+  };
+  struct Objective { traj_opt_components::LinearTimeCost& duration; Cost& integral; Coefficient coefficient; };
   int evaluations=0,iterations=0;
   static double evaluate(void* ptr,const Eigen::VectorXd& x,Eigen::VectorXd& g) {
     auto& r=*static_cast<Run*>(ptr); ++r.evaluations;
-    Objective objective{r.time,r.cost};
+    Objective objective{r.time,r.cost,{&r}};
     auto value=r.optimizer.evaluate(x,g,objective);
     return value.cost;
   }
@@ -134,12 +187,15 @@ std::string hash(const Eigen::VectorXd& x) {
   std::ostringstream out;out<<std::hex<<h;return out.str();
 }
 int main(int argc,char**argv) {try {
-  if(argc!=17) throw std::runtime_error("seed map output xmin ymin zmin xmax ymax zmax resolution repeats spacing weight steps gradient_check max_iterations");
+  if(argc!=19) throw std::runtime_error("seed map output xmin ymin zmin xmax ymax zmax resolution repeats spacing weight steps gradient_check max_iterations constraint depth");
   auto seed=read(argv[1]),points=read(argv[2]);
   Bounds bounds{Vec3(std::stod(argv[4]),std::stod(argv[5]),std::stod(argv[6])),
                 Vec3(std::stod(argv[7]),std::stod(argv[8]),std::stod(argv[9]))};
   double radius=std::sqrt(3)*std::stod(argv[10])/2, spacing=std::stod(argv[12]),weight=std::stod(argv[13]);
   int repeats=std::stoi(argv[11]),steps=std::stoi(argv[14]); bool check=std::stoi(argv[15]);int max_iterations=std::stoi(argv[16]);
+  std::string constraint=argv[17];int depth=std::stoi(argv[18]);
+  if((constraint!="bezier"&&constraint!="sampled"&&constraint!="bezier-controls")||depth<0||depth>5)throw std::runtime_error("invalid constraint mode or depth (0..5)");
+  const bool bezier=constraint!="sampled";
   if(seed.size()<2||points.empty()||repeats<1||!std::isfinite(spacing)||spacing<=0||!std::isfinite(weight)||weight<=0||!std::isfinite(radius)||radius<=0||max_iterations<1||steps<2||!bounds.lower.allFinite()||!bounds.upper.allFinite()||!(bounds.upper.array()>bounds.lower.array()).all())
     throw std::runtime_error("invalid benchmark inputs");
   for(size_t i=1;i<seed.size();++i)if((seed[i]-seed[i-1]).norm()<1e-10)throw std::runtime_error("duplicate seed point");
@@ -181,6 +237,15 @@ int main(int argc,char**argv) {try {
     run.cost.dynamics.reset(&empty,&ids,.01,limits,weights,&flat);
     run.cost.corridor=&direct.corridor;run.cost.pieces=pieces;run.cost.polys=&firi.polys;run.cost.steps=steps;run.cost.ellipse=ellipse;run.cost.weight=weight;
     Eigen::VectorXd x=run.optimizer.initialGuess(),g(x.size());
+    run.cost.bezier=bezier;
+    run.cost.keep_tube_integral=constraint=="bezier";
+    if(bezier) {
+      if(!run.optimizer.updateAccepted(x))throw std::runtime_error("initial spline failed");
+      run.cost.dynamics.penalty_weights(1)=0;
+      run.bezier_cost.position.cost=&run.cost;
+      run.bezier_cost.position.assign(run.optimizer.polynomial(),depth);
+      run.bezier_cost.configure(pieces,depth,limits(0),weights(1),.01);
+    }
     std::string init_hash=hash(x);if(expected_hash.empty())expected_hash=init_hash;
     if(expected_hash!=init_hash)throw std::runtime_error("initial vector mismatch");
     double prepare_ms=ms(clock),gradient_error=-1;
@@ -189,7 +254,7 @@ int main(int argc,char**argv) {try {
       for(int i=0;i<=pieces;++i)initial<<problem.waypoints(i,0)<<','<<problem.waypoints(i,1)<<','<<problem.waypoints(i,2)<<','<<(i<pieces?problem.durations[i]:0)<<'\n';
     }
     if(check&&rep==-1) {
-      Run::Objective objective{run.time,run.cost};
+      Run::Objective objective{run.time,run.cost,{&run}};
       auto result=SplineTrajectory::checkGradients(run.optimizer,x,objective);
       gradient_error=result.relative_error;
       std::cerr<<name<<" gradient relative error "<<gradient_error<<'\n';
@@ -240,6 +305,10 @@ int main(int argc,char**argv) {try {
     }
     bool feasible=inverse_failures==0&&penetration<=1e-6&&max_plane<=.005&&max_corridor<=.005&&max_speed<=4.04&&max_rate<=2.121&&max_tilt<=1.0605&&min_thrust>=1.98&&max_thrust<=12.12;
     out<<"{\"method\":\""<<name<<"\",\"repeat\":"<<rep<<",\"pieces\":"<<pieces<<",\"initial_hash\":\""<<init_hash<<"\",\"status\":"<<status
+       <<",\"constraint\":\""<<constraint<<"\",\"bezier_depth\":"<<depth
+       <<",\"tube_integral_retained\":"<<(bezier&&ellipse&&run.cost.keep_tube_integral?"true":"false")
+       <<",\"control_position_violation_m\":"<<run.bezier_cost.max_position_violation
+       <<",\"control_speed_violation_mps\":"<<run.bezier_cost.max_speed_violation
        <<",\"iterations\":"<<run.iterations<<",\"evaluations\":"<<run.evaluations<<",\"index_ms\":"<<index_ms<<",\"corridor_ms\":"<<(ellipse?direct.metrics.total_ms:firi.total_ms)
        <<",\"prepare_ms\":"<<prepare_ms<<",\"optimize_ms\":"<<optimize_ms<<",\"objective\":"<<objective
        <<",\"duration_s\":"<<duration<<",\"length_m\":"<<length<<",\"jerk_energy\":"<<run.optimizer.energy()<<",\"max_speed\":"<<max_speed<<",\"max_acceleration\":"<<max_acc

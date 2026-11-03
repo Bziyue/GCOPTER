@@ -1,0 +1,57 @@
+{
+  "parameters": {
+    "repeats": 1,
+    "spacing": 1.0,
+    "weight": 100000.0,
+    "steps": 16,
+    "max_iterations": 800,
+    "constraint": "bezier-controls",
+    "bezier_depth": 2,
+    "memory_mib": 512,
+    "cpu_seconds": 55,
+    "wall_seconds": 60,
+    "binary_sha256": "f95123f87e8930fe0caa5f09c2cdc641fea43caca9c5c2ce7d07e90fc54abd9f",
+    "platform": "Linux-7.0.0-42-generic-x86_64-with-glibc2.43",
+    "processor": ""
+  },
+  "cases": [
+    {
+      "case": 0,
+      "request": ".scratch/interactive/rviz/run_1793605002598226995_3712673/request_1",
+      "seed_sha256": "db505c46bc24c061128416d4f673259c3be655ecc474b1840790fac39c43fb00",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "returncode": 0,
+      "peak_rss_kib": 27460
+    },
+    {
+      "case": 1,
+      "request": ".scratch/interactive/rviz/run_1793605002598226995_3712673/request_2",
+      "seed_sha256": "e2034ad4c38b68bedb80983603b4358364b5bc00ab5cebd93f07269a8353d32c",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "returncode": 0,
+      "peak_rss_kib": 28420
+    }
+  ]
+}
