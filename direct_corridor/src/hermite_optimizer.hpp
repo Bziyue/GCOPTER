@@ -148,6 +148,80 @@ inline bool regular(const Patch& p, const std::vector<Node>& nodes) {
   return scale > 1e-18 && positive(d, std::max(1e-18, scale * 1e-10));
 }
 
+// The whole affine disk is locally orientation preserving exactly when
+// c' dot n > ||M'^T n||, n=M0 cross M1. All three polynomials have degree 14.
+// The Lorentz cone is convex, so Bernstein coefficients inside the cone
+// certify an entire interval; subdivision tightens only ambiguous intervals.
+inline bool positiveCone(std::array<Vec3, 15> v, double eps, int depth = 0) {
+  auto gap = [](const Vec3& a) { return a[0] - a.tail<2>().norm(); };
+  bool inside = true;
+  for (const auto& a : v) inside &= gap(a) > eps;
+  if (inside) return true;
+  if (depth == 12 || gap(v.front()) <= eps || gap(v.back()) <= eps) return false;
+  std::array<Vec3, 15> a, b;
+  a[0] = v[0]; b[14] = v[14];
+  for (int k = 1; k <= 14; ++k) {
+    for (int j = 0; j <= 14-k; ++j) v[j] = .5 * (v[j] + v[j+1]);
+    a[k] = v[0]; b[14-k] = v[14-k];
+  }
+  return positiveCone(a, eps, depth+1) && positiveCone(b, eps, depth+1);
+}
+inline bool regularTube(const Vec3* c, const Mat32* m) {
+  static const auto weights = [] {
+    std::array<std::array<double, 6>, 6> a{};
+    std::array<std::array<double, 11>, 5> b{};
+    for (int j=0;j<6;++j) for (int k=0;k<6;++k)
+      a[j][k] = choose(5,j)*choose(5,k)/choose(10,j+k);
+    for (int i=0;i<5;++i) for (int k=0;k<11;++k)
+      b[i][k] = 5*choose(4,i)*choose(10,k)/choose(14,i+k);
+    return std::make_pair(a,b);
+  }();
+  std::array<Vec3, 11> normals;
+  std::array<Vec3, 15> cone;
+  for (auto& v:normals) v.setZero();
+  for (auto& v:cone) v.setZero();
+  for (int j=0;j<6;++j) for (int k=0;k<6;++k)
+    normals[j+k] += weights.first[j][k]*m[j].col(0).cross(m[k].col(1));
+  for (int i=0;i<5;++i) for (int k=0;k<11;++k) {
+    const Vec3 n = weights.second[i][k]*normals[k];
+    cone[i+k][0] += (c[i+1]-c[i]).dot(n);
+    cone[i+k].tail<2>() += (m[i+1]-m[i]).transpose()*n;
+  }
+  double scale = 0;
+  for (const auto& v:cone) scale = std::max(scale, v.norm());
+  return scale > 1e-18 && positiveCone(cone, std::max(1e-18, scale*1e-9));
+}
+
+inline void monotoneCuts(const std::vector<Node>& nodes, int i, const Vec3& normal,
+                         std::vector<Cut>& cuts) {
+  // Bound reference'/smoothstep' after subdivision, then keep just the
+  // strongest equivalent SOC row. This avoids the large unsplit hull bound.
+  double bound = INFINITY;
+  auto visit = [&](auto&& self, const Patch& p, int depth) -> void {
+    if (depth) {
+      auto halves = split(p);
+      self(self, halves.first, depth-1); self(self, halves.second, depth-1);
+      return;
+    }
+    for (int j=0;j<5;++j) {
+      const double dw = p.w[j+1]-p.w[j];
+      if (dw > 1e-14)
+        bound = std::min(bound, normal.dot(p.reference[j+1]-p.reference[j])/dw);
+    }
+  };
+  visit(visit, patch(nodes,i), 3);
+  Cut cut{i, nodes[i].frame.transpose()*normal,
+             -nodes[i+1].frame.transpose()*normal,
+             bound - 1e-5*(nodes[i+1].s-nodes[i].s)};
+  // Parallel cross-section planes have identically zero shape/offset rows;
+  // the reference already supplies all forward progress in this direction.
+  if(cut.a.squaredNorm()+cut.b.squaredNorm()==0) {
+    if(cut.h<=0) throw Failure{Status::DegeneratePath,"stationary reference projection"};
+    return;
+  }
+  cuts.push_back(cut);
+}
+
 struct SupportJet {
   double length, curvature;
   V2 gradient, radial;
@@ -509,6 +583,14 @@ struct ShapeCertificates {
                        options.certificate_margin;
     for (int i = 0; i + 1 < int(nodes.size()); ++i) {
       const auto p = patch(nodes, i);
+      if(options.certify_jacobian) {
+        // Fixed frame normals keep these rows unchanged across inflation
+        // rounds, so the accepted tube remains a feasible warm start.
+        const Vec3 na=nodes[i].frame.col(0).cross(nodes[i].frame.col(1));
+        const Vec3 nb=nodes[i+1].frame.col(0).cross(nodes[i+1].frame.col(1));
+        for(const Vec3& normal:{na,nb,Vec3((na+nb).normalized())})
+          monotoneCuts(nodes,i,normal,cuts);
+      }
       for (int axis = 0; axis < 3; ++axis) {
         add(p, Vec3::Unit(axis), bounds.upper[axis] - pad, nodes);
         add(p, -Vec3::Unit(axis), -bounds.lower[axis] - pad, nodes);
@@ -575,6 +657,19 @@ struct ShapeCertificates {
         // from turning each BVH query into a full-map scan.
         query_lo = query_lo.cwiseMax(local_lo - Vec3::Constant(pad));
         query_hi = query_hi.cwiseMin(local_hi + Vec3::Constant(pad));
+      }
+      if(exported_planes && options.jet_smoothing>0) {
+        // Jet refitting can move a center control outside the native offset
+        // envelope. Preserve the queried domain in its continuous cover so
+        // an unqueried sphere cannot be reached by the refitted curve.
+        const Vec3 covered_lo=local_boxes.empty()?Vec3(bounds.lower+Vec3::Constant(pad)):local_lo;
+        const Vec3 covered_hi=local_boxes.empty()?Vec3(bounds.upper-Vec3::Constant(pad)):local_hi;
+        for(int axis=0;axis<3;++axis) {
+          if(query_lo[axis]+pad>covered_lo[axis])
+            exported_planes->push_back({i,0,1,-Vec3::Unit(axis),-query_lo[axis]-pad});
+          if(query_hi[axis]-pad<covered_hi[axis])
+            exported_planes->push_back({i,0,1,Vec3::Unit(axis),query_hi[axis]-pad});
+        }
       }
       pairCuts(p, query_cache.query(i, query_lo, query_hi, map, ids), nodes, 0);
     }
@@ -815,7 +910,8 @@ struct ShapeOptimizer {
     }
     for (int i = 0; i + 1 < count; ++i) {
       const double smoothing =
-          .01 * std::min(4., o.control_spacing / (n[i + 1].s - n[i].s));
+          .01 * std::min(4., o.control_spacing / (n[i + 1].s - n[i].s)) +
+          o.section_smoothing * std::min(20., o.control_spacing / (n[i + 1].s - n[i].s));
       const V5 delta = n[i + 1].x - n[i].x;
       cost += smoothing * delta.squaredNorm();
       if (derivatives) {

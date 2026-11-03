@@ -14,6 +14,9 @@ The integrated demo now uses the original **mockamap + Informed RRT*** search
 with interactive start/goal selection in RViz2. Run
 `gcopter/tools/run_direct_demo.sh` after building the three ROS2 packages.
 See [interactive setup, timings and original-map validation](docs/原始地图交互验证.md).
+The demo defaults to the `smooth` mode, with shared center/shape jets and a
+continuous full-disk Jacobian certificate. See the [same-input geometry and
+performance comparison](docs/平滑走廊与全截面折叠修复.md).
 
 __GCOPTER__ is an efficient and versatile multicopter trajectory optimizer built upon a novel sparse trajectory representation named [__MINCO__](https://arxiv.org/pdf/2103.00190.pdf). __User-defined state-input constraints__ for dynamics involving [__nonlinear drag effects__](https://github.com/ZJU-FAST-Lab/GCOPTER/blob/main/misc/flatness.pdf) are supported.
 

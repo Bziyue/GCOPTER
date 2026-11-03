@@ -67,7 +67,8 @@ struct HermiteNode {
 
 /** C2 world-coordinate quintic Hermite affine-disc sweep.
  * Sections are ellipses, not necessarily exactly normal to center'(u).
- * No global injectivity/self-intersection or full-tube Jacobian guarantee.
+ * Options::certify_jacobian additionally certifies positive Jacobian on the
+ * whole disk. This is local regularity, not global injectivity at distant turns.
  * Read-only evaluation is thread-safe. No nearest-path inversion is performed.
  */
 class Corridor {
@@ -98,7 +99,7 @@ class Corridor {
 struct Options {
   double control_spacing = 0.5;
   double min_radius =
-      0.02;  // control-disc semiaxis floor, not a swept-section floor
+      0.02;  // native optimizer floor, not a floor after optional jet smoothing
   double max_radius = 1.5;
   double robot_radius = 0.2;
   double safety_margin = 0.02;
@@ -109,6 +110,13 @@ struct Options {
   // Zero disables these limits. Long seed edges are split at local_progress.
   double local_range = 0;
   double local_progress = 7;
+  // Arc-length scale for the section-normal filter (metres); zero uses the
+  // original seed tangents. The center reference itself is unchanged.
+  double frame_smoothing = 0;
+  double section_smoothing = 0; // neighboring offset/shape coupling weight
+  bool certify_jacobian = false; // continuous full-disk Bernstein cone test
+  double jet_smoothing = 0;  // radius reserve fraction for shared cubic jets; refilled afterward
+  int initial_iterations = 12;
   double certificate_margin =
       .002;  // additional metric margin, not a radius scale
   int inflation_iterations = 2;
@@ -136,6 +144,8 @@ struct Metrics {
   std::size_t nodes = 0, certificate_leaves = 0, active_constraints = 0;
   int inflation_steps = 0, newton_steps = 0, optimization_passes = 0;
   double max_center_shift = 0, optimization_ms = 0, certificate_ms = 0;
+  double smoothing_ms = 0, mean_jet_fraction = 0;
+  int regularity_repairs = 0;
   int refinements = 0;
   double total_ms = 0;
 };

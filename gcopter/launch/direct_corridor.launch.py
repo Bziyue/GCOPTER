@@ -51,7 +51,7 @@ def generate_launch_description():
         DeclareLaunchArgument('height', default_value='2.5'),
         DeclareLaunchArgument('height_mode', default_value='fixed'),
         DeclareLaunchArgument('search_timeout', default_value='0.5'),
-        DeclareLaunchArgument('shape_mode', default_value='baseline'),
+        DeclareLaunchArgument('shape_mode', default_value='smooth'),
         DeclareLaunchArgument('local_range', default_value='3.0'),
         DeclareLaunchArgument('rviz', default_value='true'),
         DeclareLaunchArgument('output_dir', default_value='/tmp/gcopter_direct_demo'),

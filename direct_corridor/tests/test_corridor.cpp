@@ -203,6 +203,7 @@ int main() {
     // closed-form logdet derivatives together with SOC and coupling terms.
     {
       Options options = opts();
+      options.section_smoothing = .2;
       detail::Stop stop = [] {};
       detail::Optimizer optimizer(options, stop);
       std::vector<detail::Node> nodes(2);
@@ -280,6 +281,48 @@ int main() {
     }
     Options o = opts();
     ObstacleIndex empty({});
+    // Positive center Jacobian alone misses a fold inside the disk. Here
+    // J(u,z)=1+1.875*a*z0 at the span midpoint, while J(u,0)=1 everywhere.
+    {
+      std::array<Vec3,6> c;
+      std::array<Mat32,6> m;
+      for(double amplitude:{.4,.8}) {
+        for(int j=0;j<6;++j) {
+          c[j]=Vec3(0,0,j/5.);
+          m[j].col(0)=Vec3(1,0,j<3?0:amplitude);
+          m[j].col(1)=Vec3::UnitY();
+        }
+        check(detail::regularTube(c.data(),m.data())==(amplitude<.5),
+              "full disk detects interior fold despite positive center Jacobian");
+      }
+    }
+    {
+      auto smooth=o;
+      smooth.frame_smoothing=1.5;smooth.section_smoothing=.2;
+      smooth.jet_smoothing=.01;smooth.certify_jacobian=true;smooth.initial_iterations=8;
+      const std::vector<Vec3> path{{-5,0,0},{-2,0,0},{0,1.4,0},{2,1,1},{5,0,1}};
+      const ObstacleIndex map({{Vec3(0,-1,.2),.5},{Vec3(1,3,.5),.5}});
+      const auto r=generate(path,map,box(),smooth);
+      sampleSafety(r,map,box(),smooth);
+      derivatives(r.corridor);
+      check((r.corridor.section(0).center-path.front()).norm()<1e-12 &&
+            (r.corridor.section(1).center-path.back()).norm()<1e-12,"smooth endpoints preserved");
+      bool nonzero=false;
+      for(const auto& n:r.corridor.hermiteNodes()) nonzero|=n.state.shape_first.norm()>1e-3;
+      check(nonzero,"shared shape jets remain free");
+      for(size_t i=0;i<r.corridor.pieces();++i)
+        check(detail::regularTube(r.corridor.centerControls().data()+6*i,
+                                  r.corridor.shapeControls().data()+6*i),"smooth whole disk certificate");
+      for(const auto& m:r.corridor.shapeControls()) {
+        Eigen::SelfAdjointEigenSolver<Eigen::Matrix2d> eig(m.transpose()*m);
+        check(eig.eigenvalues().maxCoeff()<=smooth.max_radius*smooth.max_radius+1e-9,
+              "smoothing and refill respect radius cap");
+      }
+      const auto full=generate({Vec3(-2,0,0),Vec3(2,0,0)},empty,box(),smooth);
+      success(full);
+      check(full.corridor.section(.5).shape.col(0).norm()>smooth.max_radius*(1-1e-5),
+            "radius reserve is refilled in open space");
+    }
     auto straight = generate({Vec3(-2, 0, 0), Vec3(2, 0, 0)}, empty, box(), o);
     success(straight);
     check((straight.corridor.section(0).center - Vec3(-2, 0, 0)).norm() < 1e-12,

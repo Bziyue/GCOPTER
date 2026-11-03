@@ -11,6 +11,7 @@
 #include <stdexcept>
 
 #include "hermite_optimizer.hpp"
+#include "sweep_smoothing.hpp"
 namespace gcopter::direct {
 namespace {
 using detail::Failure;
@@ -162,6 +163,13 @@ Differential Corridor::evaluate(double u, const Vec3& x) const {
   return out;
 }
 struct GeneratorAccess {
+  static void replace(Corridor& c, const std::vector<detail::Curve9>& p) {
+    for(size_t i=0;i<p.size();++i) for(int j=0;j<6;++j) {
+      c.centers_[6*i+j]=p[i][j].head<3>();
+      c.shapes_[6*i+j]=detail::unpackShape(p[i][j]);
+    }
+    for(auto& n:c.nodes_) n.state=c.section(n.u);
+  }
   static Corridor make(const std::vector<detail::Node>& nodes) {
     Corridor c;
     const double total = nodes.back().s;
@@ -215,7 +223,8 @@ const char* statusName(Status s) {
 
 Result generate(const std::vector<Vec3>& seed, const ObstacleIndex& index,
                 const Bounds& bounds, const Options& o) {
-  return detail::generateWithShapeStage(seed, index, bounds, o, {});
+  return detail::generateWithShapeStage(seed, index, bounds, o, {},
+                                       o.initial_iterations, o.certify_jacobian);
 }
 
 Result detail::generateWithShapeStage(const std::vector<Vec3>& seed,
@@ -240,7 +249,8 @@ Result detail::generateWithShapeStage(const std::vector<Vec3>& seed,
     for (double v :
          {o.control_spacing, o.min_radius, o.max_radius, o.max_offset,
           o.robot_radius, o.safety_margin, o.numerical_guard,
-          o.certificate_margin, o.budget_ms, o.local_range, o.local_progress})
+          o.certificate_margin, o.budget_ms, o.local_range, o.local_progress,
+          o.frame_smoothing, o.section_smoothing, o.jet_smoothing})
       if (!std::isfinite(v))
         throw Failure{Status::InvalidInput, "nonfinite generator option"};
     if (seed.size() < 2 || !bounds.lower.allFinite() ||
@@ -249,6 +259,9 @@ Result detail::generateWithShapeStage(const std::vector<Vec3>& seed,
         o.control_spacing <= 0 || o.min_radius <= 0 ||
         o.max_radius <= o.min_radius || o.max_offset <= 0 ||
         o.local_range < 0 || o.local_progress < 1e-6 || o.robot_radius < 0 ||
+        o.frame_smoothing < 0 || o.section_smoothing < 0 ||
+        o.jet_smoothing < 0 || o.jet_smoothing >= .5 ||
+        o.initial_iterations < 1 || o.initial_iterations > 12 ||
         o.safety_margin < 0 || o.numerical_guard <= 0 ||
         o.certificate_margin < o.numerical_guard || o.budget_ms <= 0 ||
         o.max_refinements < 0 || o.max_refinements > 20 || o.max_controls < 2 ||
@@ -333,6 +346,19 @@ Result detail::generateWithShapeStage(const std::vector<Vec3>& seed,
     }
     Failure last{Status::InsufficientClearance,
                  "no certifiable Hermite reference"};
+    std::vector<Vec3> moments;
+    if(o.frame_smoothing>0) {
+      moments.assign(clean.size(),Vec3::Zero());
+      for(size_t i=1;i<clean.size();++i)
+        moments[i]=moments[i-1]+.5*(arc[i]+arc[i-1])*(clean[i]-clean[i-1]);
+    }
+    auto tangentIntegral=[&](double s) {
+      s=std::clamp(s,0.,arc.back());
+      const size_t k=std::min(clean.size()-2,size_t(std::upper_bound(arc.begin(),arc.end(),s)-arc.begin()-1));
+      const Vec3 displacement=(s-arc[k])/(arc[k+1]-arc[k])*(clean[k+1]-clean[k]);
+      return std::make_pair(Vec3(clean[k]-clean[0]+displacement),
+                           Vec3(moments[k]+.5*(s+arc[k])*displacement));
+    };
     for (int refinement = 0; refinement <= o.max_refinements; ++refinement) {
       stop();
       result.metrics.refinements = refinement;
@@ -396,7 +422,17 @@ Result detail::generateWithShapeStage(const std::vector<Vec3>& seed,
           if (n.velocity.norm() < 1e-8)
             throw Failure{Status::DegeneratePath,
                           "Hermite reference has a stationary tangent"};
-          const Vec3 tangent = n.velocity.normalized();
+          Vec3 tangent = n.velocity.normalized();
+          if (o.frame_smoothing > 0) {
+            // Integrate a triangular kernel over seed edges, using arc length
+            // rather than vertex counts so seed sampling density has no bias.
+            const double radius = o.frame_smoothing;
+            const auto a=tangentIntegral(n.s-radius), b=tangentIntegral(n.s),
+                       c=tangentIntegral(n.s+radius);
+            const Vec3 average=(1-n.s/radius)*(b.first-a.first)+(b.second-a.second)/radius+
+                               (1+n.s/radius)*(c.first-b.first)-(c.second-b.second)/radius;
+            if (average.dot(tangent) > .15 * average.norm()) tangent = average.normalized();
+          }
           if (i == 0)
             axis = tangent.unitOrthogonal();
           else {
@@ -422,7 +458,7 @@ Result detail::generateWithShapeStage(const std::vector<Vec3>& seed,
             Certificates certificates(index, bounds, o, stop, result.metrics,
                                       local_boxes, query_cache);
             std::vector<SupportPlane> candidate_planes;
-            if (shape_stage) certificates.exported_planes = &candidate_planes;
+            if (shape_stage || o.jet_smoothing > 0) certificates.exported_planes = &candidate_planes;
             // The tiny initial circles carry no useful free-space shape.
             // Use the learned metric only after the first inflation solve.
             certificates.use_shape_metric = iteration > 0;
@@ -454,18 +490,65 @@ Result detail::generateWithShapeStage(const std::vector<Vec3>& seed,
               optimizer.optimize(nodes, certificates.cuts, result.metrics);
               result.metrics.optimization_ms += elapsed() - timer;
             }
+            if (o.certify_jacobian) {
+              for (int repair=0;;++repair) {
+                std::vector<int> folded;
+                for(int i=0;i+1<int(nodes.size());++i) {
+                  std::array<Vec3,6> c;std::array<Mat32,6> m;
+                  controls(patch(nodes,i),nodes,c,m);
+                  if(!regularTube(c.data(),m.data())) folded.push_back(i);
+                }
+                if(folded.empty()) break;
+                if(repair==3) throw Failure{Status::DegeneratePath,"full-disk constraint refinement failed"};
+                // Add progress SOCs only where the whole-disk certificate
+                // needs them. Most spans incur no extra barrier rows.
+                for(int i:folded) {
+                  std::array<Vec3,6> c;std::array<Mat32,6> m;
+                  controls(patch(nodes,i),nodes,c,m);
+                  for(double t:{0.,.25,.5,.75,1.}) {
+                    auto work=m;
+                    for(int k=5;k>0;--k) for(int j=0;j<k;++j)
+                      work[j]=(1-t)*work[j]+t*work[j+1];
+                    const Vec3 normal=work[0].col(0).cross(work[0].col(1)).normalized();
+                    monotoneCuts(nodes,i,normal,certificates.cuts);
+                  }
+                }
+                if(certificates.cuts.size()>o.max_constraints)
+                  throw Failure{Status::Capacity,"full-disk constraint capacity exceeded"};
+                result.metrics.constraints=certificates.cuts.size();
+                const auto candidate=nodes;
+                double fraction=1;
+                for(;;) {
+                  bool feasible=true;
+                  for(const auto& cut:certificates.cuts)
+                    if(value(cut,nodes)>=cut.h-1e-11) {feasible=false;break;}
+                  if(feasible) break;
+                  fraction*=.5;
+                  if(fraction<1e-8) throw Failure{Status::DegeneratePath,"no interior full-disk warm start"};
+                  for(size_t i=0;i<nodes.size();++i)
+                    nodes[i].x=(1-fraction)*circle(initial_radius)+fraction*candidate[i].x;
+                }
+                timer=elapsed();
+                Optimizer repair_optimizer(o,stop);
+                repair_optimizer.fraction_to_boundary=true;
+                repair_optimizer.iteration_limit=8;
+                repair_optimizer.optimize(nodes,certificates.cuts,result.metrics);
+                result.metrics.optimization_ms+=elapsed()-timer;
+                ++result.metrics.regularity_repairs;
+              }
+            }
             // Full SOC residual audit, covering every obstacle certificate.
             for (const auto& c : certificates.cuts)
               if (value(c, nodes) > c.h + o.numerical_guard * .01)
                 throw Failure{Status::VerificationFailed,
                               "full Hermite support residual failed"};
             for (int i = 0; i + 1 < int(nodes.size()); ++i)
-              if (!regular(patch(nodes, i), nodes))
+              if (!o.certify_jacobian && !regular(patch(nodes, i), nodes))
                 throw Failure{Status::DegeneratePath,
                               "Hermite tube transversality certificate failed"};
             stop();
             best = nodes;
-            if (shape_stage) accepted_planes = std::move(candidate_planes);
+            if (shape_stage || o.jet_smoothing > 0) accepted_planes = std::move(candidate_planes);
             ++result.metrics.inflation_steps;
             if (unconstrained) break;
           } catch (const Failure& f) {
@@ -481,6 +564,18 @@ Result detail::generateWithShapeStage(const std::vector<Vec3>& seed,
         result.corridor = GeneratorAccess::make(best);
         if (shape_stage) {
           shape_stage(result.corridor, accepted_planes, total, stop);
+          stop();
+        }
+        if(o.certify_jacobian && shape_stage && o.jet_smoothing==0)
+          for(size_t i=0;i<result.corridor.pieces();++i)
+            if(!regularTube(result.corridor.centerControls().data()+6*i,
+                            result.corridor.shapeControls().data()+6*i))
+              throw Failure{Status::DegeneratePath,"shape stage full-disk certificate failed"};
+        if (o.jet_smoothing > 0) {
+          const double timer=elapsed();
+          GeneratorAccess::replace(result.corridor,smoothSweep(result.corridor,accepted_planes,
+              o.jet_smoothing,o.max_radius,result.metrics.mean_jet_fraction,stop));
+          result.metrics.smoothing_ms=elapsed()-timer;
           stop();
         }
         result.metrics.nodes = best.size();

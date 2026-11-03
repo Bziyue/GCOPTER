@@ -69,9 +69,16 @@ class DirectDemo final : public rclcpp::Node {
     options_.max_offset = declare_parameter<double>("max_offset", 1.5);
     options_.local_range = declare_parameter<double>("local_range", 0.);
     options_.local_progress = declare_parameter<double>("local_progress", 7.);
-    shape_mode_ = declare_parameter<std::string>("shape_mode", "baseline");
-    if (shape_mode_ != "baseline" && shape_mode_ != "boundary-12")
-      throw std::invalid_argument("shape_mode must be baseline or boundary-12");
+    shape_mode_ = declare_parameter<std::string>("shape_mode", "smooth");
+    if (shape_mode_ != "baseline" && shape_mode_ != "boundary-12" && shape_mode_ != "smooth")
+      throw std::invalid_argument("shape_mode must be baseline, boundary-12 or smooth");
+    if(shape_mode_=="smooth") {
+      options_.frame_smoothing=1.5;
+      options_.section_smoothing=.2;
+      options_.jet_smoothing=.01;
+      options_.certify_jacobian=true;
+      options_.initial_iterations=8;
+    }
     options_.inflation_iterations =
         declare_parameter<int>("inflation_iterations", 2);
     options_.certificate_depth = declare_parameter<int>("certificate_depth", 9);
@@ -616,6 +623,9 @@ class DirectDemo final : public rclcpp::Node {
            << ",\"max_center_shift\":" << result.metrics.max_center_shift
            << ",\"optimization_ms\":" << result.metrics.optimization_ms
            << ",\"certificate_ms\":" << result.metrics.certificate_ms
+           << ",\"smoothing_ms\":" << result.metrics.smoothing_ms
+           << ",\"mean_jet_fraction\":" << result.metrics.mean_jet_fraction
+           << ",\"regularity_repairs\":" << result.metrics.regularity_repairs
            << ",\"controls\":" << result.metrics.controls
            << ",\"constraints\":" << result.metrics.constraints
            << ",\"refinements\":" << result.metrics.refinements

@@ -20,6 +20,7 @@ p.add_argument('--spacing', type=float, default=1.0)
 p.add_argument('--weight', type=float, default=1e5)
 p.add_argument('--steps', type=int, default=16)
 p.add_argument('--max-iterations', type=int, default=800)
+p.add_argument('--memory-mib', type=int, default=512, help='0 disables the address-space limit')
 p.add_argument('--cpu-seconds', type=int, default=55)
 p.add_argument('--wall-seconds', type=int, default=60)
 p.add_argument('--check-gradients', action='store_true')
@@ -28,11 +29,12 @@ p.add_argument('--constraint', choices=['sampled','bezier','bezier-controls'], d
 p.add_argument('--bezier-depth', type=int, choices=range(6), default=2)
 p.add_argument('--tube-mode', choices=['reference','fast','horner'], default='fast')
 p.add_argument('--profile', action='store_true')
-p.add_argument('--shape-mode', choices=['baseline','hermite-free','cubic-c2','integrated-quintic','fast-quintic','fast-quintic-2','coordinate-6','coordinate-8','boundary-12','boundary-8','boundary-coarse','continuation'],default='baseline')
+p.add_argument('--shape-mode', choices=['smooth','baseline','hermite-free','cubic-c2','integrated-quintic','fast-quintic','fast-quintic-2','coordinate-6','coordinate-8','boundary-12','boundary-8','boundary-coarse','continuation'],default='baseline')
 a = p.parse_args()
 a.output.mkdir(parents=True, exist_ok=True)
 def bounded():
-    resource.setrlimit(resource.RLIMIT_AS, (512*1024**2, 512*1024**2))
+    if a.memory_mib:
+        resource.setrlimit(resource.RLIMIT_AS, (a.memory_mib*1024**2, a.memory_mib*1024**2))
     resource.setrlimit(resource.RLIMIT_CPU, (a.cpu_seconds, a.cpu_seconds))
     resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
 def sha(path):
@@ -74,6 +76,6 @@ for i, request in enumerate(json.loads(a.inputs.read_text())):
     manifest.append(record)
     print(f"case {i}: {record['returncode']}",flush=True)
     (a.output/'manifest.json').write_text(json.dumps(dict(parameters=dict(repeats=a.repeats,spacing=a.spacing,weight=a.weight,steps=a.steps,max_iterations=a.max_iterations,
-        constraint=a.constraint,bezier_depth=a.bezier_depth,tube_mode=a.tube_mode,profile=a.profile,shape_mode=a.shape_mode,memory_mib=512,cpu_seconds=a.cpu_seconds,wall_seconds=a.wall_seconds,
+        constraint=a.constraint,bezier_depth=a.bezier_depth,tube_mode=a.tube_mode,profile=a.profile,shape_mode=a.shape_mode,memory_mib=a.memory_mib,cpu_seconds=a.cpu_seconds,wall_seconds=a.wall_seconds,
         binary_sha256=sha(a.binary),platform=platform.platform(),processor=platform.processor()),cases=manifest),indent=2)+'\n')
 if any(r['returncode']!=0 for r in manifest): raise SystemExit(1)
