@@ -153,9 +153,43 @@ inline double value(const Cut& c, const std::vector<Node>& nodes) {
 // run. Share identical query boxes between spans as well as inflation rounds;
 // never retain data across requests or reference refinements. A full cache
 // simply falls back to ordinary queries.
+// Conservative spatial packets of the original spheres; no obstacle model change.
+struct ObstacleGroups {
+  struct Block {
+    Vec3 center, half;
+    double min_radius, max_radius;
+    unsigned long long alive;
+    int begin, end, nearest;
+  };
+  std::vector<Block> blocks;
+  bool uniform_radius = true;
+};
+inline ObstacleGroups obstacleGroups(const std::vector<int>& ids,
+                                     const ObstacleIndex& map) {
+  ObstacleGroups result;
+  result.blocks.reserve((ids.size() + 31) / 32);
+  for (int begin = 0; begin < int(ids.size()); begin += 32) {
+    const int end = std::min(begin + 32, int(ids.size()));
+    Vec3 lo = map.obstacles()[ids[begin]].center, hi = lo;
+    double rmin = INFINITY, rmax = 0;
+    for (int j = begin; j < end; ++j) {
+      const auto& sphere = map.obstacles()[ids[j]];
+      lo = lo.cwiseMin(sphere.center);
+      hi = hi.cwiseMax(sphere.center);
+      rmin = std::min(rmin, sphere.radius);
+      rmax = std::max(rmax, sphere.radius);
+      result.uniform_radius &= sphere.radius == map.obstacles()[ids.front()].radius;
+    }
+    result.blocks.push_back({.5 * lo + .5 * hi, .5 * hi - .5 * lo, rmin, rmax,
+                            (1ull << (end-begin))-1, begin, end, -1});
+  }
+  return result;
+}
+
 struct QueryCache {
   static constexpr std::size_t byte_limit = 16 * 1024 * 1024;
   std::vector<std::vector<int>> ids;
+  std::vector<ObstacleGroups> groups;
   std::vector<int> spans;
   std::map<std::array<double, 6>, int> boxes;
   std::size_t bytes = 0;
@@ -172,12 +206,18 @@ struct QueryCache {
       entry = found->second;
     } else {
       map.query(lower, upper, scratch);
-      const std::size_t size = scratch.capacity() * sizeof(int);
-      if (size <= byte_limit - bytes) {
-        bytes += size;
-        entry = int(ids.size());
-        ids.push_back(std::move(scratch));
-        boxes.emplace(key, entry);
+      const std::size_t index_bytes = scratch.capacity() * sizeof(int);
+      const std::size_t group_bytes = ((scratch.size() + 31) / 32) * sizeof(ObstacleGroups::Block);
+      if (index_bytes + group_bytes <= byte_limit - bytes) {
+        auto grouped = obstacleGroups(scratch, map);
+        const std::size_t size = index_bytes + grouped.blocks.capacity() * sizeof(ObstacleGroups::Block);
+        if (size <= byte_limit - bytes) {
+          bytes += size;
+          entry = int(ids.size());
+          ids.push_back(std::move(scratch));
+          groups.push_back(std::move(grouped));
+          boxes.emplace(key, entry);
+        }
       }
     }
     if (span == int(spans.size())) spans.push_back(entry);
@@ -297,42 +337,55 @@ struct Certificates {
                            transform;
     rotation.row(2) = normal.transpose();
     const Vec3 axes2(lambda[0], lambda[1], longitudinal * longitudinal);
-    const double first_radius = map.obstacles()[ids.front()].radius;
-    bool uniform_radius = true;
-    struct Candidate {
-      int id;
-      double distance;
-    };
+    // Keep spatial groups intact while planes remove individual spheres.
+    // Bounds can discard/retain a whole group; only straddling groups need
+    // per-sphere predicates. Per-group minima avoid a heap and array compaction.
+    struct Candidate { int id; double distance; };
+    using Block = ObstacleGroups::Block;
+    constexpr int block_size = 32;
+    ObstacleGroups temporary;
+    const ObstacleGroups* grouped;
+    if (depth == 0 && query_cache.spans[p.span] >= 0)
+      grouped = &query_cache.groups[query_cache.spans[p.span]];
+    else {
+      temporary = obstacleGroups(ids, map);
+      grouped = &temporary;
+    }
+    auto blocks = grouped->blocks;
+    const bool uniform_radius = grouped->uniform_radius;
     std::vector<Candidate> remaining;
     remaining.reserve(ids.size());
-    // The ellipsoidal metric determines only the processing order. Every
-    // accepted plane is checked against all six control ellipses, and every
-    // discarded obstacle must lie wholly behind such an accepted plane.
-    for (int id : ids) {
-      const auto& sphere = map.obstacles()[id];
-      uniform_radius &= sphere.radius == first_radius;
-      remaining.push_back({id, (metric * (sphere.center - cm)).squaredNorm()});
-    }
+    for (int id : ids)
+      remaining.push_back({id, (metric * (map.obstacles()[id].center - cm)).squaredNorm()});
     if (!uniform_radius) {
       const double inverse_scale = 1 / min_scale;
       for (auto& candidate : remaining)
         candidate.distance = std::sqrt(candidate.distance) -
-                             (map.obstacles()[candidate.id].radius + pad) *
-                                 inverse_scale;
+            (map.obstacles()[candidate.id].radius + pad) * inverse_scale;
     }
-    auto nearest = [&] {
-      return std::min_element(
-                 remaining.begin(), remaining.end(),
-                 [](const Candidate& a, const Candidate& b) {
-                   return a.distance < b.distance ||
-                          (a.distance == b.distance && a.id < b.id);
-                 }) - remaining.begin();
+    auto better = [&](int a, int b) {
+      return b < 0 || remaining[a].distance < remaining[b].distance ||
+          (remaining[a].distance == remaining[b].distance && remaining[a].id < remaining[b].id);
     };
+    auto nearest = [&](Block& b) {
+      b.nearest = -1;
+      for (auto bits = b.alive; bits; bits &= bits - 1) {
+        const int j = b.begin + __builtin_ctzll(bits);
+        if (better(j, b.nearest)) b.nearest = j;
+      }
+    };
+    int next = -1;
+    for (auto& b : blocks) {
+      nearest(b);
+      if (better(b.nearest, next)) next = b.nearest;
+    }
     std::vector<int> failed;
-    std::size_t next = nearest();
     unsigned processed = 0;
-    while (!remaining.empty()) {
+    while (next >= 0) {
       if ((++processed & 31u) == 0) stop();
+      auto& selected = blocks[next / block_size];
+      selected.alive &= ~(1ull << (next - selected.begin));
+      nearest(selected);
       const int id = remaining[next].id;
       const auto& sphere = map.obstacles()[id];
       const Vec3 delta = sphere.center - cm;
@@ -373,28 +426,39 @@ struct Certificates {
         separated = separate(delta - mm * (u * v));
       }
       ++metrics.obstacle_pairs;
+      next = -1;
       if (separated) {
         add(p, n, h, nodes);
-        std::size_t count = 0;
-        double best = INFINITY;
-        for (const auto& candidate : remaining) {
-          if (candidate.id == id) continue;
-          ++metrics.obstacle_pairs;
-          const auto& other = map.obstacles()[candidate.id];
-          if (n.dot(other.center) - other.radius - pad >= h) continue;
-          remaining[count] = candidate;
-          if (count == 0 || candidate.distance < best) {
-            best = candidate.distance;
-            next = count;
+        const Vec3 absolute = n.cwiseAbs();
+        for (auto& b : blocks) {
+          if (!b.alive) continue;
+          const double projection = n.dot(b.center), extent = absolute.dot(b.half);
+          // Only a whole-group exclusion needs this accumulated roundoff
+          // allowance; ambiguous groups use the original sphere predicate.
+          const double guard = 1e-10 + 32 * std::numeric_limits<double>::epsilon() *
+              (absolute.dot(b.center.cwiseAbs() + b.half) + b.max_radius + pad + std::abs(h));
+          if (projection - extent - b.max_radius - pad >= h + guard) {
+            b.alive = 0;
+            b.nearest = -1;
+            continue;
           }
-          ++count;
+          if (projection + extent - b.min_radius - pad >= h - guard) {
+            b.nearest = -1;
+            for (auto bits = b.alive; bits; bits &= bits - 1) {
+              const int j = b.begin + __builtin_ctzll(bits);
+              const auto& other = map.obstacles()[remaining[j].id];
+              ++metrics.obstacle_pairs;
+              if (n.dot(other.center) - other.radius - pad >= h)
+                b.alive &= ~(1ull << (j - b.begin));
+              else if (better(j, b.nearest)) b.nearest = j;
+            }
+          }
+          if (b.nearest >= 0 && better(b.nearest, next)) next = b.nearest;
         }
-        remaining.resize(count);
       } else {
         failed.push_back(id);
-        remaining[next] = remaining.back();
-        remaining.pop_back();
-        if (!remaining.empty()) next = nearest();
+        for (const auto& b : blocks)
+          if (b.nearest >= 0 && better(b.nearest, next)) next = b.nearest;
       }
     }
     ++metrics.certificate_leaves;
@@ -604,7 +668,7 @@ inline std::vector<int> irredundant(const std::vector<Node>& nodes,
 struct Optimizer {
   const Options& o;
   const Stop& stop;
-  std::vector<H5> diagonal, upper;
+  std::vector<H5> diagonal, upper, transfer;
   std::vector<Eigen::LLT<H5>> factors;
   std::vector<V5> gradient, rhs, step, scaling;
   Optimizer(const Options& options, const Stop& s) : o(options), stop(s) {}
@@ -722,6 +786,7 @@ struct Optimizer {
              const std::vector<int>& active, Metrics& metrics) {
     const int count = nodes.size();
     factors.resize(count);
+    transfer.resize(count - 1);
     rhs.resize(count);
     step.resize(count);
     scaling.resize(count);
@@ -768,10 +833,8 @@ struct Optimizer {
             H5 h = diagonal[i];
             rhs[i] = -gradient[i].cwiseQuotient(scaling[i]);
             if (i) {
-              h -= upper[i - 1].transpose() *
-                   factors[i - 1].solve(upper[i - 1]);
-              rhs[i] -= upper[i - 1].transpose() *
-                        factors[i - 1].solve(rhs[i - 1]);
+              h -= upper[i - 1].transpose() * transfer[i - 1];
+              rhs[i] -= upper[i - 1].transpose() * rhs[i - 1];
             }
             h.diagonal().array() += damping;
             factors[i].compute(h);
@@ -779,6 +842,8 @@ struct Optimizer {
               factored = false;
               break;
             }
+            rhs[i] = factors[i].solve(rhs[i]).eval();
+            if (i + 1 < count) transfer[i] = factors[i].solve(upper[i]);
           }
           if (factored) break;
         }
@@ -786,9 +851,8 @@ struct Optimizer {
           throw Failure{Status::VerificationFailed,
                         "Hermite Newton factorization failed after scaling"};
         for (int i = count - 1; i >= 0; --i) {
-          step[i] = factors[i].solve(
-              rhs[i] - (i + 1 < count ? V5(upper[i] * step[i + 1])
-                                     : V5::Zero()));
+          step[i] = rhs[i] - (i + 1 < count
+              ? V5(transfer[i] * step[i + 1]) : V5::Zero());
         }
         double slope = 0;
         for (int i = 0; i < count; ++i) {

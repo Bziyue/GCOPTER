@@ -122,6 +122,54 @@ int main() {
       check(cache.query(2, lo, wider, map, scratch) == expected,
             "uncached span remains correct in later rounds");
     }
+    // A packet encloses sphere SUPPORT values, including unequal radii. Check
+    // its lower/upper interval against every original sphere in many planes;
+    // an incorrect bound could silently discard an entire obstacle packet.
+    {
+      std::mt19937 random(20261103);
+      std::uniform_real_distribution<double> coordinate(-6, 6), radius(0, .8);
+      for (int count : {1, 31, 32, 33, 97}) {
+        for (double translation : {0., 1e7}) {
+          std::vector<Sphere> spheres;
+          for (int i = 0; i < count; ++i)
+            spheres.push_back({Vec3(coordinate(random), coordinate(random), coordinate(random)) +
+                                   Vec3::Constant(translation), radius(random)});
+          ObstacleIndex map(std::move(spheres));
+          detail::QueryCache cache;
+          std::vector<int> scratch;
+          const Vec3 lo = Vec3::Constant(translation - 8), hi = Vec3::Constant(translation + 8);
+          const auto& ids = cache.query(0, lo, hi, map, scratch);
+          const auto& groups = cache.groups[cache.spans[0]];
+          check(int(ids.size()) == count, "packet query includes every sphere");
+          int covered = 0;
+          for (const auto& block : groups.blocks) {
+            covered += block.end - block.begin;
+            check(__builtin_popcountll(block.alive) == block.end - block.begin,
+                  "packet mask covers its exact candidate range");
+            for (int trial = 0; trial < 80; ++trial) {
+              const Vec3 n = Vec3(coordinate(random), coordinate(random), coordinate(random)).normalized();
+              const double middle = n.dot(block.center), spread = n.cwiseAbs().dot(block.half);
+              const double lower = middle - spread - block.max_radius - .3;
+              const double upper = middle + spread - block.min_radius - .3;
+              const double tolerance = 64 * std::numeric_limits<double>::epsilon() *
+                  (1 + std::abs(translation));
+              for (int j = block.begin; j < block.end; ++j) {
+                const auto& sphere = map.obstacles()[ids[j]];
+                const double exact = n.dot(sphere.center) - sphere.radius - .3;
+                check(lower <= exact + tolerance && exact <= upper + tolerance,
+                      "packet interval encloses every sphere's supporting plane");
+              }
+            }
+          }
+          check(covered == count, "packets form a disjoint full partition");
+          cache.query(1, lo, hi, map, scratch);
+          check(cache.groups.size() == 1 && cache.spans[0] == cache.spans[1],
+                "identical query boxes reuse immutable packet geometry");
+          check(cache.bytes <= detail::QueryCache::byte_limit,
+                "candidate indices and packet capacities share the memory cap");
+        }
+      }
+    }
     // Independent bisection checks the sphere-metric KKT direction, including
     // point obstacles and isotropic metrics. Actual safety uses support planes.
     {

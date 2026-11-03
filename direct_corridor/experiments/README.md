@@ -82,3 +82,20 @@ env OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 \
 浮点多项式根和带容差的 Bernstein 细分是研究用数值 oracle，不是带向外舍入的区间证明。固定截面面积、两半径乘积和局部构造时间分别报告，不能替代经过连续认证的三维并集体积/生成时间。所有输出先经过本实验对应的数值检查，未通过会非零退出并保留已完成部分。
 
 报告插图可用 `plot_results.py --spline <上面的样条输出目录> --summary docs/validation/parameterization_round4.json --output <图片路径.png>` 重建，额外需要 matplotlib。它只读取实验结果绘图，不运行新的优化。
+
+## 4. 后续计算实验
+
+`run_pipeline.py` 继续以 `abc0631` 为固定基线，新增以下可组合的独立候选；完整数据与默认实现的取舍见[分组剔除与块求解加速](../../docs/分组剔除与块求解加速.md)。`.inc` 文件是候选源码生成片段，不是正式模块新增的运行依赖。
+
+| 变体 | 差异 |
+|---|---|
+| `feasible_step` | 沿 Newton 方向求一次/二次可行边界，采用 0.99 边界步长后回溯 |
+| `feasible_late` | 仅第二轮膨胀使用上述步长 |
+| `lazy_obstacles` | 通过包围盒距离下界按需处理球体，使用逐球堆 |
+| `blocked_obstacles` | 32 球分组、位掩码和组最小值；不缓存组边界 |
+| `blocked_cache` | 组边界与索引共享请求内 16 MiB 缓存额度 |
+| `lazy_blocks` | 再用组级堆延迟距离评价 |
+| `combined` | `blocked_cache` + `schur` + `feasible_late` |
+| `group_schur` | `blocked_cache` + `schur`，最终保留的算法组合 |
+
+正式模块在该组合上增加按数值尺度累计的整组比较舍入余量，最终性能直接测正式模块构建库。新候选继续使用相同串行构建、运行时内存和超时限制，测试针对其各自私有头重新编译。

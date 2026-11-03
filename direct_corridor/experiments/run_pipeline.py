@@ -22,12 +22,25 @@ def replace(text, before, after):
     return text.replace(before, after)
 
 
-def variant_sources(name):
+def variant_sources(name, source=None):
+    if name == 'group_schur':
+        return variant_sources('schur', variant_sources('blocked_cache'))
+    if name == 'combined':
+        return variant_sources('feasible_late', variant_sources('schur', variant_sources('blocked_cache')))
     paths = ['direct_corridor/src/direct_corridor.cpp',
              'direct_corridor/src/hermite_optimizer.hpp']
-    cpp, header = [subprocess.check_output(['git', 'show', f'{BASE}:{p}'],
-                                         cwd=ROOT, text=True) for p in paths]
-    if name == 'schur':
+    cpp, header = source if source is not None else [
+        subprocess.check_output(['git', 'show', f'{BASE}:{p}'], cwd=ROOT, text=True) for p in paths]
+    if name == 'lazy_blocks':
+        cpp, header = variant_sources('blocked_cache')
+        begin = header.index('    struct Candidate { int id; double distance; };')
+        end = header.index('    ++metrics.certificate_leaves;\n    if (!failed.empty())', begin)
+        direction_begin = header.index('      const Vec3 delta = sphere.center - cm;', begin)
+        direction_end = header.index('      ++metrics.obstacle_pairs;', direction_begin)
+        helper = (Path(__file__).parent/'lazy_blocks.inc').read_text()
+        helper = helper.replace('      // @separator_body@', header[direction_begin:direction_end].rstrip())
+        header = replace(header, header[begin:end], helper)
+    elif name == 'schur':
         header = replace(header, 'std::vector<H5> diagonal, upper;',
                          'std::vector<H5> diagonal, upper, transfer;')
         header = replace(header, 'factors.resize(count);',
@@ -46,6 +59,70 @@ def variant_sources(name):
               rhs[i] - (i + 1 < count ? V5(upper[i] * step[i + 1])
                                      : V5::Zero()));''', '''          step[i] = rhs[i] - (i + 1 < count
               ? V5(transfer[i] * step[i + 1]) : V5::Zero());''')
+    elif name in ('lazy_obstacles', 'blocked_obstacles', 'blocked_cache'):
+        begin = header.index('    const double first_radius = map.obstacles()[ids.front()].radius;')
+        end = header.index('    ++metrics.certificate_leaves;\n    if (!failed.empty())', begin)
+        direction_begin = header.index('      const Vec3 delta = sphere.center - cm;', begin)
+        direction_end = header.index('      ++metrics.obstacle_pairs;', direction_begin)
+        helper = (Path(__file__).parent/(('blocked_obstacles' if name == 'blocked_cache' else name) + '.inc')).read_text()
+        helper = helper.replace('      // @separator_body@', header[direction_begin:direction_end].rstrip())
+        header = replace(header, header[begin:end], helper)
+        if name == 'blocked_cache':
+            groups = (Path(__file__).parent/'obstacle_groups.inc').read_text()
+            header = replace(header, 'struct QueryCache {', groups + '\nstruct QueryCache {')
+            header = replace(header, '  std::vector<std::vector<int>> ids;',
+                             '  std::vector<std::vector<int>> ids;\n  std::vector<ObstacleGroups> groups;')
+            header = replace(header, '''      const std::size_t size = scratch.capacity() * sizeof(int);
+      if (size <= byte_limit - bytes) {
+        bytes += size;
+        entry = int(ids.size());
+        ids.push_back(std::move(scratch));
+        boxes.emplace(key, entry);
+      }''', '''      const std::size_t index_bytes = scratch.capacity() * sizeof(int);
+      const std::size_t group_bytes = ((scratch.size() + 31) / 32) * sizeof(ObstacleGroups::Block);
+      if (index_bytes + group_bytes <= byte_limit - bytes) {
+        auto grouped = obstacleGroups(scratch, map);
+        const std::size_t size = index_bytes + grouped.blocks.capacity() * sizeof(ObstacleGroups::Block);
+        if (size <= byte_limit - bytes) {
+          bytes += size;
+          entry = int(ids.size());
+          ids.push_back(std::move(scratch));
+          groups.push_back(std::move(grouped));
+          boxes.emplace(key, entry);
+        }
+      }''')
+            start = header.index('    struct Candidate { int id; double distance; };')
+            end = header.index('    if (!uniform_radius) {', start)
+            header = replace(header, header[start:end], '''    struct Candidate { int id; double distance; };
+    using Block = ObstacleGroups::Block;
+    constexpr int block_size = 32;
+    ObstacleGroups temporary;
+    const ObstacleGroups* grouped;
+    if (depth == 0 && query_cache.spans[p.span] >= 0)
+      grouped = &query_cache.groups[query_cache.spans[p.span]];
+    else {
+      temporary = obstacleGroups(ids, map);
+      grouped = &temporary;
+    }
+    auto blocks = grouped->blocks;
+    const bool uniform_radius = grouped->uniform_radius;
+    std::vector<Candidate> remaining;
+    remaining.reserve(ids.size());
+    for (int id : ids)
+      remaining.push_back({id, (metric * (map.obstacles()[id].center - cm)).squaredNorm()});
+''')
+    elif name in ('feasible_step', 'feasible_late'):
+        helper = (Path(__file__).parent/'feasible_step.inc').read_text()
+        header = replace(header, '  void solve(std::vector<Node>& nodes, const std::vector<Cut>& cuts,',
+                         helper + '\n  void solve(std::vector<Node>& nodes, const std::vector<Cut>& cuts,')
+        header = replace(header, '        double alpha = 1;',
+                         '        double alpha = feasibleStep(nodes, cuts, active);')
+        if name == 'feasible_late':
+            header = replace(header, 'struct Optimizer {', 'struct Optimizer {\n  bool use_feasible_step = false;')
+            header = replace(header, 'double alpha = feasibleStep(nodes, cuts, active);',
+                             'double alpha = use_feasible_step ? feasibleStep(nodes, cuts, active) : 1.;')
+            cpp = replace(cpp, '              Optimizer optimizer(o, stop);',
+                          '              Optimizer optimizer(o, stop);\n              optimizer.use_feasible_step = iteration > 0;')
     elif name == 'decrement':
         # Match inner accuracy to the current barrier parameter. Final-stage
         # tolerance remains the baseline value; this is an ablation, not a
@@ -177,7 +254,9 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('variants', nargs='+', choices=['baseline', 'schur', 'decrement',
                                                 'workset', 'adaptive_nodes', 'certificate_split',
-                                                'certificate_adaptive'])
+                                                'certificate_adaptive', 'feasible_step', 'lazy_obstacles',
+                                                'blocked_obstacles', 'blocked_cache', 'feasible_late', 'lazy_blocks',
+                                                'combined', 'group_schur'])
     p.add_argument('--inputs', required=True, type=Path)
     p.add_argument('--output', type=Path,
                    default=Path('.scratch/parameterization_round4/pipeline'))
