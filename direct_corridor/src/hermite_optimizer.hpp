@@ -11,6 +11,7 @@
 #include <map>
 #include <numeric>
 #include <tuple>
+#include <type_traits>
 
 #include "gcopter/direct_corridor.hpp"
 
@@ -142,11 +143,28 @@ inline bool regular(const Patch& p, const std::vector<Node>& nodes) {
   return scale > 1e-18 && positive(d, std::max(1e-18, scale * 1e-10));
 }
 
-inline double value(const Cut& c, const std::vector<Node>& nodes) {
+struct SupportJet {
+  double length, curvature;
+  V2 gradient, radial;
+};
+struct EllipseSupport {
+  static constexpr bool needs_projection = false;
+  double support(const V2& z) const { return z.norm(); }
+  SupportJet jet(const V2& z) const {
+    const double length = z.norm();
+    const V2 unit = length > 1e-14 ? V2(z / length) : V2::Zero();
+    return {length, length > 1e-14 ? 1 / length : 0, unit, unit};
+  }
+};
+template <class Shape>
+inline double value(const Cut& c, const std::vector<Node>& nodes, const Shape& shape) {
   const auto &a = nodes[c.span].x, &b = nodes[c.span + 1].x;
   double v = c.a.dot(a.head<2>()) + c.b.dot(b.head<2>());
-  if (!c.linear) v += (matrix(a) * c.a + matrix(b) * c.b).norm();
+  if (!c.linear) v += shape.support(matrix(a) * c.a + matrix(b) * c.b);
   return v;
+}
+inline double value(const Cut& c, const std::vector<Node>& nodes) {
+  return value(c, nodes, EllipseSupport{});
 }
 
 // The reference, frames and query bounds are fixed throughout an inflation
@@ -253,7 +271,9 @@ inline Vec3 metricSphereNormal(const Vec3& delta, const Vec3& axes2,
   return delta.cwiseQuotient(axes2 + Vec3::Constant(t));
 }
 
-struct Certificates {
+template <class Shape = EllipseSupport>
+struct ShapeCertificates {
+  Shape shape_support;
   const ObstacleIndex& map;
   const Bounds& bounds;
   const Options& options;
@@ -263,10 +283,10 @@ struct Certificates {
   QueryCache& query_cache;
   bool use_shape_metric = false;
   std::vector<Cut> cuts;
-  Certificates(const ObstacleIndex& m, const Bounds& b, const Options& o,
+  ShapeCertificates(const ObstacleIndex& m, const Bounds& b, const Options& o,
                const Stop& s, Metrics& me, const std::vector<LocalBox>& boxes,
-               QueryCache& cache)
-      : map(m),
+               QueryCache& cache, const Shape& shape = Shape{})
+      : shape_support(shape), map(m),
         bounds(b),
         options(o),
         local_boxes(boxes),
@@ -399,7 +419,7 @@ struct Certificates {
         double support = -INFINITY;
         for (int j = 0; j < 6; ++j)
           support =
-              std::max(support, n.dot(c[j]) + (m[j].transpose() * n).norm());
+              std::max(support, n.dot(c[j]) + shape_support.support(m[j].transpose() * n));
         return support < h - 1e-10;
       };
       bool separated = use_shape_metric &&
@@ -424,6 +444,9 @@ struct Certificates {
           }
         }
         separated = separate(delta - mm * (u * v));
+      }
+      if constexpr (Shape::needs_projection) {
+        if (!separated) separated = separate(shape_support.direction(mm, delta));
       }
       ++metrics.obstacle_pairs;
       next = -1;
@@ -586,6 +609,8 @@ struct Certificates {
   }
 };
 
+using Certificates = ShapeCertificates<>;
+
 // A node-only support row says its ellipse lies in a 2-D half-plane.
 // Translate by a strictly feasible center d, then polarize:
 //   a.y <= h  <=>  q.(y-d) <= 1, q=a/(h-a.d).
@@ -665,13 +690,17 @@ inline std::vector<int> irredundant(const std::vector<Node>& nodes,
 // matrix xx/xy/yy. The off-diagonal entry optimizes ellipse orientation.
 // Neighboring knots are coupled by SOC support constraints; the Newton matrix
 // is block tridiagonal and solved in O(number of knots) memory and arithmetic.
-struct Optimizer {
+template <class Shape = EllipseSupport>
+struct ShapeOptimizer {
+  Shape shape_support;
+  int iteration_limit = 12;
   const Options& o;
   const Stop& stop;
   std::vector<H5> diagonal, upper, transfer;
   std::vector<Eigen::LLT<H5>> factors;
   std::vector<V5> gradient, rhs, step, scaling;
-  Optimizer(const Options& options, const Stop& s) : o(options), stop(s) {}
+  ShapeOptimizer(const Options& options, const Stop& s, const Shape& shape = Shape{})
+      : shape_support(shape), o(options), stop(s) {}
   double objective(const std::vector<Node>& n, const std::vector<Cut>& cuts,
                    const std::vector<int>& active, double mu,
                    bool derivatives) {
@@ -739,7 +768,7 @@ struct Optimizer {
       const V2 z = c.linear
                        ? V2::Zero()
                        : V2(matrix(n[i].x) * c.a + matrix(n[i + 1].x) * c.b);
-      const double length = z.norm();
+      const double length = shape_support.support(z);
       const double gap = c.h - c.a.dot(n[i].x.head<2>()) -
                          c.b.dot(n[i + 1].x.head<2>()) - length;
       if (gap <= 0) return INFINITY;
@@ -747,7 +776,15 @@ struct Optimizer {
       if (derivatives) {
         // A 2-D norm has a rank-one Hessian. Accumulate two rank-one
         // contributions directly into 5x5 blocks; most rows touch one knot.
-        const V2 unit = length > 1e-14 ? V2(z / length) : V2::Zero();
+        SupportJet jet;
+        if constexpr (std::is_same_v<Shape, EllipseSupport>) {
+          const V2 unit = length > 1e-14 ? V2(z / length) : V2::Zero();
+          jet = {length, 0, unit, unit};
+        } else {
+          jet = shape_support.jet(z);
+        }
+        const V2& unit = jet.gradient;
+        const V2& radial = jet.radial;
         auto row = [&](const V2& a) {
           V5 v;
           v << a[0], a[1], unit[0] * a[0], unit[0] * a[1] + unit[1] * a[0],
@@ -756,14 +793,18 @@ struct Optimizer {
         };
         auto normal = [&](const V2& a) {
           V5 v;
-          v << 0, 0, -unit[1] * a[0], -unit[1] * a[1] + unit[0] * a[0],
-              unit[0] * a[1];
+          v << 0, 0, -radial[1] * a[0], -radial[1] * a[1] + radial[0] * a[0],
+              radial[0] * a[1];
           return v;
         };
         const V5 ga = row(c.a), gb = row(c.b), wa = normal(c.a),
                  wb = normal(c.b);
-        const double first = mu / gap, second = first / gap,
-                     curvature = length > 1e-14 ? first / length : 0;
+        const double first = mu / gap, second = first / gap;
+        double curvature;
+        if constexpr (std::is_same_v<Shape, EllipseSupport>)
+          curvature = length > 1e-14 ? first / length : 0;
+        else
+          curvature = first * jet.curvature;
         const bool left = c.a.squaredNorm() > 0, right = c.b.squaredNorm() > 0;
         if (left) {
           gradient[i] += first * ga;
@@ -791,7 +832,7 @@ struct Optimizer {
     step.resize(count);
     scaling.resize(count);
     for (double mu : {.003, .0001, .00001}) {
-      for (int iteration = 0; iteration < 12; ++iteration) {
+      for (int iteration = 0; iteration < iteration_limit; ++iteration) {
         stop();
         ++metrics.newton_steps;
         const double before = objective(nodes, cuts, active, mu, true);
@@ -888,7 +929,7 @@ struct Optimizer {
       std::vector<double> radius(nodes.size(), .9 * o.max_radius);
       for (const auto& c : cuts)
         if (!c.linear) {
-          const double a = c.a.norm(), b = c.b.norm(), r = .85 * c.h / (a + b);
+          const double a = shape_support.support(c.a), b = shape_support.support(c.b), r = .85 * c.h / (a + b);
           if (a > 0) radius[c.span] = std::min(radius[c.span], r);
           if (b > 0) radius[c.span + 1] = std::min(radius[c.span + 1], r);
         }
@@ -897,7 +938,7 @@ struct Optimizer {
         candidate[i].x = circle(std::max(nodes[i].x[2], radius[i]));
       bool feasible = true;
       for (const auto& c : cuts)
-        if (value(c, candidate) >= c.h - 1e-10) {
+        if (value(c, candidate, shape_support) >= c.h - 1e-10) {
           feasible = false;
           break;
         }
@@ -909,4 +950,5 @@ struct Optimizer {
     metrics.active_constraints = active.size();
   }
 };
+using Optimizer = ShapeOptimizer<>;
 }  // namespace gcopter::direct::detail

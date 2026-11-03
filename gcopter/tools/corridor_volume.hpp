@@ -7,6 +7,7 @@
 #include <array>
 #include <boost/random/sobol.hpp>
 #include <cmath>
+#include <functional>
 #include <map>
 #include <numeric>
 #include <random>
@@ -85,6 +86,9 @@ struct Patch {
   // The section-plane equation is degree 15 in the local parameter.
   std::array<Eigen::Vector4d, 16> plane;
   Box box;
+  // Optional section membership for experimental planar shape families.
+  // Plane-root isolation remains the same independent degree-15 procedure.
+  std::function<bool(double, const Vec3&)> section_contains;
   void prepare() {
     std::array<Vec3, 11> normal;
     for (auto& v : normal) v.setZero();
@@ -107,6 +111,7 @@ struct Patch {
       }
   }
   bool disc(double t, const Vec3& point) const {
+    if (section_contains) return section_contains(t, point);
     auto cp = c;
     auto mp = m;
     for (int k = 5; k > 0; --k)
@@ -201,14 +206,16 @@ struct Estimate {
 struct Measurement {
   // Hermite union, FIRI union, same 3-m seed ROI for each, intersection.
   std::array<Estimate, 5> volume;
+  Estimate paired_difference;  // second union minus first, shared samples
   std::size_t unresolved = 0, cells = 0, samples = 0;
 };
 struct Cell {
   std::array<int, 3> key;
   std::vector<int> patches, polys;
 };
+template <class Other = Poly>
 inline Measurement measure(const std::vector<Patch>& patches,
-                           const std::vector<Poly>& polys,
+                           const std::vector<Other>& polys,
                            const std::vector<Vec3>& seed, int samples = 65536,
                            int replicates = 8, double cell_size = 1.,
                            double roi_radius = 3.) {
@@ -315,6 +322,15 @@ inline Measurement measure(const std::vector<Patch>& patches,
     e.ci95 =
         2.364624251 * std::sqrt(variance / (replicates * (replicates - 1)));
   }
+  auto& delta = result.paired_difference;
+  delta.mean = result.volume[1].mean - result.volume[0].mean;
+  double delta_variance = 0;
+  for (int rep = 0; rep < replicates; ++rep) {
+    const double error = estimates[1][rep] - estimates[0][rep] - delta.mean;
+    delta_variance += error * error;
+  }
+  delta.ci95 = 2.364624251 *
+      std::sqrt(delta_variance / (replicates * (replicates - 1)));
   return result;
 }
 }  // namespace corridor_volume

@@ -99,3 +99,29 @@ env OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 \
 | `group_schur` | `blocked_cache` + `schur`，最终保留的算法组合 |
 
 正式模块在该组合上增加按数值尺度累计的整组比较舍入余量，最终性能直接测正式模块构建库。新候选继续使用相同串行构建、运行时内存和超时限制，测试针对其各自私有头重新编译。
+
+## 5. 完整三维 Minkowski 实验
+
+[minkowski.hpp](minkowski.hpp) 提供路径到连续走廊、截面/边界的一二阶导数，以及 `gauge^4-1` 的内部判定与梯度/Hessian。支持可变模板权重和固定基体的 SPD 仿射变换两种模型；不用 FIRI 预生成多面体。
+
+```bash
+cmake -S direct_corridor -B .scratch/minkowski_build \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DDIRECT_CORRIDOR_BUILD_MINKOWSKI_EXPERIMENT=ON
+prlimit --as=2147483648 --cpu=120 \
+  cmake --build .scratch/minkowski_build -j1
+timeout -k 2 60 prlimit --as=536870912 --cpu=50 \
+  ctest --test-dir .scratch/minkowski_build --output-on-failure -j1
+python3 direct_corridor/experiments/run_minkowski.py m4_smooth_sparse m4_smooth \
+  --binary .scratch/minkowski_build/minkowski_benchmark \
+  --inputs .scratch/accel_round3/inputs.json \
+  --output .scratch/minkowski_reproduce --cases 6 --repeats 9 --samples 262144
+```
+
+`run_minkowski.py` 的配置表记录模板数、额外细分、迭代数、厚度、转角、节点间距、扩张轮数、方向适应、乘积界、仿射模式及角度平滑。`--ellipse-spacing .6` 可进行同节点间距对照，默认椭圆基线为 0.4 m。输出目录必须是新的目录。
+
+每次生成后检查原始球体和局部扩张盒，并用共享 Sobol 点测量真实三维并集体积与差值区间。测量、审计、地图索引构建和 CSV 导出均不计入生成耗时。子进程串行，地址空间 512 MiB、CPU 50 s、墙钟 60 s；编译仍为 2 GiB、单进程。失败会记录日志并以非零状态退出。
+
+结果表明该参数化依赖场景，不能把固定二维方形的 97.8% 占比直接推广到三维走廊。本轮折中配置、同间距控制组和实验限制见[报告](../../docs/Minkowski三维走廊实验.md)，数值见[验证记录](../../docs/validation/minkowski_round6.json)。实验目标不安装，不改变当前 RViz 加载库。
+
+静态图可用 `plot_minkowski.py --summary docs/validation/minkowski_round6.json --output docs/figures/minkowski_tradeoff.png` 复现。
