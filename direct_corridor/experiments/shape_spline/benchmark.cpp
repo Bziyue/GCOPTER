@@ -79,6 +79,13 @@ int main(int argc, char**argv) {
     o.max_offset = diagonal + .001;
     std::ofstream output(dir / "generation.jsonl");
     output << std::setprecision(12);
+    const bool continuation = std::getenv("GCOPTER_CONTINUATION_COMPARE") != nullptr;
+    const bool coarse = std::getenv("GCOPTER_COARSE_COMPARE") != nullptr;
+    const bool boundary = std::getenv("GCOPTER_BOUNDARY_COMPARE") != nullptr;
+    const bool coordinate = std::getenv("GCOPTER_COORDINATE_COMPARE") != nullptr;
+    const bool fast = std::getenv("GCOPTER_FAST_COMPARE") != nullptr;
+    const bool integrated = std::getenv("GCOPTER_INTEGRATED_COMPARE") != nullptr;
+    const std::array<const char*, 2> names{{coordinate ? (boundary ? "boundary-12" : "coordinate-6") : (fast ? "fast-quintic" : "hermite-free"), coordinate ? (boundary ? (continuation ? "continuation" : (coarse ? "boundary-coarse" : "boundary-8")) : "coordinate-8") : (fast ? "fast-quintic-2" : (integrated ? "integrated-quintic" : "cubic-c2"))}};
     Result base;
     std::array<ShapeFitResult, 2> variants;
     for (int repeat = -1; repeat < repeats; ++repeat) {
@@ -87,16 +94,49 @@ int main(int argc, char**argv) {
         throw std::runtime_error(base.message);
       }
       output << "{\"mode\":\"baseline\",\"repeat\":" << repeat << ",\"generation_ms\":" <<
-        base.metrics.total_ms << ",\"nodes\":" << base.metrics.nodes << "}\n";
+        base.metrics.total_ms << ",\"nodes\":" << base.metrics.nodes
+        << ",\"native_certificate_ms\":" << base.metrics.certificate_ms
+        << ",\"native_optimize_ms\":" << base.metrics.optimization_ms
+        << ",\"native_newton_steps\":" << base.metrics.newton_steps << "}\n";
       for (int j = 0; j < 2; ++j) {
         int slot = (j + (repeat + 2) % 2) % 2;
         int degree = slot == 0?5:3;
-        auto result = gcopter::direct::experiment::refitShape(base.corridor, seed, index, bounds, o,
-                                                              degree, repeat == -1);
-        output << "{\"mode\":\"" << (slot ==
-                                     0?"hermite-free":"cubic-c2") << "\",\"repeat\":" << repeat <<
-          ",\"generation_ms\":" << base.metrics.total_ms + result.metrics.total_ms <<
-          ",\"base_generation_ms\":" << base.metrics.total_ms;
+        ShapeFitResult result;
+        double base_ms = base.metrics.total_ms;
+        auto native = base.metrics;
+        if (coordinate) {
+          auto settings = o;
+          if (coarse && slot == 1) settings.control_spacing *= 1.25;
+          auto fused = gcopter::direct::experiment::generateCoordinateShape(seed, index, bounds, settings,
+              result.metrics, (coarse || continuation) ? 12 : (slot == 0 ? (boundary ? 12 : 6) : 8), repeat == -1, boundary, continuation && slot == 1);
+          if (!fused) throw std::runtime_error(fused.message);
+          native = fused.metrics;
+          base_ms = fused.metrics.total_ms - result.metrics.total_ms;
+          result.corridor = std::move(fused.corridor);
+        } else if (fast) {
+          auto fused = gcopter::direct::experiment::generateFastShape(seed, index, bounds, o,
+                                                                       result.metrics, slot + 1, repeat == -1);
+          if (!fused) throw std::runtime_error(fused.message);
+          native = fused.metrics;
+          base_ms = fused.metrics.total_ms - result.metrics.total_ms;
+          result.corridor = std::move(fused.corridor);
+        } else if (integrated && slot == 1) {
+          auto fused = gcopter::direct::experiment::generateIntegratedShape(seed, index, bounds, o,
+                                                                            result.metrics, repeat == -1);
+          if (!fused) throw std::runtime_error(fused.message);
+          native = fused.metrics;
+          base_ms = fused.metrics.total_ms - result.metrics.total_ms;
+          result.corridor = std::move(fused.corridor);
+        } else {
+          result = gcopter::direct::experiment::refitShape(base.corridor, seed, index, bounds, o,
+                                                          degree, repeat == -1);
+        }
+        output << "{\"mode\":\"" << names[slot] << "\",\"repeat\":" << repeat <<
+          ",\"generation_ms\":" << base_ms + result.metrics.total_ms <<
+          ",\"base_generation_ms\":" << base_ms
+          << ",\"native_certificate_ms\":" << native.certificate_ms
+          << ",\"native_optimize_ms\":" << native.optimization_ms
+          << ",\"native_newton_steps\":" << native.newton_steps;
         gcopter::direct::experiment::writeShapeMetrics(output, result.metrics);
         output << "}\n";
         variants[slot] = std::move(result);
@@ -109,7 +149,7 @@ int main(int argc, char**argv) {
     const auto base_patches = corridor_volume::patches(base.corridor);
     double baseline_audit = audit(base.corridor, index, bounds, .25);
     for (int slot = 0; slot < 2; ++slot) {
-      const char* name = slot == 0?"hermite-free":"cubic-c2";
+      const char* name = names[slot];
       const auto& c = variants[slot].corridor;
       exportCorridor(c, dir / (std::string(name) + "_sections.csv"));
       std::size_t unresolved = 0;

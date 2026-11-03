@@ -17,6 +17,9 @@ find_package(sensor_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(gcopter_direct_corridor REQUIRED)
+find_package(rviz_common REQUIRED)
+find_package(pluginlib REQUIRED)
+find_package(Qt6 REQUIRED COMPONENTS Widgets)
 
 include_directories(
   include
@@ -33,10 +36,20 @@ target_link_libraries(global_planning
 target_link_directories(global_planning PRIVATE ${OMPL_LIBRARY_DIRS})
 
 add_executable(direct_corridor_demo src/direct_corridor_demo.cpp)
-target_link_libraries(direct_corridor_demo PRIVATE gcopter::direct_corridor
+add_library(direct_corridor_demo_shape STATIC
+  ../direct_corridor/experiments/shape_spline/refit.cpp)
+target_include_directories(direct_corridor_demo_shape PUBLIC
+  ../direct_corridor/experiments/shape_spline)
+target_link_libraries(direct_corridor_demo_shape PUBLIC gcopter::direct_corridor)
+target_link_libraries(direct_corridor_demo PRIVATE direct_corridor_demo_shape
   ${OMPL_LIBRARIES} rclcpp::rclcpp ${std_msgs_TARGETS} ${geometry_msgs_TARGETS}
   ${sensor_msgs_TARGETS} ${visualization_msgs_TARGETS} ${nav_msgs_TARGETS})
 target_link_directories(direct_corridor_demo PRIVATE ${OMPL_LIBRARY_DIRS})
+add_library(gcopter_corridor_panel SHARED src/corridor_panel.cpp src/ghost_map_display.cpp)
+target_link_libraries(gcopter_corridor_panel PRIVATE rviz_common::rviz_common
+  pluginlib::pluginlib Qt6::Widgets rclcpp::rclcpp ${std_msgs_TARGETS} ${visualization_msgs_TARGETS})
+pluginlib_export_plugin_description_file(rviz_common plugins/corridor_panel.xml)
+install(TARGETS gcopter_corridor_panel LIBRARY DESTINATION lib)
 option(GCOPTER_BUILD_CORRIDOR_BENCHMARK "Build offline FIRI volume comparison tools" OFF)
 if(GCOPTER_BUILD_CORRIDOR_BENCHMARK)
   add_executable(corridor_firi_benchmark tools/corridor_firi_benchmark.cpp)

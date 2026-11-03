@@ -1,0 +1,83 @@
+{
+  "request": ".scratch/interactive/polished_rviz/run_1793701774600485813_61028/request_1",
+  "spans": 123,
+  "samples": 15867,
+  "center_J_min": 16.881228300335092,
+  "full_disk_J_min": -620.0251443600234,
+  "folded_sample_count": 1304,
+  "folded_spans": [
+    3,
+    9,
+    10,
+    16,
+    19,
+    26,
+    27,
+    30,
+    34,
+    35,
+    41,
+    44,
+    45,
+    49,
+    50,
+    65,
+    66,
+    81,
+    82,
+    98,
+    100,
+    101,
+    108,
+    109
+  ],
+  "max_g_over_J0": 7.406332134047092,
+  "max_ratio_u": 0.52116672642744,
+  "max_ratio_center": [
+    0.5595778682524132,
+    1.9313722932856787,
+    2.2951269232413316
+  ],
+  "normal_tangent_angle_deg_max": 87.79180796202448,
+  "center_curvature_max_per_m": 194.29933434244566,
+  "max_curvature_u": 0.5203126386133408,
+  "max_curvature_center": [
+    0.725059375424198,
+    1.9331185279665652,
+    1.928190723228672
+  ],
+  "witness": {
+    "u": 0.52116672642744,
+    "disk_coordinate": [
+      0.8996423146143445,
+      -0.4366276511575336
+    ],
+    "world": [
+      -0.6466194427835369,
+      1.3717914452285203,
+      1.3752664765181617
+    ],
+    "exact_J": -527.2170999957658,
+    "finite_difference_J": -527.217094897686,
+    "sample_bracketed_plane_roots": [
+      {
+        "u": 0.511996236774318,
+        "radius_coordinate": 1.0483095935353801,
+        "residual_m": 2.2315206618374916e-15
+      },
+      {
+        "u": 0.52116672642744,
+        "radius_coordinate": 0.9999999999999869,
+        "residual_m": 7.122753468078643e-15
+      },
+      {
+        "u": 0.5235730329414374,
+        "radius_coordinate": 0.8446586714877315,
+        "residual_m": 4.605753226070495e-15
+      }
+    ]
+  },
+  "controls_sha256": "1d5c77feb3cb4da292e9343b83b86cf9a5d3c330931d9533321781a1a470b629",
+  "samples_per_span": 129,
+  "audit_scope": "Uniform samples on each span; negative Jacobian witnesses prove local folds. Positive samples do not certify the remaining intervals. Plane roots were bracketed by sampling; the list is not a certified enumeration."
+}

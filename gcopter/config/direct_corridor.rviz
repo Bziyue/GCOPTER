@@ -1,41 +1,17 @@
 Panels:
-- Class: rviz_common/Displays
-  Help Height: 78
-  Name: Displays
-  Property Tree Widget:
-    Expanded:
-    - /Grid1
-    Splitter Ratio: 0.5
-  Tree Height: 471
-- Class: rviz_common/Selection
-  Name: Selection
-- Class: rviz_common/Tool Properties
-  Expanded:
-  - /Interact1
-  - /Measure1
-  - /Publish Point1
-  Name: Tool Properties
-  Splitter Ratio: 0.5886790156364441
-- Class: rviz_common/Views
-  Expanded:
-  - /Current View1
-  Name: Views
-  Splitter Ratio: 0.5
-- Class: rviz_common/Time
-  Experimental: false
-  Name: Time
-  SyncMode: 0
-  SyncSource: GlobalMap
+- Class: gcopter/CorridorPanel
+  Name: Corridor
+  Obstacle Transparency: 84
 Visualization Manager:
   Class: ''
   Displays:
-  - Alpha: 0.30000001192092896
-    Cell Size: 1
+  - Alpha: 0.22
+    Cell Size: 2
     Class: rviz_default_plugins/Grid
-    Color: 160; 160; 164
+    Color: 166; 181; 197
     Enabled: true
     Line Style:
-      Line Width: 0.029999999329447746
+      Line Width: 0.015
       Value: Lines
     Name: Grid
     Normal Cell Count: 0
@@ -44,52 +20,29 @@ Visualization Manager:
       Y: 0
       Z: 0
     Plane: XY
-    Plane Cell Count: 50
+    Plane Cell Count: 30
     Reference Frame: <Fixed Frame>
     Value: true
   - Class: rviz_default_plugins/Axes
-    Enabled: true
+    Enabled: false
     Length: 2
     Name: Axes
     Radius: 0.10000000149011612
     Reference Frame: <Fixed Frame>
-    Value: true
-  - Alpha: 0.16
-    Autocompute Intensity Bounds: true
-    Autocompute Value Bounds:
-      Max Value: 4.75
-      Min Value: 0
-      Value: true
-    Axis: Z
-    Channel Name: intensity
-    Class: rviz_default_plugins/PointCloud2
-    Color: 100; 130; 160
-    Color Transformer: FlatColor
-    Decay Time: 0
+    Value: false
+  - Class: gcopter/GhostMap
+    Name: Environment
+    Opacity: 0.16
     Enabled: true
-    Invert Rainbow: false
-    Max Color: 255; 255; 255
-    Max Intensity: 4096
-    Min Color: 0; 0; 0
-    Min Intensity: 0
-    Name: GlobalMap
-    Position Transformer: XYZ
-    Selectable: true
-    Size (Pixels): 3
-    Size (m): 0.25
-    Style: Boxes
-    Topic:
-      Depth: 5
-      Durability Policy: Volatile
-      Filter size: 10
-      History Policy: Keep Last
-      Reliability Policy: Best Effort
-      Value: /voxel_map
-    Use Fixed Frame: true
-    Use rainbow: true
     Value: true
+    Topic:
+      Value: /direct_demo/map_surface
+      Depth: 1
+      Durability Policy: Transient Local
+      Reliability Policy: Reliable
+      History Policy: Keep Last
   - Class: rviz_default_plugins/MarkerArray
-    Name: Direct corridor
+    Name: Corridor surface
     Enabled: true
     Value: true
     Topic:
@@ -99,7 +52,17 @@ Visualization Manager:
       Reliability Policy: Reliable
       History Policy: Keep Last
   - Class: rviz_default_plugins/MarkerArray
-    Name: Selection and status
+    Name: Cross sections
+    Enabled: true
+    Value: true
+    Topic:
+      Value: /direct_demo/cross_sections
+      Depth: 1
+      Durability Policy: Transient Local
+      Reliability Policy: Reliable
+      History Policy: Keep Last
+  - Class: rviz_default_plugins/MarkerArray
+    Name: Endpoints
     Enabled: true
     Value: true
     Topic:
@@ -109,13 +72,13 @@ Visualization Manager:
       Reliability Policy: Reliable
       History Policy: Keep Last
   - Class: rviz_default_plugins/Path
-    Name: RRT seed
+    Name: Seed path
     Enabled: true
     Value: true
-    Color: 255; 170; 40
-    Alpha: 1.0
+    Color: 214; 149; 53
+    Alpha: 0.85
     Line Style: Billboards
-    Line Width: 0.07
+    Line Width: 0.035
     Buffer Length: 1
     Pose Style: None
     Topic:
@@ -125,13 +88,13 @@ Visualization Manager:
       Reliability Policy: Reliable
       History Policy: Keep Last
   - Class: rviz_default_plugins/Path
-    Name: C2 reference
+    Name: Centerline
     Enabled: true
     Value: true
-    Color: 30; 230; 235
+    Color: 139; 25; 42
     Alpha: 1.0
     Line Style: Billboards
-    Line Width: 0.055
+    Line Width: 0.07
     Buffer Length: 1
     Pose Style: None
     Topic:
@@ -142,7 +105,7 @@ Visualization Manager:
       History Policy: Keep Last
   Enabled: true
   Global Options:
-    Background Color: 24; 30; 42
+    Background Color: 244; 247; 251
     Fixed Frame: odom
     Frame Rate: 30
   Name: root
@@ -183,7 +146,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 65.0
+      Distance: 72.0
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -198,15 +161,15 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.95
+      Pitch: 1.10
       Target Frame: odom
       Value: Orbit (rviz_default_plugins)
-      Yaw: 1.5708
+      Yaw: 0.78
     Saved: null
 Window Geometry:
-  Width: 1500
-  Height: 950
-  X: 40
-  Y: 40
-  Hide Left Dock: true
+  Width: 1660
+  Height: 1020
+  X: 60
+  Y: 50
+  Hide Left Dock: false
   Hide Right Dock: true

@@ -28,7 +28,7 @@ p.add_argument('--constraint', choices=['sampled','bezier','bezier-controls'], d
 p.add_argument('--bezier-depth', type=int, choices=range(6), default=2)
 p.add_argument('--tube-mode', choices=['reference','fast','horner'], default='fast')
 p.add_argument('--profile', action='store_true')
-p.add_argument('--shape-mode', choices=['baseline','hermite-free','cubic-c2'],default='baseline')
+p.add_argument('--shape-mode', choices=['baseline','hermite-free','cubic-c2','integrated-quintic','fast-quintic','fast-quintic-2','coordinate-6','coordinate-8','boundary-12','boundary-8','boundary-coarse','continuation'],default='baseline')
 a = p.parse_args()
 a.output.mkdir(parents=True, exist_ok=True)
 def bounded():

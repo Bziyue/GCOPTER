@@ -25,6 +25,7 @@
 #include "gcopter/direct_search_map.hpp"
 #include "gcopter/sfc_gen.hpp"
 #include "gcopter/voxel_map.hpp"
+#include "refit.hpp"
 
 using namespace gcopter::direct;
 using Clock = std::chrono::steady_clock;
@@ -66,6 +67,11 @@ class DirectDemo final : public rclcpp::Node {
     options_.max_radius = declare_parameter<double>("max_radius", 1.5);
     options_.control_spacing = declare_parameter<double>("control_spacing", .4);
     options_.max_offset = declare_parameter<double>("max_offset", 1.5);
+    options_.local_range = declare_parameter<double>("local_range", 0.);
+    options_.local_progress = declare_parameter<double>("local_progress", 7.);
+    shape_mode_ = declare_parameter<std::string>("shape_mode", "baseline");
+    if (shape_mode_ != "baseline" && shape_mode_ != "boundary-12")
+      throw std::invalid_argument("shape_mode must be baseline or boundary-12");
     options_.inflation_iterations =
         declare_parameter<int>("inflation_iterations", 2);
     options_.certificate_depth = declare_parameter<int>("certificate_depth", 9);
@@ -111,6 +117,8 @@ class DirectDemo final : public rclcpp::Node {
     declare_parameter<std::string>("session_dir", session_.string());
     const auto qos = rclcpp::QoS(1).reliable().transient_local();
     corridor_pub_ = create_publisher<Markers>("~/corridor", qos);
+    sections_pub_ = create_publisher<Markers>("~/cross_sections", qos);
+    map_surface_pub_ = create_publisher<Markers>("~/map_surface", qos);
     selection_pub_ = create_publisher<Markers>("~/selection", qos);
     seed_pub_ = create_publisher<nav_msgs::msg::Path>("~/seed", qos);
     reference_pub_ = create_publisher<nav_msgs::msg::Path>("~/reference", qos);
@@ -149,6 +157,8 @@ class DirectDemo final : public rclcpp::Node {
         });
     status("WAITING_FOR_MAP");
     RCLCPP_INFO(get_logger(), "session_dir=%s", session_.c_str());
+    RCLCPP_INFO(get_logger(), "shape_mode=%s; local_range=%.2f m",
+                shape_mode_.c_str(), options_.local_range);
   }
 
  private:
@@ -186,20 +196,34 @@ class DirectDemo final : public rclcpp::Node {
     for (std::size_t i = 0; i < endpoints_.size(); ++i) {
       auto m = baseMarker("selection", i, Marker::SPHERE);
       m.pose.position = point(endpoints_[i]);
-      m.scale.x = m.scale.y = m.scale.z = .45;
+      m.scale.x = m.scale.y = m.scale.z = .55;
       m.color.a = 1;
-      m.color.r = i == 1 ? .95 : .1;
-      m.color.g = i == 0 ? .95 : .1;
+      m.color.r = i == 0 ? .10 : .91;
+      m.color.g = i == 0 ? .63 : .34;
+      m.color.b = i == 0 ? .46 : .29;
       markers.markers.push_back(m);
+      auto pin = baseMarker("pins", i, Marker::LINE_LIST);
+      pin.scale.x = .025;
+      pin.color = m.color;
+      pin.color.a = .65;
+      Vec3 ground = endpoints_[i];
+      ground.z() = bounds_.lower.z() + .03;
+      pin.points = {point(ground), point(endpoints_[i])};
+      markers.markers.push_back(pin);
+      auto foot = baseMarker("footprints", i, Marker::CYLINDER);
+      foot.pose.position = point(ground);
+      foot.scale.x = foot.scale.y = .8;
+      foot.scale.z = .035;
+      foot.color = m.color;
+      foot.color.a = .4;
+      markers.markers.push_back(foot);
+      auto label = baseMarker("endpoint_labels", i, Marker::TEXT_VIEW_FACING);
+      label.pose.position = point(endpoints_[i] + Vec3(0, 0, .75));
+      label.scale.z = .38;
+      label.color = m.color;
+      label.text = i == 0 ? "START" : "GOAL";
+      markers.markers.push_back(label);
     }
-    auto label = baseMarker("status", 0, Marker::TEXT_VIEW_FACING);
-    label.pose.position =
-        point(endpoints_.empty() ? Vec3(0, 0, bounds_.upper.z() + .5)
-                                 : endpoints_.front() + Vec3(0, 0, 1));
-    label.scale.z = .4;
-    label.color.r = label.color.g = label.color.b = label.color.a = 1;
-    label.text = text;
-    markers.markers.push_back(label);
     selection_pub_->publish(markers);
   }
   void clearOutput() {
@@ -208,6 +232,7 @@ class DirectDemo final : public rclcpp::Node {
     clear.action = Marker::DELETEALL;
     m.markers.push_back(clear);
     corridor_pub_->publish(m);
+    sections_pub_->publish(m);
     nav_msgs::msg::Path p;
     p.header.frame_id = frame_;
     p.header.stamp = now();
@@ -215,6 +240,58 @@ class DirectDemo final : public rclcpp::Node {
     reference_pub_->publish(p);
     controls_pub_->publish(std_msgs::msg::Float64MultiArray());
     metrics_pub_->publish(std_msgs::msg::String());
+  }
+  void publishMapSurface(const voxel_map::VoxelMap& voxels) {
+    // Render only exposed voxel faces, without box edges or internal faces.
+    // Planning continues to use every occupied voxel in the original map.
+    Markers out;
+    Marker clear;
+    clear.action = Marker::DELETEALL;
+    out.markers.push_back(clear);
+    std::array<Marker, 6> faces;
+    const std::array<double, 6> shade{{.96, .92, .98, .94, 1.04, .90}};
+    for (int f = 0; f < 6; ++f) {
+      faces[f] = baseMarker("environment", f, Marker::TRIANGLE_LIST);
+      faces[f].scale.x = faces[f].scale.y = faces[f].scale.z = 1;
+      faces[f].color.r = .78 * shade[f];
+      faces[f].color.g = .82 * shade[f];
+      faces[f].color.b = .87 * shade[f];
+      faces[f].color.a = 1;
+    }
+    const auto& cells = voxels.getVoxels();
+    const std::array<int, 3> stride{{1, dims_.x(), dims_.x() * dims_.y()}};
+    const double half = .5 * resolution_;
+    for (std::size_t k = 0; k < cells.size(); ++k) {
+      if (!cells[k]) continue;
+      const int z = k / stride[2], rest = k - z * stride[2];
+      const Eigen::Vector3i ijk(rest % dims_.x(), rest / dims_.x(), z);
+      const Vec3 center = voxels.posI2D(ijk);
+      for (int axis = 0; axis < 3; ++axis) {
+        const int u = (axis + 1) % 3, v = (axis + 2) % 3;
+        for (int side = 0; side < 2; ++side) {
+          const int sign = side == 0 ? 1 : -1;
+          const int neighbor = ijk[axis] + sign;
+          if (neighbor >= 0 && neighbor < dims_[axis] &&
+              cells[static_cast<std::ptrdiff_t>(k) + sign * stride[axis]])
+            continue;
+          Vec3 face = center;
+          face[axis] += sign * half;
+          const Vec3 du = Vec3::Unit(u) * half, dv = Vec3::Unit(v) * half;
+          std::array<Vec3, 4> corners{{face - du - dv, face + du - dv,
+                                       face + du + dv, face - du + dv}};
+          if (sign < 0) std::swap(corners[1], corners[3]);
+          auto& points = faces[2 * axis + side].points;
+          for (int j : {0, 1, 2, 0, 2, 3}) points.push_back(point(corners[j]));
+        }
+      }
+    }
+    for (auto& face : faces) {
+      // Vertex colors use unlit shading in RViz. Opaque exterior faces avoid
+      // both black lighting bands and stacked transparent voxel contours.
+      face.colors.assign(face.points.size(), face.color);
+      out.markers.push_back(std::move(face));
+    }
+    map_surface_pub_->publish(out);
   }
   void onMap(sensor_msgs::msg::PointCloud2::ConstSharedPtr msg) {
     // mockamap republishes an immutable map at 1 Hz. Identical payloads must
@@ -276,9 +353,14 @@ class DirectDemo final : public rclcpp::Node {
       writePoints(session_ / ("map_" + std::to_string(map_version_) + ".xyz"),
                   centers);
       last_map_ = std::move(msg);
+      publishMapSurface(voxels);
       status("WAITING_FOR_START");
     } catch (const std::exception& e) {
       map_.reset();
+      Markers clear;
+      clear.markers.resize(1);
+      clear.markers.front().action = Marker::DELETEALL;
+      map_surface_pub_->publish(clear);
       status(std::string("INVALID_MAP: ") + e.what());
     }
   }
@@ -335,6 +417,8 @@ class DirectDemo final : public rclcpp::Node {
     const double search_ms = milliseconds(begin);
     std::string outcome = "SEARCH_FAILED";
     Result result;
+    Options request_options = options_;
+    experiment::ShapeFitMetrics shape_metrics;
     if (std::isfinite(cost) && seed.size() >= 2 &&
         (seed.front() - endpoints_[0]).norm() < 1e-7 &&
         (seed.back() - endpoints_[1]).norm() < 1e-7) {
@@ -343,7 +427,32 @@ class DirectDemo final : public rclcpp::Node {
         edges_ok &= search.segmentFree(seed[k - 1], seed[k]);
       if (edges_ok) {
         status("GENERATING request=" + std::to_string(id));
-        result = generate(seed, *map_, bounds_, options_);
+        // Match the frozen-input experiments: local boxes provide the real
+        // expansion limits, so radius/offset bounds must not clip at 1.5 m.
+        if (request_options.local_range > 0) {
+          const double pad = options_.robot_radius + options_.safety_margin +
+                             options_.certificate_margin;
+          Vec3 a, b = seed.front();
+          double diagonal = 0;
+          for (std::size_t i = 1; i < seed.size();) {
+            a = b;
+            if ((a - seed[i]).norm() > options_.local_progress)
+              b = a + (seed[i] - a).normalized() * options_.local_progress;
+            else
+              b = seed[i++];
+            const Vec3 lower = (a.cwiseMin(b) - Vec3::Constant(options_.local_range))
+                                   .cwiseMax(bounds_.lower + Vec3::Constant(pad));
+            const Vec3 upper = (a.cwiseMax(b) + Vec3::Constant(options_.local_range))
+                                   .cwiseMin(bounds_.upper - Vec3::Constant(pad));
+            diagonal = std::max(diagonal, (upper - lower).norm());
+          }
+          request_options.max_radius = .5 * diagonal + .001;
+          request_options.max_offset = diagonal + .001;
+        }
+        result = shape_mode_ == "boundary-12"
+            ? experiment::generateCoordinateShape(seed, *map_, bounds_, request_options,
+                                                   shape_metrics, 12, false, true)
+            : generate(seed, *map_, bounds_, request_options);
         outcome = result ? "PASS" : statusName(result.status);
       } else
         outcome = "SEARCH_EDGE_COLLISION";
@@ -366,23 +475,31 @@ class DirectDemo final : public rclcpp::Node {
     const auto rendering_start = Clock::now();
     if (result) {
       const auto& c = result.corridor;
-      const int samples = std::min(800, std::max(120, int(c.pieces() * 4)));
-      constexpr int angles = 24;
+      const int samples = std::min(1200, std::max(240, int(c.pieces() * 6)));
+      constexpr int angles = 48;
       std::vector<Vec3> reference;
       std::vector<double> minor, major;
       auto wire = baseMarker("wire", 0, Marker::LINE_LIST);
-      wire.scale.x = .018;
-      wire.color.r = .75;
-      wire.color.g = .35;
-      wire.color.b = 1;
-      wire.color.a = .85;
+      wire.scale.x = .022;
+      wire.color.r = .70;
+      wire.color.g = .12;
+      wire.color.b = .20;
+      wire.color.a = .75;
       auto mesh = baseMarker("surface", 1, Marker::TRIANGLE_LIST);
       mesh.scale.x = mesh.scale.y = mesh.scale.z = 1;
-      mesh.color = wire.color;
-      mesh.color.a = .14;
+      mesh.color.r = .94;
+      mesh.color.g = .24;
+      mesh.color.b = .25;
+      mesh.color.a = .45;
+      // Cross-section density follows distance, independent of spline knots.
+      const double ring_spacing = std::max(2.5, length / 28.);
+      double ring_distance = 0;
       std::array<Vec3, angles> previous{};
       for (int i = 0; i <= samples; ++i) {
         const auto s = c.section(double(i) / samples);
+        if (i) ring_distance += (s.center - reference.back()).norm();
+        const bool show_ring = i == 0 || i == samples || ring_distance >= ring_spacing;
+        if (show_ring) ring_distance = 0;
         reference.push_back(s.center);
         Eigen::SelfAdjointEigenSolver<Eigen::Matrix2d> eigen(
             s.shape.transpose() * s.shape);
@@ -395,7 +512,7 @@ class DirectDemo final : public rclcpp::Node {
         }
         for (int j = 0; j < angles; ++j) {
           int k = (j + 1) % angles;
-          if (i % 3 == 0 || i == samples) {
+          if (show_ring) {
             wire.points.push_back(point(ring[j]));
             wire.points.push_back(point(ring[k]));
           }
@@ -403,6 +520,11 @@ class DirectDemo final : public rclcpp::Node {
             for (const auto& p : {previous[j], previous[k], ring[k],
                                   previous[j], ring[k], ring[j]})
               mesh.points.push_back(point(p));
+          if (i == 0 || i == samples) {
+            mesh.points.push_back(point(s.center));
+            mesh.points.push_back(point(i == 0 ? ring[k] : ring[j]));
+            mesh.points.push_back(point(i == 0 ? ring[j] : ring[k]));
+          }
         }
         previous = ring;
       }
@@ -412,8 +534,12 @@ class DirectDemo final : public rclcpp::Node {
       median_minor = minor[minor.size() / 2];
       median_major = major[major.size() / 2];
       Markers markers;
-      markers.markers = {std::move(mesh), std::move(wire)};
+      mesh.colors.assign(mesh.points.size(), mesh.color);
+      markers.markers.push_back(std::move(mesh));
       corridor_pub_->publish(markers);
+      Markers sections;
+      sections.markers.push_back(std::move(wire));
+      sections_pub_->publish(sections);
       seed_pub_->publish(pathMessage(seed));
       reference_pub_->publish(pathMessage(reference));
       std_msgs::msg::Float64MultiArray controls;
@@ -470,7 +596,11 @@ class DirectDemo final : public rclcpp::Node {
            << ",\"reference_clearance\":" << reference_clearance_
            << ",\"control_spacing\":" << options_.control_spacing
            << ",\"min_radius\":" << options_.min_radius
-           << ",\"max_radius\":" << options_.max_radius
+           << ",\"max_radius\":" << request_options.max_radius
+           << ",\"max_offset\":" << request_options.max_offset
+           << ",\"local_range\":" << request_options.local_range
+           << ",\"local_progress\":" << request_options.local_progress
+           << ",\"shape_mode\":\"" << shape_mode_ << '"'
            << ",\"search_timeout\":" << search_timeout_
            << ",\"search_range\":" << search_range_
            << ",\"corridor_budget_ms\":" << options_.budget_ms
@@ -491,14 +621,16 @@ class DirectDemo final : public rclcpp::Node {
            << ",\"refinements\":" << result.metrics.refinements
            << ",\"min_axis\":" << min_axis
            << ",\"median_minor\":" << median_minor
-           << ",\"median_major\":" << median_major << '}';
+           << ",\"median_major\":" << median_major;
+    experiment::writeShapeMetrics(metric, shape_metrics);
+    metric << '}';
     std::ofstream file(dir / "metrics.json");
     file << metric.str() << '\n';
     std_msgs::msg::String metrics;
     metrics.data = metric.str();
     metrics_pub_->publish(metrics);
     std::ostringstream label;
-    label << outcome << " request=" << id << "\nSearch " << std::fixed
+    label << outcome << " [" << shape_mode_ << "] request=" << id << "\nSearch " << std::fixed
           << std::setprecision(1) << search_ms << " ms; corridor "
           << result.metrics.total_ms << " ms; total " << total_ms << " ms";
     if (result)
@@ -507,7 +639,7 @@ class DirectDemo final : public rclcpp::Node {
       label << "\n" << result.message;
     status(label.str());
   }
-  std::string frame_, height_mode_;
+  std::string frame_, height_mode_, shape_mode_;
   double resolution_, height_, reference_clearance_, search_timeout_,
       search_range_, map_ms_ = 0;
   Bounds bounds_;
@@ -524,7 +656,8 @@ class DirectDemo final : public rclcpp::Node {
       start_sub_;
   rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr click_sub_;
   rclcpp::Subscription<std_msgs::msg::Empty>::SharedPtr reset_sub_;
-  rclcpp::Publisher<Markers>::SharedPtr corridor_pub_, selection_pub_;
+  rclcpp::Publisher<Markers>::SharedPtr corridor_pub_, sections_pub_,
+      map_surface_pub_, selection_pub_;
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr seed_pub_, reference_pub_;
   rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr controls_pub_;
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr status_pub_, metrics_pub_;

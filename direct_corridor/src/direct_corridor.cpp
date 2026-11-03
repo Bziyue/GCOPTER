@@ -215,6 +215,13 @@ const char* statusName(Status s) {
 
 Result generate(const std::vector<Vec3>& seed, const ObstacleIndex& index,
                 const Bounds& bounds, const Options& o) {
+  return detail::generateWithShapeStage(seed, index, bounds, o, {});
+}
+
+Result detail::generateWithShapeStage(const std::vector<Vec3>& seed,
+                const ObstacleIndex& index, const Bounds& bounds,
+                const Options& o, const ShapeStage& shape_stage, int first_iteration_limit,
+                bool fraction_to_boundary, bool continue_barrier) {
   using namespace detail;
   Result result;
   const auto begin = std::chrono::steady_clock::now();
@@ -405,6 +412,7 @@ Result generate(const std::vector<Vec3>& seed, const ObstacleIndex& index,
           previous = tangent;
         }
         std::vector<Node> best;
+        std::vector<SupportPlane> accepted_planes;
         QueryCache query_cache;
         for (int iteration = 0; iteration < o.inflation_iterations;
              ++iteration) {
@@ -413,6 +421,8 @@ Result generate(const std::vector<Vec3>& seed, const ObstacleIndex& index,
             double timer = elapsed();
             Certificates certificates(index, bounds, o, stop, result.metrics,
                                       local_boxes, query_cache);
+            std::vector<SupportPlane> candidate_planes;
+            if (shape_stage) certificates.exported_planes = &candidate_planes;
             // The tiny initial circles carry no useful free-space shape.
             // Use the learned metric only after the first inflation solve.
             certificates.use_shape_metric = iteration > 0;
@@ -435,6 +445,12 @@ Result generate(const std::vector<Vec3>& seed, const ObstacleIndex& index,
             else {
               timer = elapsed();
               Optimizer optimizer(o, stop);
+              // A continuation run preserves the reference first inflation;
+              // only the warm second solve changes its step/barrier policy.
+              optimizer.fraction_to_boundary = fraction_to_boundary &&
+                                               (!continue_barrier || iteration > 0);
+              if (continue_barrier && iteration > 0) optimizer.barrier_begin = 1;
+              if (iteration == 0) optimizer.iteration_limit = first_iteration_limit;
               optimizer.optimize(nodes, certificates.cuts, result.metrics);
               result.metrics.optimization_ms += elapsed() - timer;
             }
@@ -449,6 +465,7 @@ Result generate(const std::vector<Vec3>& seed, const ObstacleIndex& index,
                               "Hermite tube transversality certificate failed"};
             stop();
             best = nodes;
+            if (shape_stage) accepted_planes = std::move(candidate_planes);
             ++result.metrics.inflation_steps;
             if (unconstrained) break;
           } catch (const Failure& f) {
@@ -462,6 +479,10 @@ Result generate(const std::vector<Vec3>& seed, const ObstacleIndex& index,
           throw Failure{Status::VerificationFailed,
                         "no accepted Hermite iterate"};
         result.corridor = GeneratorAccess::make(best);
+        if (shape_stage) {
+          shape_stage(result.corridor, accepted_planes, total, stop);
+          stop();
+        }
         result.metrics.nodes = best.size();
         result.metrics.controls = result.corridor.centerControls().size();
         for (const auto& n : best)

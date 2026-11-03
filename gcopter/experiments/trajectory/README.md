@@ -10,6 +10,10 @@
 
 `--shape-mode` 默认 `baseline`，另提供 `hermite-free`（释放形状节点导数的五次 C²）和 `cubic-c2`（三次 C² 形状场）。两者保留中心线和节点，新增连续空间约束下的 refit；生成时间包含基线与 refit。六例体积、耗时、轨迹质量及梯度失败记录见 [截面样条对照](../../../docs/截面非零导数与C2三次样条对照.md)。
 
+`integrated-quintic` 在原生成器内部复用接受迭代的连续分离平面，直接构造五次初值；相同六例的完整比较见[集成五次报告](../../../docs/五次非零导数融入生成流程.md)。
+
+`boundary-12` 和 `continuation` 是进一步减少形状求解成本的对照入口，完整筛选与六例轨迹结果见[加速报告](../../../docs/五次形状加速与基线对照.md)。其它 `fast-quintic`、`fast-quintic-2`、`coordinate-6`、`coordinate-8`、`boundary-8`、`boundary-coarse` 用于复现筛选方案。
+
 两边共用 vendored `SplineTrajectory::QuinticSplineND<3>` 最小 jerk 样条、IdentitySpatialMap、QuadInvTimeMap、L-BFGS 和 GCOPTER 平坦性动力学惩罚。只替换位置走廊约束。原生 `SFCOptimizer::setup` 会先从多面体构造新的 shortestPath 和分段，因此直接调用它不能保证相同初始轨迹；本实验不宣称测量了原生 GCOPTER 完整管线。
 
 ## 固定条件

@@ -9,6 +9,8 @@ struct ShapeFitMetrics {
   double c2_error = 0, shape_acceleration_energy = 0, baseline_acceleration_energy = 0;
   double max_knot_first = 0, max_knot_second = 0, gradient_error = 0, hessian_error = 0;
   int degree = 0, controls = 0, constraints = 0, iterations = 0, regularity_backtracks = 0;
+  int reused_planes = 0;
+  bool direct_initialization = false;
 };
 struct ShapeFitResult {
   Corridor corridor;
@@ -21,6 +23,21 @@ struct ShapeFitResult {
 ShapeFitResult refitShape(const Corridor& baseline, const std::vector<Vec3>& seed,
                           const ObstacleIndex& map, const Bounds& bounds, const Options& options,
                           int degree, bool check_derivatives = false);
+// Runs the same center inflation pipeline, then consumes its accepted cover
+// directly. Input validation and the generation deadline belong to that pipeline.
+Result generateIntegratedShape(const std::vector<Vec3>& seed, const ObstacleIndex& map,
+                               const Bounds& bounds, const Options& options,
+                               ShapeFitMetrics& metrics, bool check_derivatives = false);
+Result generateFastShape(const std::vector<Vec3>& seed, const ObstacleIndex& map,
+                         const Bounds& bounds, const Options& options,
+                         ShapeFitMetrics& metrics, int inflation_rounds = 1,
+                         bool check_derivatives = false);
+Result generateCoordinateShape(const std::vector<Vec3>& seed, const ObstacleIndex& map,
+                               const Bounds& bounds, const Options& options,
+                               ShapeFitMetrics& metrics, int warmup_limit = 8,
+                               bool check_derivatives = false,
+                               bool fraction_to_boundary = false,
+                               bool continue_barrier = false);
 inline void writeShapeMetrics(std::ostream& s, const ShapeFitMetrics& m){
   s << ",\"shape_refit_ms\":" << m.total_ms << ",\"shape_planes_ms\":" << m.planes_ms
     << ",\"shape_setup_ms\":" << m.setup_ms << ",\"shape_optimize_ms\":" << m.optimize_ms
@@ -36,6 +53,8 @@ inline void writeShapeMetrics(std::ostream& s, const ShapeFitMetrics& m){
     m.max_knot_second
     << ",\"shape_gradient_error\":" << m.gradient_error << ",\"shape_hessian_error\":" <<
     m.hessian_error
-    << ",\"shape_regularity_backtracks\":" << m.regularity_backtracks;
+    << ",\"shape_regularity_backtracks\":" << m.regularity_backtracks
+    << ",\"shape_reused_planes\":" << m.reused_planes
+    << ",\"shape_direct_initialization\":" << (m.direct_initialization ? "true" : "false");
 }
 }

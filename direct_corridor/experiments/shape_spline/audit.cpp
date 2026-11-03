@@ -41,9 +41,22 @@ int main(int argc, char**argv) {
     const int pieces = std::max(2, int(std::ceil(length)));
     std::ofstream out(argv[12]);
     out << std::setprecision(12);
-    for (const std::string mode:{"baseline", "hermite-free", "cubic-c2"}) {
+    const bool fast = std::getenv("GCOPTER_FINAL_FAST_COMPARE") != nullptr;
+    const bool integrated = std::getenv("GCOPTER_INTEGRATED_COMPARE") != nullptr;
+    for (const std::string mode : {"baseline", fast ? "boundary-12" : "hermite-free", fast ? "continuation" : (integrated ? "integrated-quintic" : "cubic-c2")}) {
       Corridor c = base.corridor;
-      if (mode != "baseline"){
+      if (mode == "boundary-12" || mode == "continuation") {
+        gcopter::direct::experiment::ShapeFitMetrics metrics;
+        auto generated = gcopter::direct::experiment::generateCoordinateShape(seed, index, bounds, o,
+            metrics, 12, false, true, mode == "continuation");
+        if (!generated) throw std::runtime_error(generated.message);
+        c = std::move(generated.corridor);
+      } else if (mode == "integrated-quintic") {
+        gcopter::direct::experiment::ShapeFitMetrics metrics;
+        auto fused = gcopter::direct::experiment::generateIntegratedShape(seed, index, bounds, o, metrics);
+        if (!fused) throw std::runtime_error(fused.message);
+        c = std::move(fused.corridor);
+      } else if (mode != "baseline"){
         c = gcopter::direct::experiment::refitShape(base.corridor, seed, index, bounds, o,
                                                     mode == "hermite-free"?5:3).corridor;
       }

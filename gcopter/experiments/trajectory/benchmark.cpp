@@ -153,13 +153,31 @@ int main(int argc,char**argv) {try {
   options.robot_radius=.2;options.safety_margin=.05;options.local_range=3;options.local_progress=7;
   double diagonal=0;for(auto b:expansionBoxes(seed,bounds,3,.252))diagonal=std::max(diagonal,(b.bounds.upper-b.bounds.lower).norm());
   options.max_radius=.5*diagonal+.001;options.max_offset=diagonal+.001;
-  Result direct=generate(seed,index,bounds,options);if(!direct)throw std::runtime_error(direct.message);
   const char* shape_env=std::getenv("GCOPTER_SHAPE_MODE");
   const std::string shape_mode=shape_env?shape_env:"baseline";
-  if(shape_mode!="baseline"&&shape_mode!="hermite-free"&&shape_mode!="cubic-c2")
+  if(shape_mode!="baseline"&&shape_mode!="hermite-free"&&shape_mode!="cubic-c2"&&shape_mode!="integrated-quintic"&&shape_mode!="fast-quintic"&&shape_mode!="fast-quintic-2"&&shape_mode!="coordinate-6"&&shape_mode!="coordinate-8"&&shape_mode!="boundary-12"&&shape_mode!="boundary-8"&&shape_mode!="boundary-coarse"&&shape_mode!="continuation")
     throw std::runtime_error("invalid shape mode");
   gcopter::direct::experiment::ShapeFitMetrics shape_metrics;
-  if(shape_mode!="baseline") {
+  Result direct;
+  if (shape_mode=="continuation")
+    direct=gcopter::direct::experiment::generateCoordinateShape(seed,index,bounds,options,shape_metrics,12,check,true,true);
+  else if (shape_mode=="boundary-coarse") {
+    auto coarse = options; coarse.control_spacing *= 1.25;
+    direct=gcopter::direct::experiment::generateCoordinateShape(seed,index,bounds,coarse,shape_metrics,12,check,true);
+  } else if (shape_mode=="boundary-12"||shape_mode=="boundary-8")
+    direct=gcopter::direct::experiment::generateCoordinateShape(seed,index,bounds,options,shape_metrics,
+        shape_mode=="boundary-12"?12:8,check,true);
+  else if (shape_mode=="coordinate-6"||shape_mode=="coordinate-8")
+    direct=gcopter::direct::experiment::generateCoordinateShape(seed,index,bounds,options,shape_metrics,
+        shape_mode=="coordinate-6"?6:8,check);
+  else if (shape_mode=="fast-quintic"||shape_mode=="fast-quintic-2")
+    direct=gcopter::direct::experiment::generateFastShape(seed,index,bounds,options,shape_metrics,
+        shape_mode=="fast-quintic"?1:2,check);
+  else if (shape_mode=="integrated-quintic")
+    direct=gcopter::direct::experiment::generateIntegratedShape(seed,index,bounds,options,shape_metrics,check);
+  else direct=generate(seed,index,bounds,options);
+  if(!direct)throw std::runtime_error(direct.message);
+  if(shape_mode!="baseline"&&shape_mode!="integrated-quintic"&&shape_mode!="fast-quintic"&&shape_mode!="fast-quintic-2"&&shape_mode!="coordinate-6"&&shape_mode!="coordinate-8"&&shape_mode!="boundary-12"&&shape_mode!="boundary-8"&&shape_mode!="boundary-coarse"&&shape_mode!="continuation") {
     auto fit=gcopter::direct::experiment::refitShape(direct.corridor,seed,index,bounds,options,
         shape_mode=="hermite-free"?5:3,check);
     direct.corridor=std::move(fit.corridor);shape_metrics=fit.metrics;

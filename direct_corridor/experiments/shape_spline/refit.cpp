@@ -129,7 +129,7 @@ struct Basis {
   int degree, count;
   std::vector<double> knots;
   std::vector<Span> spans;
-  Basis(const std::vector<double>& breaks, int d) : degree(d) {
+  Basis(const std::vector<double>& breaks, int d, bool local = false) : degree(d) {
     knots.insert(knots.end(), d + 1, 0.);
     for (size_t i = 1; i + 1 < breaks.size(); ++i){
       knots.insert(knots.end(), d - 2, breaks[i]);
@@ -154,6 +154,34 @@ struct Basis {
       }
     }
     for (size_t i = 0; i + 1 < breaks.size(); ++i) {
+      if (local) {
+        // The polynomial on this element has only d+1 nonzero basis functions.
+        // Evaluate them on the fixed knot span, including its endpoint limits.
+        const int at = d + (d - 2) * i;
+        M samples(d + 1, d + 1);
+        for (int k = 0; k <= d; ++k) {
+          const double u = breaks[i] + (breaks[i + 1] - breaks[i]) * double(k) / d;
+          std::array<double, 6> b{}, left{}, right{};
+          b[0] = 1;
+          for (int j = 1; j <= d; ++j) {
+            left[j] = u - knots[at + 1 - j];
+            right[j] = knots[at + j] - u;
+            double saved = 0;
+            for (int r = 0; r < j; ++r) {
+              const double temp = b[r] / (right[r + 1] + left[j - r]);
+              b[r] = saved + right[r + 1] * temp;
+              saved = left[j - r] * temp;
+            }
+            b[j] = saved;
+          }
+          for (int j = 0; j <= d; ++j) samples(k, j) = b[j];
+        }
+        Span span;
+        for (int j = 0; j <= d; ++j) span.ids.push_back(at - d + j);
+        span.extraction = elevate * inverse * samples;
+        spans.push_back(std::move(span));
+        continue;
+      }
       M samples(d + 1, count);
       for (int k = 0; k <= d; ++k){
         samples.row(k) = values(breaks[i] + (breaks[i + 1] - breaks[i]) * double(k) /
@@ -279,48 +307,61 @@ struct Problem {
   Band energy;
   double energy_weight = 0;
   V identity;
-  Problem(const Corridor& base, int degree, double length) : basis(base.knots(), degree),
+  Problem(const Corridor& base, int degree, double length, bool direct_initialization)
+      : basis(base.knots(), degree),
     weights(V::Zero(basis.count)), energy(3 * basis.count, 3 * (degree + 1)),
     identity(V::Zero(3 * basis.count)) {
     const int n = basis.count;
-    std::vector<Triplet> ts;
-    M rhs = M::Zero(n, 6);
-    for (size_t i = 0; i < base.pieces(); ++i) {
-      const auto& e = basis.spans[i];
-      double du = base.knots()[i + 1] - base.knots()[i];
-      for (int k = 0; k < 6; ++k){
-        double t = .5 * (1 + gx[k]), w = .5 * gw[k] * du;
-        V b = e.extraction.transpose() * bern(t);
-        Mat32 target = Mat32::Zero();
-        for (int j = 0; j < 6; ++j){
-          target += bern(t)[j] * base.shapeControls()[6 * i + j];
-        }
-        for (int j = 0; j < b.size(); ++j){
-          int a = e.ids[j];
-          weights[a] += w * b[j];
-          for (int z = 0; z < 6; ++z){
-            rhs(a, z) += w * b[j] * target.data()[z];
+    if (direct_initialization) {
+      // A degree-5 C2 spline with triple internal knots represents a zero-jet
+      // Hermite curve by three identical control matrices per node. No Gram
+      // matrix, quadrature projection or global linear solve is needed.
+      control.resize(n);
+      for (int i = 0; i < n; ++i) {
+        control[i] = base.hermiteNodes()[i / 3].state.shape;
+        weights[i] = (basis.knots[i + degree + 1] - basis.knots[i]) / (degree + 1);
+        identity[3 * i] = identity[3 * i + 2] = 1;
+      }
+    } else {
+      std::vector<Triplet> ts;
+      M rhs = M::Zero(n, 6);
+      for (size_t i = 0; i < base.pieces(); ++i) {
+        const auto& e = basis.spans[i];
+        double du = base.knots()[i + 1] - base.knots()[i];
+        for (int k = 0; k < 6; ++k){
+          double t = .5 * (1 + gx[k]), w = .5 * gw[k] * du;
+          V b = e.extraction.transpose() * bern(t);
+          Mat32 target = Mat32::Zero();
+          for (int j = 0; j < 6; ++j){
+            target += bern(t)[j] * base.shapeControls()[6 * i + j];
           }
-          for (int l = 0; l < b.size(); ++l){
-            ts.emplace_back(a, e.ids[l], w * b[j] * b[l]);
+          for (int j = 0; j < b.size(); ++j){
+            int a = e.ids[j];
+            weights[a] += w * b[j];
+            for (int z = 0; z < 6; ++z){
+              rhs(a, z) += w * b[j] * target.data()[z];
+            }
+            for (int l = 0; l < b.size(); ++l){
+              ts.emplace_back(a, e.ids[l], w * b[j] * b[l]);
+            }
           }
         }
       }
-    }
-    Sparse gram(n, n);
-    gram.setFromTriplets(ts.begin(), ts.end());
-    Eigen::SimplicialLDLT<Sparse> solve;
-    solve.compute(gram);
-    if (solve.info() != Eigen::Success){
-      throw std::runtime_error("shape projection factorization");
-    }
-    M coeff = solve.solve(rhs);
-    control.resize(n);
-    for (int i = 0; i < n; ++i){
-      for (int z = 0; z < 6; ++z){
-        control[i].data()[z] = coeff(i, z);
+      Sparse gram(n, n);
+      gram.setFromTriplets(ts.begin(), ts.end());
+      Eigen::SimplicialLDLT<Sparse> solve;
+      solve.compute(gram);
+      if (solve.info() != Eigen::Success){
+        throw std::runtime_error("shape projection factorization");
       }
-      identity[3 * i] = identity[3 * i + 2] = 1;
+      M coeff = solve.solve(rhs);
+      control.resize(n);
+      for (int i = 0; i < n; ++i){
+        for (int z = 0; z < 6; ++z){
+          control[i].data()[z] = coeff(i, z);
+        }
+        identity[3 * i] = identity[3 * i + 2] = 1;
+      }
     }
     // Physical arc-length acceleration regularizer, common to both degrees.
     for (size_t i = 0; i < base.pieces(); ++i) {
@@ -522,24 +563,64 @@ static bool regular(const Corridor& base, const std::vector<Mat32>& shape) {
   return true;
 }
 }
-ShapeFitResult refitShape(const Corridor& base, const std::vector<Vec3>& seed,
-                          const ObstacleIndex& map, const Bounds& bounds, const Options& options,
-                          int degree, bool check) {
-  if ((degree != 3&&degree != 5)||base.pieces() == 0||seed.size() < 2) {
-    throw std::invalid_argument("shape experiment degree/input");
+static void verifyShapeControls(const Corridor& base, const std::vector<Plane>& cover,
+                                double length, const std::vector<Mat32>& shapes,
+                                ShapeFitMetrics& metrics) {
+  metrics.max_support_residual = -INFINITY;
+  // Audit the exported coefficients directly, independently of the sparse
+  // optimization rows (including any tiny extraction weights).
+  for (const auto& plane : cover) {
+    M centers(6, 3), matrices(6, 6);
+    for (int k = 0; k < 6; ++k) {
+      centers.row(k) = base.centerControls()[6 * plane.span + k];
+      for (int j = 0; j < 6; ++j) {
+        matrices(k, j) = shapes[6 * plane.span + k].data()[j];
+      }
+    }
+    centers = restrictControls(centers, plane.begin, plane.end);
+    matrices = restrictControls(matrices, plane.begin, plane.end);
+    for (int k = 0; k < 6; ++k) {
+      Mat32 shape;
+      for (int j = 0; j < 6; ++j) {
+        shape.data()[j] = matrices(k, j);
+      }
+      const double support = centers.row(k).dot(plane.normal) +
+                             (shape.transpose() * plane.normal).norm();
+      metrics.max_support_residual = std::max(metrics.max_support_residual,
+                                               support - plane.bound);
+    }
   }
+  if (metrics.max_support_residual > 1e-9){
+    throw std::runtime_error("shape support certificate");
+  }
+  for (size_t i = 1; i < base.pieces(); ++i) {
+    double left = (base.knots()[i] - base.knots()[i - 1]) * length,
+           right = (base.knots()[i + 1] - base.knots()[i]) * length;
+    const int k = 6 * i;
+    Mat32 dl = 5 * (shapes[k - 1] - shapes[k - 2]) / left,
+          dr = 5 * (shapes[k + 1] - shapes[k]) / right;
+    Mat32 al = 20 * (shapes[k - 1] - 2 * shapes[k - 2] + shapes[k - 3]) / (left * left),
+          ar = 20 * (shapes[k + 2] - 2 * shapes[k + 1] + shapes[k]) / (right * right);
+    metrics.c2_error = std::max({metrics.c2_error, (shapes[k - 1] - shapes[k]).norm(),
+                                 (dl - dr).norm(), (al - ar).norm()});
+    metrics.max_knot_first = std::max(metrics.max_knot_first, dr.norm());
+    metrics.max_knot_second = std::max(metrics.max_knot_second, ar.norm());
+  }
+  if (metrics.c2_error > 1e-6) {
+    throw std::runtime_error("shape C2 join");
+  }
+}
+#include "scalar_inflation.hpp"
+
+static ShapeFitResult fitWithCover(const Corridor& base, const std::vector<Plane>& cover,
+                                    double length, int degree, bool check,
+                                    bool direct_initialization, const detail::Stop& stop) {
   auto start = Clock::now(), timer = start;
   ShapeFitResult out;
   auto& metrics = out.metrics;
   metrics.degree = degree;
-  double length = 0;
-  for (size_t i = 1; i < seed.size(); ++i){
-    length += (seed[i] - seed[i - 1]).norm();
-  }
-  auto cover = planes(base, seed, map, bounds, options, length);
-  metrics.planes_ms = ms(timer);
-  timer = Clock::now();
-  Problem p(base, degree, length);
+  metrics.direct_initialization = direct_initialization;
+  Problem p(base, degree, length, direct_initialization);
   p.constrain(base, cover);
   metrics.controls = p.basis.count;
   metrics.constraints = p.constraints.size();
@@ -604,6 +685,7 @@ ShapeFitResult refitShape(const Corridor& base, const std::vector<Vec3>& seed,
   bool analyzed = false;
   for (double mu:{1., .1, .01, .001}) {
     for (int iteration = 0; iteration < 20; ++iteration){
+      if (stop) stop();
       double f = p.eval(x, mu, &g, &h);
       auto sparse = h.sparse();
       if (!analyzed){
@@ -650,53 +732,74 @@ ShapeFitResult refitShape(const Corridor& base, const std::vector<Vec3>& seed,
     x = .5 * (x + initial);
     shapes = p.output(x);
   }
-  metrics.max_support_residual = -INFINITY;
-  // Audit the exported coefficients directly, independently of the sparse
-  // optimization rows (including any tiny extraction weights).
-  for (const auto& plane : cover) {
-    M centers(6, 3), matrices(6, 6);
-    for (int k = 0; k < 6; ++k) {
-      centers.row(k) = base.centerControls()[6 * plane.span + k];
-      for (int j = 0; j < 6; ++j) {
-        matrices(k, j) = shapes[6 * plane.span + k].data()[j];
-      }
-    }
-    centers = restrictControls(centers, plane.begin, plane.end);
-    matrices = restrictControls(matrices, plane.begin, plane.end);
-    for (int k = 0; k < 6; ++k) {
-      Mat32 shape;
-      for (int j = 0; j < 6; ++j) {
-        shape.data()[j] = matrices(k, j);
-      }
-      const double support = centers.row(k).dot(plane.normal) +
-                             (shape.transpose() * plane.normal).norm();
-      metrics.max_support_residual = std::max(metrics.max_support_residual,
-                                               support - plane.bound);
-    }
-  }
-  if (metrics.max_support_residual > 1e-9){
-    throw std::runtime_error("shape support certificate");
-  }
+  verifyShapeControls(base, cover, length, shapes, metrics);
   out.corridor = ShapeAccess::make(base, shapes);
   metrics.shape_acceleration_energy = .5 * x.dot(p.energy.multiply(x));
-  for (size_t i = 1; i < base.pieces(); ++i) {
-    double left = (base.knots()[i] - base.knots()[i - 1]) * length,
-           right = (base.knots()[i + 1] - base.knots()[i]) * length;
-    const int k = 6 * i;
-    Mat32 dl = 5 * (shapes[k - 1] - shapes[k - 2]) / left,
-          dr = 5 * (shapes[k + 1] - shapes[k]) / right;
-    Mat32 al = 20 * (shapes[k - 1] - 2 * shapes[k - 2] + shapes[k - 3]) / (left * left),
-          ar = 20 * (shapes[k + 2] - 2 * shapes[k + 1] + shapes[k]) / (right * right);
-    metrics.c2_error = std::max({metrics.c2_error, (shapes[k - 1] - shapes[k]).norm(),
-                                 (dl - dr).norm(), (al - ar).norm()});
-    metrics.max_knot_first = std::max(metrics.max_knot_first, dr.norm());
-    metrics.max_knot_second = std::max(metrics.max_knot_second, ar.norm());
-  }
-  if (metrics.c2_error > 1e-6) {
-    throw std::runtime_error("shape C2 join");
-  }
   metrics.verify_ms = ms(timer);
   metrics.total_ms = ms(start);
   return out;
 }
+ShapeFitResult refitShape(const Corridor& base, const std::vector<Vec3>& seed,
+                         const ObstacleIndex& map, const Bounds& bounds,
+                         const Options& options, int degree, bool check) {
+  if ((degree != 3 && degree != 5) || base.pieces() == 0 || seed.size() < 2)
+    throw std::invalid_argument("shape experiment degree/input");
+  auto start = Clock::now();
+  double length = 0;
+  for (size_t i = 1; i < seed.size(); ++i)
+    length += (seed[i] - seed[i - 1]).norm();
+  auto cover = planes(base, seed, map, bounds, options, length);
+  double planes_ms = ms(start);
+  auto out = fitWithCover(base, cover, length, degree, check, false, {});
+  out.metrics.planes_ms = planes_ms;
+  out.metrics.total_ms = ms(start);
+  return out;
+}
+
+Result generateIntegratedShape(const std::vector<Vec3>& seed, const ObstacleIndex& map,
+                               const Bounds& bounds, const Options& options,
+                               ShapeFitMetrics& metrics, bool check) {
+  metrics = {};
+  return detail::generateWithShapeStage(seed, map, bounds, options,
+      [&](Corridor& base, const std::vector<Plane>& cover, double length,
+          const detail::Stop& stop) {
+        auto fit = fitWithCover(base, cover, length, 5, check, true, stop);
+        fit.metrics.reused_planes = static_cast<int>(cover.size());
+        metrics = fit.metrics;
+        base = std::move(fit.corridor);
+      });
+}
+
+Result generateFastShape(const std::vector<Vec3>& seed, const ObstacleIndex& map,
+                         const Bounds& bounds, const Options& options,
+                         ShapeFitMetrics& metrics, int inflation_rounds, bool check) {
+  if (inflation_rounds < 1 || inflation_rounds > 2)
+    throw std::invalid_argument("fast shape inflation rounds");
+  metrics = {};
+  Options o = options;
+  o.inflation_iterations = inflation_rounds;
+  return detail::generateWithShapeStage(seed, map, bounds, o,
+      [&](Corridor& base, const std::vector<Plane>& cover, double length,
+          const detail::Stop& stop) {
+        auto fit = fitScalarShape(base, cover, length, stop, check);
+        metrics = fit.metrics;
+        base = std::move(fit.corridor);
+      });
+}
+
+Result generateCoordinateShape(const std::vector<Vec3>& seed, const ObstacleIndex& map,
+                               const Bounds& bounds, const Options& options,
+                               ShapeFitMetrics& metrics, int warmup_limit, bool check, bool fraction_to_boundary, bool continue_barrier) {
+  if (warmup_limit < 1 || warmup_limit > 12)
+    throw std::invalid_argument("coordinate warmup limit");
+  metrics = {};
+  return detail::generateWithShapeStage(seed, map, bounds, options,
+      [&](Corridor& base, const std::vector<Plane>& cover, double length,
+          const detail::Stop& stop) {
+        auto fit = fitScalarShape(base, cover, length, stop, check, true);
+        metrics = fit.metrics;
+        base = std::move(fit.corridor);
+      }, warmup_limit, fraction_to_boundary, continue_barrier);
+}
+
 }

@@ -1,0 +1,8 @@
+<library path="gcopter_corridor_panel">
+  <class name="gcopter/CorridorPanel" type="gcopter::CorridorPanel" base_class_type="rviz_common::Panel">
+    <description>Interactive corridor status, timings and visualization layers.</description>
+  </class>
+  <class name="gcopter/GhostMap" type="gcopter::GhostMapDisplay" base_class_type="rviz_common::Display">
+    <description>Translucent obstacle exterior with live opacity control.</description>
+  </class>
+</library>

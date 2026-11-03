@@ -14,6 +14,7 @@
 #include <type_traits>
 
 #include "gcopter/direct_corridor.hpp"
+#include "generation_pipeline.hpp"
 
 namespace gcopter::direct::detail {
 using V5 = Eigen::Matrix<double, 5, 1>;
@@ -277,7 +278,7 @@ inline Vec3 metricSphereNormal(const Vec3& delta, const Vec3& axes2,
 
 template <class Shape = EllipseSupport>
 struct ShapeCertificates {
-  struct Plane { int span; double begin, end; Vec3 normal; double bound; };
+  using Plane = SupportPlane;
   // Optional experiment output: the original, uncompressed continuous planes.
   std::vector<Plane>* exported_planes = nullptr;
   Shape shape_support;
@@ -703,6 +704,8 @@ template <class Shape = EllipseSupport>
 struct ShapeOptimizer {
   Shape shape_support;
   int iteration_limit = 12;
+  bool fraction_to_boundary = false;
+  int barrier_begin = 0;
   const Options& o;
   const Stop& stop;
   std::vector<H5> diagonal, upper, transfer;
@@ -710,6 +713,58 @@ struct ShapeOptimizer {
   std::vector<V5> gradient, rhs, step, scaling;
   ShapeOptimizer(const Options& options, const Stop& s, const Shape& shape = Shape{})
       : shape_support(shape), o(options), stop(s) {}
+  // First positive root of a*t^2+b*t+c, starting at c>0. Stable quadratic
+  // roots avoid cancellation when a support gap is small.
+  static double positiveRoot(double a, double b, double c) {
+    if (a == 0) return b < 0 ? -c / b : INFINITY;
+    const double scale = std::max({std::abs(a), std::abs(b), std::abs(c)});
+    a /= scale; b /= scale; c /= scale;
+    const double discriminant = b * b - 4 * a * c;
+    if (discriminant < 0) return INFINITY;
+    const double q = -.5 * (b + std::copysign(std::sqrt(discriminant), b));
+    double limit = INFINITY;
+    for (double root : {q / a, q != 0 ? c / q : INFINITY})
+      if (root > 0) limit = std::min(limit, root);
+    return limit;
+  }
+  double feasibleStep(const std::vector<Node>& nodes, const std::vector<Cut>& cuts,
+                      const std::vector<int>& active) const {
+    double limit = 1;
+    auto positive = [&](double value, double direction) {
+      if (direction < 0) limit = std::min(limit, -value / direction);
+    };
+    auto spd = [&](const M2& p, const M2& d) {
+      const M2 endpoint = p + limit * d;
+      if (endpoint(0, 0) > 0 && endpoint.determinant() > 0) return;
+      positive(p(0, 0), d(0, 0));
+      limit = std::min(limit, positiveRoot(d.determinant(),
+          p(0, 0) * d(1, 1) + p(1, 1) * d(0, 0) - 2 * p(0, 1) * d(0, 1), p.determinant()));
+    };
+    for (int i = 0; i < int(nodes.size()); ++i) {
+      const M2 s = matrix(nodes[i].x), d = matrix(step[i]);
+      spd(s - o.min_radius * M2::Identity(), d);
+      spd(o.max_radius * M2::Identity() - s, -d);
+      const V2 x = nodes[i].x.head<2>(), dx = step[i].head<2>();
+      if ((x + limit * dx).squaredNorm() >= o.max_offset * o.max_offset)
+        limit = std::min(limit, positiveRoot(-dx.squaredNorm(), -2 * x.dot(dx),
+                                            o.max_offset * o.max_offset - x.squaredNorm()));
+    }
+    for (int id : active) {
+      const Cut& c = cuts[id];
+      const int i = c.span;
+      const double t = c.h - c.a.dot(nodes[i].x.head<2>()) - c.b.dot(nodes[i + 1].x.head<2>());
+      const double dt = -c.a.dot(step[i].head<2>()) - c.b.dot(step[i + 1].head<2>());
+      if (c.linear) { positive(t, dt); continue; }
+      const V2 z = matrix(nodes[i].x) * c.a + matrix(nodes[i + 1].x) * c.b;
+      const V2 dz = matrix(step[i]) * c.a + matrix(step[i + 1]) * c.b;
+      const double end = t + limit * dt;
+      if (end > 0 && end * end > (z + limit * dz).squaredNorm()) continue;
+      positive(t, dt);
+      limit = std::min(limit, positiveRoot(dt * dt - dz.squaredNorm(),
+          2 * (t * dt - z.dot(dz)), (t - z.norm()) * (t + z.norm())));
+    }
+    return limit >= 1 ? 1 : .995 * limit;
+  }
   double objective(const std::vector<Node>& n, const std::vector<Cut>& cuts,
                    const std::vector<int>& active, double mu,
                    bool derivatives) {
@@ -840,7 +895,9 @@ struct ShapeOptimizer {
     rhs.resize(count);
     step.resize(count);
     scaling.resize(count);
-    for (double mu : {.003, .0001, .00001}) {
+    constexpr double barriers[] = {.003, .0001, .00001};
+    for (int stage = barrier_begin; stage < 3; ++stage) {
+      const double mu = barriers[stage];
       for (int iteration = 0; iteration < iteration_limit; ++iteration) {
         stop();
         ++metrics.newton_steps;
@@ -921,6 +978,16 @@ struct ShapeOptimizer {
             nodes.swap(trial);
             accepted = true;
             break;
+          }
+          if constexpr (std::is_same_v<Shape, EllipseSupport>) {
+            // Full Newton steps near convergence need no boundary scan.
+            // An infeasible full trial exits objective() early; only then pay
+            // for the exact cone/SPD limit. Subsequent Armijo trials halve it.
+            if (fraction_to_boundary && ls == 0 && !std::isfinite(after)) {
+              const double bound = feasibleStep(nodes, cuts, active);
+              alpha = bound < 1 ? bound : .5;
+              continue;
+            }
           }
           alpha *= .5;
         }
