@@ -26,6 +26,8 @@ p.add_argument('--check-gradients', action='store_true')
 p.add_argument('--constraint', choices=['sampled','bezier','bezier-controls'], default='bezier',
                help='bezier retains half-weight integral position penalties for the nonconvex tube; bezier-controls is a control-only ablation')
 p.add_argument('--bezier-depth', type=int, choices=range(6), default=2)
+p.add_argument('--tube-mode', choices=['reference','fast','horner'], default='fast')
+p.add_argument('--profile', action='store_true')
 a = p.parse_args()
 a.output.mkdir(parents=True, exist_ok=True)
 def bounded():
@@ -39,6 +41,8 @@ def sha(path):
     return h.hexdigest()
 env=os.environ.copy()
 env['LD_LIBRARY_PATH']=str(ROOT / '.scratch/ompl/usr/lib/x86_64-linux-gnu')+':'+env.get('LD_LIBRARY_PATH','')
+env['GCOPTER_TUBE_MODE']=a.tube_mode
+env['GCOPTER_PROFILE']='1' if a.profile else '0'
 env.update(OMP_NUM_THREADS='1', OPENBLAS_NUM_THREADS='1', MKL_NUM_THREADS='1')
 manifest=[]
 for i, request in enumerate(json.loads(a.inputs.read_text())):
@@ -68,6 +72,6 @@ for i, request in enumerate(json.loads(a.inputs.read_text())):
     manifest.append(record)
     print(f"case {i}: {record['returncode']}",flush=True)
     (a.output/'manifest.json').write_text(json.dumps(dict(parameters=dict(repeats=a.repeats,spacing=a.spacing,weight=a.weight,steps=a.steps,max_iterations=a.max_iterations,
-        constraint=a.constraint,bezier_depth=a.bezier_depth,memory_mib=512,cpu_seconds=a.cpu_seconds,wall_seconds=a.wall_seconds,
+        constraint=a.constraint,bezier_depth=a.bezier_depth,tube_mode=a.tube_mode,profile=a.profile,memory_mib=512,cpu_seconds=a.cpu_seconds,wall_seconds=a.wall_seconds,
         binary_sha256=sha(a.binary),platform=platform.platform(),processor=platform.processor()),cases=manifest),indent=2)+'\n')
 if any(r['returncode']!=0 for r in manifest): raise SystemExit(1)

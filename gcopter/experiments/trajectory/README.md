@@ -6,6 +6,8 @@
 
 下文的积分点位置约束说明及旧报告对应 `--constraint sampled`。若要重跑旧目标请显式加该参数；新版 L-BFGS 可能改变迭代结果。`--constraint bezier-controls` 仅用于非凸走廊的纯控制点消融，**不能证明曲线位于扫掠走廊内**。新原理、梯度及实测记录见 `docs/样条库迁移与Bezier约束.md`。
 
+截面查询默认 `--tube-mode fast`：保留原 Bernstein 浮点运算顺序，只计算一阶导数并使用有界精确缓存。`reference` 运行旧路径；`horner` 为可能改变非光滑优化终点的试验模式。`--profile` 单独启用细粒度计时，不用于正式速度排名；各计时字段的包含关系及六例等价验证见 `docs/截面求值与反求缓存加速.md`。
+
 两边共用 vendored `SplineTrajectory::QuinticSplineND<3>` 最小 jerk 样条、IdentitySpatialMap、QuadInvTimeMap、L-BFGS 和 GCOPTER 平坦性动力学惩罚。只替换位置走廊约束。原生 `SFCOptimizer::setup` 会先从多面体构造新的 shortestPath 和分段，因此直接调用它不能保证相同初始轨迹；本实验不宣称测量了原生 GCOPTER 完整管线。
 
 ## 固定条件

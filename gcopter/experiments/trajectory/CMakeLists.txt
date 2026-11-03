@@ -18,3 +18,7 @@ foreach(test library_regression native_optimizer lbfgs_recovery bezier_constrain
   target_link_libraries(${test} PRIVATE Eigen3::Eigen)
   add_test(NAME ${test} COMMAND ${test})
 endforeach()
+add_executable(tube_query_test tests/tube_query.cpp)
+target_compile_features(tube_query_test PRIVATE cxx_std_17)
+target_link_libraries(tube_query_test PRIVATE gcopter_direct_corridor)
+add_test(NAME tube_query_test COMMAND tube_query_test)

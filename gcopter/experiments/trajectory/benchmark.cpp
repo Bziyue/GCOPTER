@@ -8,6 +8,7 @@
 #include "TrajectoryOptComponents/LinearTimeCost.hpp"
 #include <cstdint>
 #include <cstring>
+#include "tube_query.hpp"
 
 using Spline = SplineTrajectory::QuinticSplineND<3>;
 using Opt = SplineTrajectory::SplineOptimizer<Spline>;
@@ -23,77 +24,13 @@ double polyDistance(const Polys& polys, const Vec3& p, Vec3& grad) {
   }
   return best; // union of H-polytopes, piecewise differentiable
 }
-struct TubeValue {
-  double radial=0, plane=0, u=0;
-  Vec3 grad_radial=Vec3::Zero(), grad_plane=Vec3::Zero();
-  bool valid=true;
-};
-// Local inversion of n(u).(p-c(u))=0. Progress is only a root-selection hint,
-// not a constraint on the physical trajectory. Multiple roots may exist.
-TubeValue tubeValue(const Corridor& corridor, const Vec3& p, double hint) {
-  double u=hint,f=0,fu=0;Section section;Vec3 normal,normal_u;
-  auto plane=[&](double x) {
-    section=corridor.section(x);
-    Vec3 cross=section.shape.col(0).cross(section.shape.col(1));
-    Vec3 dcross=section.shape_first.col(0).cross(section.shape.col(1))+
-               section.shape.col(0).cross(section.shape_first.col(1));
-    normal=cross.normalized();normal_u=(dcross-normal*normal.dot(dcross))/cross.norm();
-    f=normal.dot(p-section.center);
-    fu=normal_u.dot(p-section.center)-normal.dot(section.first);
-    return f;
-  };
-  for(int i=0;i<16;++i) {
-    plane(u);if(std::abs(f)<1e-8)break;
-    if(std::abs(fu)<1e-10)break;
-    double next=std::clamp(u-std::clamp(f/fu,-.1,.1),0.,1.);
-    if(next==u)break;u=next;
-  }
-  plane(u);
-  if(std::abs(f)>1e-7 && u>0 && u<1) {
-    // Rare fallback: choose the nearest sign-changing knot interval, then bisect.
-    double best=1e10,lo=0,hi=0,fl=0;
-    const auto& knots=corridor.knots();double previous=plane(knots.front());
-    for(size_t i=1;i<knots.size();++i) {
-      double current=plane(knots[i]);double dist=std::abs(.5*(knots[i-1]+knots[i])-hint);
-      if(previous*current<=0 && dist<best){best=dist;lo=knots[i-1];hi=knots[i];fl=previous;}
-      previous=current;
-    }
-    if(best<1e10) {
-      for(int i=0;i<40;++i){u=.5*(lo+hi);double fm=plane(u);if(std::abs(fm)<1e-9)break;if(fl*fm<=0)hi=u;else{lo=u;fl=fm;}}
-    }
-    plane(u);
-  }
-  TubeValue out;out.u=u;out.plane=f;out.grad_plane=normal;
-  const bool root=std::abs(f)<1e-7&&std::abs(fu)>1e-10;
-  out.valid=root||u==0||u==1;
-  Vec3 d=p-section.center;
-  const Mat32& M=section.shape;const Mat32& Md=section.shape_first;
-  Eigen::Matrix2d gram=M.transpose()*M;
-  Eigen::Matrix<double,2,3> inv=gram.ldlt().solve(M.transpose());
-  Eigen::Vector2d z=inv*d;
-  double q=z.squaredNorm();
-  if(q>1) {
-    // Radius in the section plane. This also handles endpoint cap extensions.
-    Vec3 tangent=d-normal*normal.dot(d);double r=tangent.norm(),sq=std::sqrt(q);
-    out.radial=r*(1-1/sq);
-    out.grad_radial=(1-1/sq)*tangent/r+r/(q*sq)*(inv.transpose()*z);
-    if(root) {
-      Eigen::Vector2d zu=gram.ldlt().solve(Md.transpose()*d-M.transpose()*section.first-
-          (Md.transpose()*M+M.transpose()*Md)*z);
-      double ru=-tangent.dot(section.first)/r;
-      double derivative=ru*(1-1/sq)+r/(q*sq)*z.dot(zu);
-      out.grad_radial-=normal*(derivative/fu);
-    }
-  }
-  if(root){out.plane=0;out.grad_plane.setZero();}
-  return out;
-}
 struct Cost {
   traj_opt_adapters::GcopterPenaltyIntegralCostAdapter dynamics;
   const Corridor* corridor=nullptr;
   const Polys* polys=nullptr;
   int steps=16,pieces=1;
   double weight=1e5;
+  tube_query::Query* query=nullptr;
   bool ellipse=false;
   bool bezier=false;
   bool keep_tube_integral=false;
@@ -102,14 +39,16 @@ struct Cost {
   double operator()(const SplineTrajectory::IntegralPointInfo& point,
       const SplineTrajectory::SampleState<3>& state,
       SplineTrajectory::SampleGradient<3>& partial) const {
-    double cost=dynamics(point,state,partial);
+    auto& stats=query->stats;
+    tube_query::Timer integral_timer(stats.enabled,stats.integral_ms);
+    double cost;{tube_query::Timer dynamics_timer(stats.enabled,stats.dynamics_ms);cost=dynamics(point,state,partial);}
     if(bezier&&!(ellipse&&keep_tube_integral)) return cost;
     const double position_weight=positionWeight();
     const int seg=point.segment_index,step=point.step_index;
     const auto& p=state.p;auto& gp=partial.p;
     Vec3 gradient;double violation;
     if(ellipse) {
-      auto tube=tubeValue(*corridor,p,(seg+double(step)/steps)/pieces);
+      auto tube=(*query)(p,(seg+double(step)/steps)/pieces);
       cost+=position_weight*tube.plane*tube.plane;gp+=2*position_weight*tube.plane*tube.grad_plane;
       violation=tube.radial;gradient=tube.grad_radial;
     } else violation=polyDistance(*polys,p,gradient);
@@ -141,7 +80,7 @@ struct ControlPosition {
     double value=0;
     if(cost->ellipse) {
       const double weight=cost->positionWeight();
-      const auto tube=tubeValue(*cost->corridor,p,(segment+alpha)/cost->pieces);
+      const auto tube=(*cost->query)(p,(segment+alpha)/cost->pieces);
       violation=std::max(std::abs(tube.plane),std::max(0.0,tube.radial));
       value=weight*tube.plane*tube.plane;
       gradient=2*weight*tube.plane*tube.grad_plane;
@@ -159,6 +98,7 @@ struct ControlPosition {
 };
 struct Run {
   Opt optimizer;
+  std::unique_ptr<tube_query::Query> query;
 
   traj_opt_components::LinearTimeCost time{20};
   Cost cost;
@@ -166,6 +106,8 @@ struct Run {
   struct Coefficient {
     Run* run;
     double operator()(const SplineTrajectory::ParameterView<Spline>& p,SplineTrajectory::CoefficientGradient<Spline>& g) {
+      auto& stats=run->query->stats;
+      tube_query::Timer timer(stats.enabled,stats.coefficient_ms);
       return run->cost.bezier?run->bezier_cost(p,g):0;
     }
   };
@@ -173,6 +115,7 @@ struct Run {
   int evaluations=0,iterations=0;
   static double evaluate(void* ptr,const Eigen::VectorXd& x,Eigen::VectorXd& g) {
     auto& r=*static_cast<Run*>(ptr); ++r.evaluations;
+    tube_query::Timer timer(r.query->stats.enabled,r.query->stats.objective_ms);
     Objective objective{r.time,r.cost,{&r}};
     auto value=r.optimizer.evaluate(x,g,objective);
     return value.cost;
@@ -196,6 +139,9 @@ int main(int argc,char**argv) {try {
   std::string constraint=argv[17];int depth=std::stoi(argv[18]);
   if((constraint!="bezier"&&constraint!="sampled"&&constraint!="bezier-controls")||depth<0||depth>5)throw std::runtime_error("invalid constraint mode or depth (0..5)");
   const bool bezier=constraint!="sampled";
+  const char* mode=std::getenv("GCOPTER_TUBE_MODE");const bool fast=!mode||std::string(mode)!="reference";
+  const bool horner=mode&&std::string(mode)=="horner";
+  const bool profile=std::getenv("GCOPTER_PROFILE")&&std::string(std::getenv("GCOPTER_PROFILE"))=="1";
   if(seed.size()<2||points.empty()||repeats<1||!std::isfinite(spacing)||spacing<=0||!std::isfinite(weight)||weight<=0||!std::isfinite(radius)||radius<=0||max_iterations<1||steps<2||!bounds.lower.allFinite()||!bounds.upper.allFinite()||!(bounds.upper.array()>bounds.lower.array()).all())
     throw std::runtime_error("invalid benchmark inputs");
   for(size_t i=1;i<seed.size();++i)if((seed[i]-seed[i-1]).norm()<1e-10)throw std::runtime_error("duplicate seed point");
@@ -233,6 +179,7 @@ int main(int argc,char**argv) {try {
     bool ellipse=(rep+order+2)%2;std::string name=ellipse?"hermite":"firi";
     clock=Clock::now();Run run;SplineTrajectory::OptimizerOptions config;config.energy_weight=1;config.integration_steps=steps;
     if(!run.optimizer.prepare(problem,config))throw std::runtime_error("prepare failed");
+    run.query=std::make_unique<tube_query::Query>(direct.corridor,fast,profile,horner);run.cost.query=run.query.get();
     flatness::FlatnessMap flat;flat.reset(.61,9.8,.70,.80,.01,.0001);
     run.cost.dynamics.reset(&empty,&ids,.01,limits,weights,&flat);
     run.cost.corridor=&direct.corridor;run.cost.pieces=pieces;run.cost.polys=&firi.polys;run.cost.steps=steps;run.cost.ellipse=ellipse;run.cost.weight=weight;
@@ -262,9 +209,10 @@ int main(int argc,char**argv) {try {
     }
     lbfgs::lbfgs_parameter_t params;params.mem_size=64;params.past=3;params.delta=1e-6;
     params.g_epsilon=0;params.min_step=1e-32;params.max_iterations=max_iterations;
+    run.query->reset();
     double objective=0;clock=Clock::now();
     int status=lbfgs::lbfgs_optimize(x,objective,Run::evaluate,nullptr,Run::progress,&run,params);
-    double optimize_ms=ms(clock);Run::evaluate(&run,x,g);
+    double optimize_ms=ms(clock);const auto profile_stats=run.query->stats;Run::evaluate(&run,x,g);
     const auto& trajectory=run.optimizer.polynomial();
     double optimization_sample_violation=0;
     for(int seg=0;seg<pieces;++seg) {
@@ -305,6 +253,14 @@ int main(int argc,char**argv) {try {
     }
     bool feasible=inverse_failures==0&&penetration<=1e-6&&max_plane<=.005&&max_corridor<=.005&&max_speed<=4.04&&max_rate<=2.121&&max_tilt<=1.0605&&min_thrust>=1.98&&max_thrust<=12.12;
     out<<"{\"method\":\""<<name<<"\",\"repeat\":"<<rep<<",\"pieces\":"<<pieces<<",\"initial_hash\":\""<<init_hash<<"\",\"status\":"<<status
+       <<",\"tube_mode\":\""<<(horner?"horner":fast?"fast":"reference")<<"\",\"profile_enabled\":"<<(profile?"true":"false")
+       <<",\"objective_eval_ms\":"<<profile_stats.objective_ms<<",\"integral_callback_ms\":"<<profile_stats.integral_ms
+       <<",\"dynamics_callback_ms\":"<<profile_stats.dynamics_ms<<",\"coefficient_callback_ms\":"<<profile_stats.coefficient_ms
+       <<",\"spline_mapping_other_ms\":"<<profile_stats.objective_ms-profile_stats.integral_ms-profile_stats.coefficient_ms
+       <<",\"tube_query_ms\":"<<profile_stats.tube_ms<<",\"section_eval_ms\":"<<profile_stats.section_ms
+       <<",\"tube_queries\":"<<profile_stats.queries<<",\"tube_cache_hits\":"<<profile_stats.query_hits
+       <<",\"section_calls\":"<<profile_stats.section_calls<<",\"section_cache_hits\":"<<profile_stats.section_hits
+       <<",\"plane_evaluations\":"<<profile_stats.plane_evaluations<<",\"root_fallbacks\":"<<profile_stats.fallbacks
        <<",\"constraint\":\""<<constraint<<"\",\"bezier_depth\":"<<depth
        <<",\"tube_integral_retained\":"<<(bezier&&ellipse&&run.cost.keep_tube_integral?"true":"false")
        <<",\"control_position_violation_m\":"<<run.bezier_cost.max_position_violation
