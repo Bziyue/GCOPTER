@@ -50,7 +50,7 @@ public:
         bdrPub = node->create_publisher<std_msgs::msg::Float64>("/visualizer/body_rate", 1000);
     }
 
-    inline void visualize(const SplineTrajectory::QuinticSpline3D &spline,
+    inline void visualize(const SplineTrajectory::QuinticSpline3D::Polynomial &spline,
                           const std::vector<Eigen::Vector3d> &route)
     {
         visualization_msgs::msg::Marker routeMarker, wayPointsMarker, trajMarker;
@@ -116,31 +116,32 @@ public:
             routePub->publish(routeMarker);
         }
 
-        if (spline.isInitialized() && spline.getNumSegments() > 0)
+        if (spline.isValid() && spline.numSegments() > 0)
         {
-            const auto &wps = spline.getSpacePoints();
-            for (int i = 0; i < wps.rows(); i++)
+            const auto &knots = spline.breakpoints();
+            for (double knot : knots)
             {
                 geometry_msgs::msg::Point point;
-                point.x = wps(i, 0);
-                point.y = wps(i, 1);
-                point.z = wps(i, 2);
+                const auto waypoint = spline.evaluate(knot);
+                point.x = waypoint.x();
+                point.y = waypoint.y();
+                point.z = waypoint.z();
                 wayPointsMarker.points.push_back(point);
             }
 
             wayPointsPub->publish(wayPointsMarker);
         }
 
-        if (spline.isInitialized() && spline.getNumSegments() > 0)
+        if (spline.isValid() && spline.numSegments() > 0)
         {
             const double T = 0.01;
-            const double t_start = spline.getStartTime();
-            const double t_end = spline.getEndTime();
-            Eigen::Vector3d lastX = spline.getTrajectory().evaluate(t_start);
+            const double t_start = spline.startTime();
+            const double t_end = spline.endTime();
+            Eigen::Vector3d lastX = spline.evaluate(t_start);
             for (double t = t_start + T; t < t_end; t += T)
             {
                 geometry_msgs::msg::Point point;
-                Eigen::Vector3d X = spline.getTrajectory().evaluate(t);
+                Eigen::Vector3d X = spline.evaluate(t);
                 point.x = lastX(0);
                 point.y = lastX(1);
                 point.z = lastX(2);

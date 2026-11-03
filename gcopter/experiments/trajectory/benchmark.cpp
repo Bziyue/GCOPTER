@@ -9,8 +9,7 @@
 #include <cstring>
 
 using Spline = SplineTrajectory::QuinticSplineND<3>;
-using Opt = SplineTrajectory::SplineOptimizer<3, Spline,
-    SplineTrajectory::QuadInvTimeMap, SplineTrajectory::IdentitySpatialMap<3>>;
+using Opt = SplineTrajectory::SplineOptimizer<Spline>;
 double polyDistance(const Polys& polys, const Vec3& p, Vec3& grad) {
   double best=std::numeric_limits<double>::infinity();
   for (const auto& h: polys) {
@@ -95,10 +94,13 @@ struct Cost {
   int steps=16,pieces=1;
   double weight=1e5;
   bool ellipse=false;
-  double operator()(double t,double global,int seg,int step,const Vec3& p,
-      const Vec3& v,const Vec3& a,const Vec3& j,const Vec3& snap,
-      Vec3& gp,Vec3& gv,Vec3& ga,Vec3& gj,Vec3& gs,double& gt) const {
-    double cost=dynamics(t,global,seg,step,p,v,a,j,snap,gp,gv,ga,gj,gs,gt);
+  static constexpr int kDerivativeOrder = 3;
+  double operator()(const SplineTrajectory::IntegralPointInfo& point,
+      const SplineTrajectory::SampleState<3>& state,
+      SplineTrajectory::SampleGradient<3>& partial) const {
+    double cost=dynamics(point,state,partial);
+    const int seg=point.segment_index,step=point.step_index;
+    const auto& p=state.p;auto& gp=partial.p;
     Vec3 gradient;double violation;
     if(ellipse) {
       auto tube=tubeValue(*corridor,p,(seg+double(step)/steps)/pieces);
@@ -111,14 +113,15 @@ struct Cost {
 };
 struct Run {
   Opt optimizer;
-  Opt::OptimizationContext context;
+
   traj_opt_components::LinearTimeCost time{20};
   Cost cost;
+  struct Objective { traj_opt_components::LinearTimeCost& duration; Cost& integral; };
   int evaluations=0,iterations=0;
   static double evaluate(void* ptr,const Eigen::VectorXd& x,Eigen::VectorXd& g) {
     auto& r=*static_cast<Run*>(ptr); ++r.evaluations;
-    auto value=r.optimizer.evaluate(r.context,x,g,Opt::makeEvaluateSpec(r.time,r.cost));
-    if(!value) throw std::runtime_error("spline evaluation failed");
+    Objective objective{r.time,r.cost};
+    auto value=r.optimizer.evaluate(x,g,objective);
     return value.cost;
   }
   static int progress(void* ptr,const Eigen::VectorXd&,const Eigen::VectorXd&,
@@ -157,37 +160,38 @@ int main(int argc,char**argv) {try {
     seed_outside=std::max(seed_outside,polyDistance(firi.polys,seed[i-1]+(seed[i]-seed[i-1])*(k/100.),grad_seed));
   std::vector<double> arc{0};for(size_t i=1;i<seed.size();++i)arc.push_back(arc.back()+(seed[i]-seed[i-1]).norm());
   const int pieces=std::max(2,int(std::ceil(arc.back()/spacing)));
-  Opt::ProblemDefinition problem;problem.waypoints.resize(pieces+1,3);
+  Opt::Problem problem;problem.waypoints.resize(pieces+1,3);
   for(int i=0;i<=pieces;++i) {
     double s=arc.back()*i/pieces;auto it=std::upper_bound(arc.begin(),arc.end(),s);
     int k=std::clamp(int(it-arc.begin())-1,0,int(seed.size())-2);
     problem.waypoints.row(i)=(seed[k]+(seed[k+1]-seed[k])*((s-arc[k])/(arc[k+1]-arc[k]))).transpose();
   }
-  problem.time_segments.assign(pieces,arc.back()/pieces/2.0);
-  problem.bc.start_velocity=problem.bc.end_velocity=Vec3::Zero();
-  problem.bc.start_acceleration=problem.bc.end_acceleration=Vec3::Zero();
+  problem.durations.assign(pieces,arc.back()/pieces/2.0);
+  problem.boundary.start_velocity=problem.boundary.end_velocity=Vec3::Zero();
+  problem.boundary.start_acceleration=problem.boundary.end_acceleration=Vec3::Zero();
   Polys empty(1);empty[0].resize(0,4);Eigen::VectorXi ids=Eigen::VectorXi::Zero(pieces);
   Eigen::VectorXd limits(5),weights(5);limits<<4,2.1,1.05,2,12;weights<<0,1e4,1e4,1e4,1e5;
   std::ofstream out(dir/"runs.jsonl");out<<std::setprecision(12);
   std::string expected_hash;
   for(int rep=-1;rep<repeats;++rep) for(int order=0;order<2;++order) {
     bool ellipse=(rep+order+2)%2;std::string name=ellipse?"hermite":"firi";
-    clock=Clock::now();Run run;Opt::OptimizerConfig config;config.rho_energy=1;config.integral_num_steps=steps;
-    if(!run.optimizer.setConfig(config)||!run.optimizer.prepareContext(problem,run.context))throw std::runtime_error("prepare failed");
+    clock=Clock::now();Run run;SplineTrajectory::OptimizerOptions config;config.energy_weight=1;config.integration_steps=steps;
+    if(!run.optimizer.prepare(problem,config))throw std::runtime_error("prepare failed");
     flatness::FlatnessMap flat;flat.reset(.61,9.8,.70,.80,.01,.0001);
     run.cost.dynamics.reset(&empty,&ids,.01,limits,weights,&flat);
     run.cost.corridor=&direct.corridor;run.cost.pieces=pieces;run.cost.polys=&firi.polys;run.cost.steps=steps;run.cost.ellipse=ellipse;run.cost.weight=weight;
-    Eigen::VectorXd x=run.optimizer.generateInitialGuess(run.context),g;
+    Eigen::VectorXd x=run.optimizer.initialGuess(),g(x.size());
     std::string init_hash=hash(x);if(expected_hash.empty())expected_hash=init_hash;
     if(expected_hash!=init_hash)throw std::runtime_error("initial vector mismatch");
     double prepare_ms=ms(clock),gradient_error=-1;
     if(rep==-1 && order==0) {
       std::ofstream initial(dir/"initial_waypoints.csv");initial<<std::setprecision(17)<<"x,y,z,duration_to_next\n";
-      for(int i=0;i<=pieces;++i)initial<<problem.waypoints(i,0)<<','<<problem.waypoints(i,1)<<','<<problem.waypoints(i,2)<<','<<(i<pieces?problem.time_segments[i]:0)<<'\n';
+      for(int i=0;i<=pieces;++i)initial<<problem.waypoints(i,0)<<','<<problem.waypoints(i,1)<<','<<problem.waypoints(i,2)<<','<<(i<pieces?problem.durations[i]:0)<<'\n';
     }
     if(check&&rep==-1) {
-      auto result=run.optimizer.checkGradients(run.context,x,Opt::makeEvaluateSpec(run.time,run.cost));
-      gradient_error=result.rel_error;
+      Run::Objective objective{run.time,run.cost};
+      auto result=SplineTrajectory::checkGradients(run.optimizer,x,objective);
+      gradient_error=result.relative_error;
       std::cerr<<name<<" gradient relative error "<<gradient_error<<'\n';
       if(!(gradient_error<1e-4))throw std::runtime_error("gradient check failed");
     }
@@ -196,23 +200,23 @@ int main(int argc,char**argv) {try {
     double objective=0;clock=Clock::now();
     int status=lbfgs::lbfgs_optimize(x,objective,Run::evaluate,nullptr,Run::progress,&run,params);
     double optimize_ms=ms(clock);Run::evaluate(&run,x,g);
-    const auto& spline=run.optimizer.getWorkingSpline(run.context);const auto& trajectory=spline.getTrajectory();
+    const auto& trajectory=run.optimizer.polynomial();
     double optimization_sample_violation=0;
     for(int seg=0;seg<pieces;++seg) {
-      double start=0;for(int k=0;k<seg;++k)start+=spline.getTimeSegments()[k];
+      double start=0;for(int k=0;k<seg;++k)start+=run.optimizer.parameters().durations[k];
       for(int k=0;k<=steps;++k) {
-        Vec3 point=trajectory.evaluate(start+spline.getTimeSegments()[seg]*k/steps),grad;
+        Vec3 point=trajectory.evaluate(start+run.optimizer.parameters().durations[seg]*k/steps),grad;
         double violation=ellipse?tubeValue(direct.corridor,point,(seg+double(k)/steps)/pieces).radial:polyDistance(firi.polys,point,grad);
         optimization_sample_violation=std::max(optimization_sample_violation,violation);
       }
     }
-    double duration=trajectory.getDuration(),length=0,max_speed=0,max_acc=0,max_rate=0,max_tilt=0,min_thrust=1e10,max_thrust=0,max_plane=0,max_corridor=0,penetration=0;
+    double duration=trajectory.duration(),length=0,max_speed=0,max_acc=0,max_rate=0,max_tilt=0,min_thrust=1e10,max_thrust=0,max_plane=0,max_corridor=0,penetration=0;
     int inverse_failures=0;
     std::ofstream csv;if(rep==0){csv.open(dir/(name+"_trajectory.csv"));csv<<"t,x,y,z,vx,vy,vz,ax,ay,az\n";csv<<std::setprecision(12);}
     Vec3 previous=trajectory.evaluate(0);std::vector<int> near;double t0=0;
     // Audit >=4x optimization samples and <=5 ms time step; not a continuous certificate.
     for(int seg=0;seg<pieces;++seg) {
-      double T=spline.getTimeSegments()[seg];int n=std::max(4*steps,int(std::ceil(T/.005)));
+      double T=run.optimizer.parameters().durations[seg];int n=std::max(4*steps,int(std::ceil(T/.005)));
       for(int k=0;k<=n;++k) {
         double t=t0+T*k/n,u=(seg+double(k)/n)/pieces;
         Vec3 p=trajectory.evaluate(t),v=trajectory.evaluate(t,1),a=trajectory.evaluate(t,2),j=trajectory.evaluate(t,3);
@@ -238,7 +242,7 @@ int main(int argc,char**argv) {try {
     out<<"{\"method\":\""<<name<<"\",\"repeat\":"<<rep<<",\"pieces\":"<<pieces<<",\"initial_hash\":\""<<init_hash<<"\",\"status\":"<<status
        <<",\"iterations\":"<<run.iterations<<",\"evaluations\":"<<run.evaluations<<",\"index_ms\":"<<index_ms<<",\"corridor_ms\":"<<(ellipse?direct.metrics.total_ms:firi.total_ms)
        <<",\"prepare_ms\":"<<prepare_ms<<",\"optimize_ms\":"<<optimize_ms<<",\"objective\":"<<objective
-       <<",\"duration_s\":"<<duration<<",\"length_m\":"<<length<<",\"jerk_energy\":"<<spline.getEnergy()<<",\"max_speed\":"<<max_speed<<",\"max_acceleration\":"<<max_acc
+       <<",\"duration_s\":"<<duration<<",\"length_m\":"<<length<<",\"jerk_energy\":"<<run.optimizer.energy()<<",\"max_speed\":"<<max_speed<<",\"max_acceleration\":"<<max_acc
        <<",\"max_body_rate\":"<<max_rate<<",\"max_tilt\":"<<max_tilt<<",\"min_thrust\":"<<min_thrust<<",\"max_thrust\":"<<max_thrust
        <<",\"optimization_sample_violation_m\":"<<optimization_sample_violation<<",\"max_plane_error_m\":"<<max_plane<<",\"max_corridor_error_m\":"<<max_corridor<<",\"max_penetration_m\":"<<penetration
        <<",\"firi_disconnected_neighbors\":"<<disconnected<<",\"firi_empty_polys\":"<<empty_polys<<",\"firi_seed_outside_m\":"<<seed_outside

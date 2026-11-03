@@ -1,5 +1,7 @@
 #pragma once
 
+#include "SplineTrajectory/SplineOptimizer.hpp"
+
 #include "TrajectoryOptComponents/PenaltyUtils.hpp"
 #include "TrajectoryOptComponents/SFCCommonTypes.hpp"
 #include "TrajectoryOptComponents/SpatialCosts/AngularRateBoundPenalty.hpp"
@@ -38,13 +40,14 @@ struct GcopterPenaltyIntegralCostAdapter
         flatmap = fm;
     }
 
-    double operator()(double /*t*/, double /*t_global*/, int seg_idx, int /*step_in_seg*/,
-                      const VectorType &p, const VectorType &v,
-                      const VectorType &a, const VectorType &j,
-                      const VectorType & /*s*/, VectorType &gp,
-                      VectorType &gv, VectorType &ga, VectorType &gj,
-                      VectorType & /*gs*/, double & /*gt*/) const
+    static constexpr int kDerivativeOrder = 3;
+    double operator()(const SplineTrajectory::IntegralPointInfo &point,
+                      const SplineTrajectory::SampleState<3> &state,
+                      SplineTrajectory::SampleGradient<3> &gradient) const
     {
+        const auto &p = state.p, &v = state.v, &a = state.a, &j = state.j;
+        auto &gp = gradient.p, &gv = gradient.v, &ga = gradient.a, &gj = gradient.j;
+        const int seg_idx = point.segment_index;
         if (!h_polys || !h_poly_idx || !flatmap)
         {
             return 0.0;

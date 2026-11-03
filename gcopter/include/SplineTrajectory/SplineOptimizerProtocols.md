@@ -1,224 +1,43 @@
-# SplineOptimizer Protocol Reference
+# 本仓库的 SplineOptimizer 接入协议
 
-This file documents the callable and mapper protocols used by `SplineOptimizer`.
+对应 diff-planner-swarm `7e41f0d` 四头快照，来源及哈希见 `third_party/SplineTrajectory/SOURCE.md`。
 
-These are reference interfaces only:
-
-- user-defined functors and lambdas do not need to inherit from them
-- they only need to satisfy the signatures checked by `SplineOptimizer` type traits
-
-The current optimizer API also uses a few small integration types:
-
-- `Workspace`: caller-owned mutable state used during evaluation
-- `EvaluateSpec`: binds cost functors, executor, and workspace
-- `ErrorCode`: structured failure categories for setup and evaluation
-- `Status`: returned by setup/validation style APIs
-- `EvaluationResult`: returned by `evaluate(...)`
-- `GradientCheckResult`: returned by `checkGradients(...)`
-
-Typical flow:
-
-1. create and initialize a `SplineOptimizer`
-2. create one `Workspace` per evaluation context
-3. build an `EvaluateSpec` with `makeEvaluateSpec(...)`
-4. call `evaluate(...)` and inspect `EvaluationResult::ok`
-
-## TimeMap Protocol
+优化器自己持有工作区。旧的外部 Context / Workspace、EvaluateSpec、makeEvaluateSpec 接口已移除；每个并发求解任务需要自己的优化器实例。
 
 ```cpp
-struct TimeMapProtocol
-{
-    // Convert unconstrained variable 'tau' to physical time 'T'
-    double toTime(double tau) const;
-
-    // Convert physical time 'T' to unconstrained variable 'tau'
-    double toTau(double T) const;
-
-    // Chain rule: dCost/dtau = (dCost/dT) * (dT/dtau)
-    double backward(double tau, double T, double gradT) const;
-};
+using Spline = SplineTrajectory::QuinticSplineND<3>;
+SplineTrajectory::SplineOptimizer<Spline> optimizer;
+SplineTrajectory::SplineProblem<Spline> problem;
+// 填写 durations、waypoints（N+1 行）、boundary、start_time。
+SplineTrajectory::OptimizerOptions options;
+options.energy_weight = 1;
+options.integration_steps = 16;
+optimizer.prepare(problem, options);
+auto x = optimizer.initialGuess();
+Eigen::VectorXd gradient(optimizer.dimension());
+// Objective 按需声明 duration / integral / coefficient / parameter / decision 成员。
+auto result = optimizer.evaluate(x, gradient, objective);
+// 优化结束后显式恢复接受点；polynomial() 是借用视图。
+optimizer.updateAccepted(x);
+auto output = optimizer.copyPolynomial();
 ```
 
-## SpatialMap Protocol
+各阶段的代价返回 double，梯度累加到传入的预分配缓冲区：
 
-Global absolute indexing:
+| 成员 | 输入 | 梯度 |
+|---|---|---|
+| duration | `const std::vector<double>&` | `Eigen::Ref<Eigen::VectorXd>` |
+| integral | `const IntegralPointInfo&, const SampleState<3>&` | `SampleGradient<3>&` |
+| coefficient | `const ParameterView<Spline>&` | `CoefficientGradient<Spline>&` |
+| parameter | `const ParameterView<Spline>&` | `ParameterGradient<Spline>&` |
+| decision | `const DecisionView&` | `Eigen::Ref<Eigen::VectorXd>` |
 
-- `index = 0`: start point
-- `index = 1 ... N - 1`: inner waypoints
-- `index = N`: end point
+`integral` 声明 `kDerivativeOrder` 可限制所需导数阶数；GCOPTER 的平坦性惩罚用 3 阶。
+`coefficient` 在样条伴随前执行，适合 Bézier 控制点代价：`backwardAdd` 同时返回系数偏导和固定系数时的独立时长偏导，随后优化器统一传播到时长与内路点。
+`parameter` 在样条伴随后执行；`decision` 最后执行，用于原有空间参数化的范数惩罚。
 
-```cpp
-struct SpatialMapProtocol
-{
-    // Dimension of unconstrained variable xi for the point at global index
-    int getUnconstrainedDim(int index) const;
+参数化包含 `time / space / auxiliary`。空间映射采用 `dimension(index)`、`toPhysical`、`toUnconstrained`、`backwardInto`；index 是含首尾的全局路点索引。GCOPTER 保留原有多面体空间映射与时间映射，三头迁移本身不改变走廊几何。
 
-    // Forward: xi (unconstrained) -> p (physical)
-    Eigen::VectorXd toPhysical(const Eigen::VectorXd& xi, int index) const;
+失败评估返回非有限代价及状态，交由迁入的 L-BFGS 回溯；不能伪造有限大数作为成功结果。接受点同步失败或优化失败时主节点不发布旧轨迹。
 
-    // Backward: p (physical) -> xi (unconstrained), used for initial guess
-    Eigen::VectorXd toUnconstrained(const Eigen::VectorXd& p, int index) const;
-
-    // Chain rule: dCost/dxi = (dCost/dp) * (dp/dxi)
-    Eigen::VectorXd backwardGrad(const Eigen::VectorXd& xi,
-                                 const Eigen::VectorXd& grad_p,
-                                 int index) const;
-};
-```
-
-## IntegralCost Protocol
-
-```cpp
-struct IntegralCostProtocol
-{
-    double operator()(double t,
-                      double t_global,
-                      int segment_index,
-                      int step_in_seg,
-                      const Eigen::VectorXd& p,
-                      const Eigen::VectorXd& v,
-                      const Eigen::VectorXd& a,
-                      const Eigen::VectorXd& j,
-                      const Eigen::VectorXd& s,
-                      Eigen::VectorXd& gp,
-                      Eigen::VectorXd& gv,
-                      Eigen::VectorXd& ga,
-                      Eigen::VectorXd& gj,
-                      Eigen::VectorXd& gs,
-                      double& gt) const;
-};
-```
-
-## TimeCost Protocol
-
-```cpp
-struct TimeCostProtocol
-{
-    double operator()(const std::vector<double>& Ts,
-                      Eigen::VectorXd& grad) const;
-};
-```
-
-## WaypointsCost Protocol
-
-```cpp
-struct WaypointsCostProtocol
-{
-    double operator()(const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& waypoints,
-                      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& grad_q) const;
-};
-```
-
-## SampleCost Protocol
-
-```cpp
-struct SampleCostProtocol
-{
-    template <typename SamplesType>
-    double operator()(const SamplesType& samples,
-                      Eigen::Matrix<double, 3, Eigen::Dynamic>& grad_p,
-                      Eigen::VectorXd& grad_t_global) const;
-};
-```
-
-`samples` is the recorded integration buffer. Each sample provides:
-
-- `seg_idx`: segment index
-- `step_in_seg`: sample step inside the segment
-- `sample_buffer_index`: index inside the recorded sample buffer
-- `alpha`: normalized time in the segment, in `[0, 1]`
-- `t_local`: local time within the segment
-- `t_global`: absolute time
-- `trap_weight`: trapezoidal integration weight factor
-- `dt`: segment integration step size
-- `b_p`: position basis row for the spline coefficients
-- `p`, `v`: sampled position and velocity
-
-## TrajectoryCost Protocol
-
-```cpp
-struct TrajectoryCostProtocol
-{
-    // The concrete spline type is determined by SplineOptimizer<DIM, SplineType, ...>
-    double operator()(const QuinticSplineND<3>& spline,
-                      const std::vector<double>& Ts,
-                      const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& waypoints,
-                      double start_time,
-                      const BoundaryConditions<3>& bc,
-                      QuinticSplineND<3>::Gradients& grads) const;
-};
-```
-
-## AuxiliaryStateMap Protocol
-
-```cpp
-struct AuxiliaryStateMapProtocol
-{
-    // Dimension of the auxiliary optimization variable block
-    int getDimension() const;
-
-    // Create initial unconstrained auxiliary variables from the reference state
-    Eigen::VectorXd getInitialValue(const std::vector<double>& ref_times,
-                                    const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& ref_waypoints,
-                                    double ref_start_time,
-                                    const BoundaryConditions<3>& ref_bc) const;
-
-    // Apply the auxiliary variables onto the working state before spline update
-    void apply(const Eigen::VectorXd& z,
-               std::vector<double>& times,
-               Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& waypoints,
-               double& start_time,
-               BoundaryConditions<3>& bc) const;
-
-    // Back-propagate gradients from the working state to z
-    // The concrete spline type is determined by SplineOptimizer<DIM, SplineType, ...>
-    double backward(const Eigen::VectorXd& z,
-                    const QuinticSplineND<3>& spline,
-                    const std::vector<double>& times,
-                    const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& waypoints,
-                    double start_time,
-                    const BoundaryConditions<3>& bc,
-                    QuinticSplineND<3>::Gradients& grads,
-                    Eigen::VectorXd& grad_z) const;
-};
-```
-
-## Runtime Integration Notes
-
-`SplineOptimizer` no longer owns an internal workspace. Callers should provide one workspace per active evaluation context:
-
-```cpp
-using Optimizer = SplineTrajectory::SplineOptimizer<3>;
-
-Optimizer optimizer;
-Optimizer::Workspace workspace;
-
-auto spec = Optimizer::makeEvaluateSpec(time_cost, integral_cost, workspace);
-auto result = optimizer.evaluate(x, grad, spec);
-if (!result)
-{
-    std::cerr << result.message << std::endl;
-}
-```
-
-Setup and validation style APIs use `Status`:
-
-```cpp
-auto status = optimizer.setInitState(durations, waypoints, 0.0, bc);
-if (!status)
-{
-    std::cerr << static_cast<int>(status.code) << std::endl;
-    std::cerr << status.message << std::endl;
-}
-```
-
-Evaluation uses `EvaluationResult` with the same error code pattern:
-
-```cpp
-auto result = optimizer.evaluate(x, grad, spec);
-if (!result)
-{
-    std::cerr << static_cast<int>(result.code) << std::endl;
-    std::cerr << result.message << std::endl;
-}
-```
+梯度检查调用自由函数 `SplineTrajectory::checkGradients(optimizer, x, objective)`。`relative_error` 为相对误差，返回状态使用绝对误差阈值，二者不要混用。

@@ -10,7 +10,7 @@ struct LinearTimeCost
 {
     double weight = 0.0;
 
-    double operator()(const std::vector<double> &Ts, Eigen::VectorXd &grad) const
+    double operator()(const std::vector<double> &Ts, Eigen::Ref<Eigen::VectorXd> grad) const
     {
         double cost = 0.0;
         for (size_t i = 0; i < Ts.size(); ++i)

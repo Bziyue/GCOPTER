@@ -42,7 +42,7 @@ public:
         reset(&owned_polys, &owned_poly_idx, segments, identity);
     }
 
-    int getUnconstrainedDim(int index) const
+    int dimension(int index) const
     {
         if (identity_mode || !v_polys || !v_poly_idx || index <= 0 || index > num_segments)
         {
@@ -51,7 +51,7 @@ public:
         return (*v_polys)[(*v_poly_idx)(index - 1)].cols();
     }
 
-    VectorType toPhysical(const Eigen::VectorXd &xi, int index) const
+    VectorType toPhysical(const Eigen::Ref<const Eigen::VectorXd> &xi, int index) const
     {
         if (identity_mode || !v_polys || !v_poly_idx || index <= 0 || index > num_segments)
         {
@@ -72,7 +72,7 @@ public:
         return poly.rightCols(k - 1) * r.cwiseProduct(r) + poly.col(0);
     }
 
-    Eigen::VectorXd toUnconstrained(const Eigen::VectorXd &p, int index) const
+    Eigen::VectorXd toUnconstrained(const VectorType &p, int index) const
     {
         if (identity_mode || !v_polys || !v_poly_idx || index <= 0 || index > num_segments)
         {
@@ -89,24 +89,25 @@ public:
         return xi;
     }
 
-    Eigen::VectorXd backwardGrad(const Eigen::VectorXd &xi,
-                                 const Eigen::VectorXd &grad_p,
-                                 int index) const
+    /** @brief Pull back a waypoint gradient into the preallocated spatial slice. */
+    void backwardInto(const Eigen::Ref<const Eigen::VectorXd> &xi,
+                      const VectorType &grad_p, int index,
+                      Eigen::Ref<Eigen::VectorXd> output) const
     {
         if (identity_mode || !v_polys || !v_poly_idx || index <= 0 || index > num_segments)
         {
-            return grad_p;
+            output = grad_p;
+            return;
         }
-
-        Eigen::Matrix3Xd grad_p_mat(3, 1);
-        grad_p_mat.col(0) = grad_p.head<3>();
-        Eigen::VectorXd grad_xi;
-        backwardGradP(xi,
-                      Eigen::VectorXi::Constant(1, (*v_poly_idx)(index - 1)),
-                      *v_polys,
-                      grad_p_mat,
-                      grad_xi);
-        return grad_xi;
+        const auto &poly = (*v_polys)[(*v_poly_idx)(index - 1)];
+        const double norm = xi.norm();
+        if (norm < 1e-12) { output.setZero(); return; }
+        const int k = xi.size();
+        output.head(k - 1).noalias() = poly.rightCols(k - 1).transpose() * grad_p;
+        output.head(k - 1).array() *= 2.0 * xi.head(k - 1).array() / norm;
+        output(k - 1) = 0;
+        const double radial = xi.dot(output) / norm;
+        output = (output - (radial / norm) * xi) / norm;
     }
 
     void addNormPenalty(const Eigen::VectorXd &x,

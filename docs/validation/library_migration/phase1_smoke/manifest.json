@@ -1,0 +1,36 @@
+{
+  "parameters": {
+    "repeats": 1,
+    "spacing": 1.0,
+    "weight": 100000.0,
+    "steps": 16,
+    "max_iterations": 800,
+    "memory_mib": 512,
+    "cpu_seconds": 55,
+    "wall_seconds": 60,
+    "binary_sha256": "2ab94288441334a7817666e0d1a0b75b0a152e571a3256b448643017bf646cdb",
+    "platform": "Linux-7.0.0-42-generic-x86_64-with-glibc2.43",
+    "processor": ""
+  },
+  "cases": [
+    {
+      "case": 0,
+      "request": ".scratch/trajectory_comparison/smoke_fixture/request_1",
+      "seed_sha256": "5d2cf78102a901ddb081e3d013ec728c18192ee52e0e7ce88a53ced13ab86771",
+      "map_sha256": "8c82e272b183216f0f2a501457854e36948c9bf41a96e3299551827ecc853ca7",
+      "bounds_lower": [
+        -10,
+        -10,
+        0
+      ],
+      "bounds_upper": [
+        10,
+        10,
+        5
+      ],
+      "resolution": 0.25,
+      "returncode": 0,
+      "peak_rss_kib": 5476
+    }
+  ]
+}
