@@ -17,6 +17,11 @@ using Section = internal::Section;
 using Differential = internal::Differential;
 using ObstacleIndex = internal::ObstacleIndex;
 using SupportPlane = internal::detail::SupportPlane;
+struct FirstSection { Vec3 center,first; Mat32 shape,shape_first; };
+struct FirstDifferential {
+  double value=0,plane_residual=0;
+  Eigen::Vector4d gradient=Eigen::Vector4d::Zero();
+};
 using Control = Eigen::Matrix<double,9,1>;
 
 struct Options : internal::GeometryOptions {
@@ -109,10 +114,22 @@ template<int Degree> class Query {
   std::vector<double> knots_;
   std::vector<Piece> pieces_;
   mutable std::size_t cursor_=0;
+  bool uniform_=true;
+  std::size_t locate(double u)const {
+    if(!(u>=knots_[cursor_]&&(u<knots_[cursor_+1]||(u==1&&cursor_+1==pieces_.size())))) {
+      if(uniform_) {
+        cursor_=std::min(pieces_.size()-1,std::size_t(u*pieces_.size()));
+        if(u<knots_[cursor_])--cursor_;
+        else if(cursor_+1<pieces_.size()&&u>=knots_[cursor_+1])++cursor_;
+      } else cursor_=std::min(pieces_.size()-1,std::size_t(std::upper_bound(knots_.begin(),knots_.end(),u)-knots_.begin()-1));
+    }
+    return cursor_;
+  }
 public:
   explicit Query(const Corridor<Degree>& corridor):knots_(corridor.knots()),pieces_(corridor.pieces()) {
     if(corridor.empty())throw std::invalid_argument("empty corridor query");
     for(std::size_t i=0;i<pieces_.size();++i) {
+      uniform_ &= std::abs(knots_[i]-double(i)/pieces_.size())<1e-12;
       auto& p=pieces_[i];p.inverse_width=1/(knots_[i+1]-knots_[i]);
       for(int k=0;k<=Degree;++k) {
         p.power[k].setZero();
@@ -122,8 +139,7 @@ public:
     }
   }
   Section section(double u)const {
-    if(!(u>=knots_[cursor_]&&(u<knots_[cursor_+1]||(u==1&&cursor_+1==pieces_.size()))))
-      cursor_=std::min(pieces_.size()-1,std::size_t(std::upper_bound(knots_.begin(),knots_.end(),u)-knots_.begin()-1));
+    locate(u);
     const auto& p=pieces_[cursor_];const double t=(u-knots_[cursor_])*p.inverse_width;
     Control y=p.power[Degree],d=Degree*p.power[Degree],dd=Degree*(Degree-1)*p.power[Degree];
     for(int k=Degree-1;k>=0;--k)y=y*t+p.power[k];
@@ -131,6 +147,27 @@ public:
     for(int k=Degree-1;k>=2;--k)dd=dd*t+k*(k-1)*p.power[k];
     d*=p.inverse_width;dd*=p.inverse_width*p.inverse_width;
     return {y.head<3>(),d.head<3>(),dd.head<3>(),internal::cubic::shape(y),internal::cubic::shape(d),internal::cubic::shape(dd)};
+  }
+  const std::vector<double>& knots()const{return knots_;}
+  FirstSection first(double u)const {
+    const auto i=locate(u);const auto& p=pieces_[i];
+    const double t=(u-knots_[i])*p.inverse_width;
+    Control y=p.power[Degree],d=Degree*p.power[Degree];
+    for(int k=Degree-1;k>=0;--k)y=y*t+p.power[k];
+    for(int k=Degree-1;k>=1;--k)d=d*t+k*p.power[k];
+    d*=p.inverse_width;
+    return {y.head<3>(),d.head<3>(),internal::cubic::shape(y),internal::cubic::shape(d)};
+  }
+  FirstDifferential evaluateFirst(double u,const Vec3& x)const {
+    const auto s=first(u);const auto& m=s.shape;const auto& md=s.shape_first;
+    const Eigen::Matrix2d inverse=(m.transpose()*m).inverse();
+    const Eigen::Matrix<double,2,3> dual=inverse*m.transpose();
+    const Vec3 r=x-s.center;const Eigen::Vector2d z=dual*r;
+    const Eigen::Vector2d zu=inverse*(md.transpose()*r-m.transpose()*s.first-
+        (md.transpose()*m+m.transpose()*md)*z);
+    FirstDifferential out;out.value=z.squaredNorm()-1;
+    out.gradient[0]=2*z.dot(zu);out.gradient.tail<3>()=2*dual.transpose()*z;
+    out.plane_residual=r.dot(m.col(0).cross(m.col(1)).normalized());return out;
   }
   Differential evaluate(double u,const Vec3& x)const{return detail::differential(section(u),x);}
 };

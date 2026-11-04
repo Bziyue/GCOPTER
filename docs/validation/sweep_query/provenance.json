@@ -1,0 +1,19 @@
+{
+  "base_commit": "3d246486334391b13935c331c51a3a62af194389",
+  "compiler": "c++ (Ubuntu 15.2.0-16ubuntu1) 15.2.0",
+  "cpu": "AMD Ryzen 7 9700X 8-Core Processor",
+  "source_sha256": {
+    "SweepCorridor/README.md": "6b38fbccae827af242d374a1d7d18fdca62a0cf8ea476206c3dee1a01ded24e6",
+    "SweepCorridor/benchmarks/frozen.cpp": "07bd676983ea45386cfe7d0e83ebc79b5d92470094c6db5a2b4fc364c0f56929",
+    "SweepCorridor/include/SweepCorridor.hpp": "bc6d899d093574461178faaf7bceefbc801f5648d33a367c4704070ca63e48b9",
+    "SweepCorridor/tests/consumer/main.cpp": "dd0567422d562089b28b8073e44e5819cc8d59fc073ba9ab2b47ced34b48043a",
+    "SweepCorridor/tests/queries.cpp": "a675aa218cbc461c35877bd3a470e23c7c164b60c2dfde6e211007d0f505ca6a",
+    "gcopter/experiments/trajectory/CMakeLists.txt": "8f23c6309efc8ba1742469a5b97cd74cf6b7a8c3450bc2a4f22b03d26996bd38",
+    "gcopter/experiments/trajectory/benchmark.cpp": "8509195de5446649786c36bc3fb1497145402d481fc7ae9f3f73e59a88794f80",
+    "gcopter/experiments/trajectory/tube_reference.hpp": "01830952d165c7c51c9b4c15ba5964f813a9ba7801323c64b9cc9c0a5e098a72",
+    "SweepCorridor/include/SweepCorridor/InverseQuery.hpp": "8b930013db7641923237535d61cbcc0e9328e8d20e40132094de370de4d4cef4",
+    "SweepCorridor/benchmarks/query_measurements.hpp": "31336ba7ec102f24310ff89dac44307db655bd08e468023cfdeb52dd1c87699d",
+    "gcopter/experiments/trajectory/sweep_query.hpp": "d9c4850d648257bf815879cae134b1fe294ce8979903cb410f5ba5393f232820",
+    "gcopter/experiments/trajectory/compare_sweep.py": "163dabe3f1f1f217640dd65d9a79a3bebf5a0a56a7b8af502ee18f96d3c070b2"
+  }
+}

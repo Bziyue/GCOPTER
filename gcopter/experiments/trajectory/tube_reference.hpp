@@ -13,8 +13,8 @@ struct TubeValue {
 };
 // Local inversion of n(u).(p-c(u))=0. Progress is only a root-selection hint,
 // not a constraint on the physical trajectory. Multiple roots may exist.
-template<class Getter>
-inline TubeValue referenceTubeValue(const Corridor& corridor, const Vec3& p, double hint,Getter&& getter,uint64_t* fallbacks=nullptr) {
+template<class CorridorType,class Getter>
+inline TubeValue referenceTubeValue(const CorridorType& corridor, const Vec3& p, double hint,Getter&& getter,uint64_t* fallbacks=nullptr) {
   double u=hint,f=0,fu=0;Section section;Vec3 normal,normal_u;
   auto plane=[&](double x) {
     section=getter(x);

@@ -7,6 +7,7 @@
 #include <sys/resource.h>
 namespace sc=SweepCorridor;
 namespace fs=std::filesystem;
+#include "query_measurements.hpp"
 std::vector<sc::Vec3> read(const char* path){std::ifstream f(path);if(!f)throw std::runtime_error("missing input");
   std::vector<sc::Vec3> points;std::string line;while(std::getline(f,line)){if(line.empty()||line[0]=='#')continue;
     std::istringstream row(line);sc::Vec3 p;if(!(row>>p.x()>>p.y()>>p.z()))throw std::runtime_error("invalid point");points.push_back(p);}return points;}
@@ -31,6 +32,7 @@ template<int D> void run(const std::vector<sc::Vec3>& seed,const sc::ObstacleInd
         for(const auto& p:r.support_planes)planes<<p.span<<','<<p.begin<<','<<p.end<<','<<p.normal[0]<<','<<p.normal[1]<<','<<p.normal[2]<<','<<p.bound<<'\n';
       }}
     log<<"}\n";log.flush();
+    if(r&&repeat==0&&std::getenv("SWEEP_QUERY_MEASURE"))queryMeasurements(r.corridor,log);
   }
 }
 int main(int argc,char** argv){try{if(argc!=12)throw std::runtime_error("seed map output xmin ymin zmin xmax ymax zmax repeats samples");

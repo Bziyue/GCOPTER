@@ -20,7 +20,8 @@ auto result = sc::Generator<3>(options).generate(seed, map, bounds);
 if (result) {
     sc::Query<3> query(result.corridor);
     auto section = query.section(0.5);
-    auto differential = query.evaluate(0.5, position);
+    auto first = query.evaluateFirst(0.5, position); // Value and gradient only.
+    auto differential = query.evaluate(0.5, position); // Includes Hessian.
 }
 ```
 
@@ -41,6 +42,29 @@ and signed section-plane residual. Membership in that section requires both
 global inverse parameterization. For distant overlapping spans, u is not
 necessarily unique. Query inputs must be finite, u in [0,1], and the corridor
 nonempty; generation and map construction validate external data once.
+
+For trajectory optimization, include `<SweepCorridor/InverseQuery.hpp>`:
+
+```cpp
+sc::InverseQuery<3> inverse(result.corridor);
+auto residual = inverse(position, progress_hint);
+// residual.radial, residual.plane: residuals in metres
+// residual.grad_radial, residual.grad_plane: world-position gradients
+```
+
+`InverseQuery<Degree>` uses the same first-order implementation for both degrees.
+It solves the section-plane equation from the supplied hint and differentiates
+through the root. Outside the ellipse it returns a radial violation; inside it
+returns zero. At endpoint extensions it retains the signed cap-plane residual.
+`valid` reports whether a root or endpoint was obtained. This is a local inverse,
+not a global nearest-point search across overlapping corridor sections.
+
+Exact-key bounded caches reuse section geometry, Gram inverses, dual maps and
+complete answers. Cache collisions evict entries without changing root selection;
+roots are never warm-started from previous queries. The query owns its polynomial
+coefficients and caches; use one instance per thread. `reset()` clears the caches.
+The kernel contains no clocks or profiling counters. `first(u)` and
+`evaluateFirst(u,x)` skip second derivatives and Hessian work entirely.
 
 Obstacles are closed spheres. A voxel of edge a can be represented by its
 circumsphere of radius `sqrt(3)*a/2`. Bounds and obstacles are inflated using the

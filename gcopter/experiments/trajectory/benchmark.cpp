@@ -9,7 +9,12 @@
 #include <cstdint>
 #include <cstring>
 #include "tube_query.hpp"
+#ifdef SWEEP_COMPARISON
+#include "sweep_query.hpp"
+using BenchmarkTubeQuery=sweep_benchmark::Query;
+#else
 using BenchmarkTubeQuery=tube_query::Query;
+#endif
 
 using Spline = SplineTrajectory::QuinticSplineND<3>;
 using Opt = SplineTrajectory::SplineOptimizer<Spline>;
@@ -27,7 +32,6 @@ double polyDistance(const Polys& polys, const Vec3& p, Vec3& grad) {
 }
 struct Cost {
   traj_opt_adapters::GcopterPenaltyIntegralCostAdapter dynamics;
-  const Corridor* corridor=nullptr;
   const Polys* polys=nullptr;
   int steps=16,pieces=1;
   double weight=1e5;
@@ -154,6 +158,16 @@ int main(int argc,char**argv) {try {
   double diagonal=0;for(auto b:expansionBoxes(seed,bounds,3,.252))diagonal=std::max(diagonal,(b.bounds.upper-b.bounds.lower).norm());
   options.max_radius=.5*diagonal+.001;options.max_offset=diagonal+.001;
   const std::string shape_mode="smooth";
+#ifdef SWEEP_COMPARISON
+  SweepCorridor::Options unified;
+  static_cast<SweepCorridor::internal::GeometryOptions&>(unified)=options;
+  auto direct=SweepCorridor::Generator<5>(unified).generate(seed,index,bounds);
+  auto cubic=SweepCorridor::Generator<3>(unified).generate(seed,index,bounds);
+  if(!direct||!cubic)throw std::runtime_error("generation failed: H5="+direct.message+" C3="+cubic.message);
+  if(!SweepCorridor::certify(direct.corridor,direct.support_planes).safe()||
+     !SweepCorridor::certify(cubic.corridor,cubic.support_planes).safe())throw std::runtime_error("certificate failed");
+  decltype(generateFiri(seed,points,bounds,radius,.25,true,3)) firi;int disconnected=0,empty_polys=0;double seed_outside=0;
+#else
   auto direct=generate(seed,index,bounds,options);
   if(!direct)throw std::runtime_error(direct.message);
   auto firi=generateFiri(seed,points,bounds,radius,.25,true,3);
@@ -163,6 +177,7 @@ int main(int argc,char**argv) {try {
   double seed_outside=0;Vec3 grad_seed;
   for(size_t i=1;i<seed.size();++i)for(int k=0;k<=100;++k)
     seed_outside=std::max(seed_outside,polyDistance(firi.polys,seed[i-1]+(seed[i]-seed[i-1])*(k/100.),grad_seed));
+#endif
   std::vector<double> arc{0};for(size_t i=1;i<seed.size();++i)arc.push_back(arc.back()+(seed[i]-seed[i-1]).norm());
   const int pieces=std::max(2,int(std::ceil(arc.back()/spacing)));
   Opt::Problem problem;problem.waypoints.resize(pieces+1,3);
@@ -179,14 +194,35 @@ int main(int argc,char**argv) {try {
   std::ofstream out(dir/"runs.jsonl");out<<std::setprecision(12);
   std::string expected_hash;
   for(int rep=-1;rep<repeats;++rep) for(int order=0;order<2;++order) {
+#ifdef SWEEP_COMPARISON
+    const bool is_cubic=(rep+order+2)%2;const bool ellipse=true;
+    std::string name=is_cubic?"C3":"H5";
+    auto audit=[&](const Vec3& p,double u){
+      if(is_cubic)return referenceTubeValue(cubic.corridor,p,u,[&](double t){return cubic.corridor.section(t);});
+      return referenceTubeValue(direct.corridor,p,u,[&](double t){return direct.corridor.section(t);});
+    };
+    const std::string query_mode="unified-first";
+    const std::string geometry_mode=is_cubic?"native-cubic":"smooth";
+    const double generation_ms=is_cubic?cubic.metrics.total_ms:direct.metrics.total_ms;
+#else
     bool ellipse=(rep+order+2)%2;std::string name=ellipse?"hermite":"firi";
+    auto audit=[&](const Vec3& p,double u){return tubeValue(direct.corridor,p,u);};
+    const std::string query_mode=horner?"horner":fast?"fast":"reference";
+    const std::string geometry_mode=shape_mode;
+    const double generation_ms=ellipse?direct.metrics.total_ms:firi.total_ms;
+#endif
     clock=Clock::now();Run run;SplineTrajectory::OptimizerOptions config;config.energy_weight=1;config.integration_steps=steps;
     if(!run.optimizer.prepare(problem,config))throw std::runtime_error("prepare failed");
+#ifdef SWEEP_COMPARISON
+    if(is_cubic)run.query=std::make_unique<BenchmarkTubeQuery>(cubic.corridor,profile);
+    else run.query=std::make_unique<BenchmarkTubeQuery>(direct.corridor,profile);
+#else
     run.query=std::make_unique<BenchmarkTubeQuery>(direct.corridor,fast,profile,horner);
+#endif
     run.cost.query=run.query.get();
     flatness::FlatnessMap flat;flat.reset(.61,9.8,.70,.80,.01,.0001);
     run.cost.dynamics.reset(&empty,&ids,.01,limits,weights,&flat);
-    run.cost.corridor=&direct.corridor;run.cost.pieces=pieces;run.cost.polys=&firi.polys;run.cost.steps=steps;run.cost.ellipse=ellipse;run.cost.weight=weight;
+    run.cost.pieces=pieces;run.cost.polys=&firi.polys;run.cost.steps=steps;run.cost.ellipse=ellipse;run.cost.weight=weight;
     Eigen::VectorXd x=run.optimizer.initialGuess(),g(x.size());
     run.cost.bezier=bezier;
     run.cost.keep_tube_integral=constraint=="bezier";
@@ -223,7 +259,7 @@ int main(int argc,char**argv) {try {
       double start=0;for(int k=0;k<seg;++k)start+=run.optimizer.parameters().durations[k];
       for(int k=0;k<=steps;++k) {
         Vec3 point=trajectory.evaluate(start+run.optimizer.parameters().durations[seg]*k/steps),grad;
-        double violation=ellipse?tubeValue(direct.corridor,point,(seg+double(k)/steps)/pieces).radial:polyDistance(firi.polys,point,grad);
+        double violation=ellipse?audit(point,(seg+double(k)/steps)/pieces).radial:polyDistance(firi.polys,point,grad);
         optimization_sample_violation=std::max(optimization_sample_violation,violation);
       }
     }
@@ -244,7 +280,7 @@ int main(int argc,char**argv) {try {
         min_thrust=std::min(min_thrust,state.thrust);max_thrust=std::max(max_thrust,state.thrust);
         Vec3 grad;
         if(ellipse) {
-          auto tube=tubeValue(direct.corridor,p,u);
+          auto tube=audit(p,u);
           inverse_failures+=!tube.valid;
           max_plane=std::max(max_plane,std::abs(tube.plane));
           max_corridor=std::max(max_corridor,tube.radial);
@@ -257,26 +293,31 @@ int main(int argc,char**argv) {try {
     }
     bool feasible=inverse_failures==0&&penetration<=1e-6&&max_plane<=.005&&max_corridor<=.005&&max_speed<=4.04&&max_rate<=2.121&&max_tilt<=1.0605&&min_thrust>=1.98&&max_thrust<=12.12;
     out<<"{\"method\":\""<<name<<"\",\"repeat\":"<<rep<<",\"pieces\":"<<pieces<<",\"initial_hash\":\""<<init_hash<<"\",\"status\":"<<status
-       <<",\"tube_mode\":\""<<(horner?"horner":fast?"fast":"reference")<<"\",\"profile_enabled\":"<<(profile?"true":"false")
+       <<",\"tube_mode\":\""<<query_mode<<"\",\"profile_enabled\":"<<(profile?"true":"false")
        <<",\"objective_eval_ms\":"<<profile_stats.objective_ms<<",\"integral_callback_ms\":"<<profile_stats.integral_ms
        <<",\"dynamics_callback_ms\":"<<profile_stats.dynamics_ms<<",\"coefficient_callback_ms\":"<<profile_stats.coefficient_ms
        <<",\"spline_mapping_other_ms\":"<<profile_stats.objective_ms-profile_stats.integral_ms-profile_stats.coefficient_ms
-       <<",\"tube_query_ms\":"<<profile_stats.tube_ms<<",\"section_eval_ms\":"<<profile_stats.section_ms
+       <<",\"tube_query_ms\":"<<profile_stats.tube_ms
+#ifndef SWEEP_COMPARISON
+       <<",\"section_eval_ms\":"<<profile_stats.section_ms
        <<",\"tube_queries\":"<<profile_stats.queries<<",\"tube_cache_hits\":"<<profile_stats.query_hits
        <<",\"section_calls\":"<<profile_stats.section_calls<<",\"section_cache_hits\":"<<profile_stats.section_hits
        <<",\"plane_evaluations\":"<<profile_stats.plane_evaluations<<",\"root_fallbacks\":"<<profile_stats.fallbacks
+#endif
        <<",\"constraint\":\""<<constraint<<"\",\"bezier_depth\":"<<depth
        <<",\"tube_integral_retained\":"<<(bezier&&ellipse&&run.cost.keep_tube_integral?"true":"false")
        <<",\"control_position_violation_m\":"<<run.bezier_cost.max_position_violation
        <<",\"control_speed_violation_mps\":"<<run.bezier_cost.max_speed_violation
-       <<",\"iterations\":"<<run.iterations<<",\"evaluations\":"<<run.evaluations<<",\"index_ms\":"<<index_ms<<",\"corridor_ms\":"<<(ellipse?direct.metrics.total_ms:firi.total_ms)
+       <<",\"iterations\":"<<run.iterations<<",\"evaluations\":"<<run.evaluations<<",\"index_ms\":"<<index_ms<<",\"corridor_ms\":"<<generation_ms
        <<",\"prepare_ms\":"<<prepare_ms<<",\"optimize_ms\":"<<optimize_ms<<",\"objective\":"<<objective
        <<",\"duration_s\":"<<duration<<",\"length_m\":"<<length<<",\"jerk_energy\":"<<run.optimizer.energy()<<",\"max_speed\":"<<max_speed<<",\"max_acceleration\":"<<max_acc
        <<",\"max_body_rate\":"<<max_rate<<",\"max_tilt\":"<<max_tilt<<",\"min_thrust\":"<<min_thrust<<",\"max_thrust\":"<<max_thrust
        <<",\"optimization_sample_violation_m\":"<<optimization_sample_violation<<",\"max_plane_error_m\":"<<max_plane<<",\"max_corridor_error_m\":"<<max_corridor<<",\"max_penetration_m\":"<<penetration
+#ifndef SWEEP_COMPARISON
        <<",\"firi_disconnected_neighbors\":"<<disconnected<<",\"firi_empty_polys\":"<<empty_polys<<",\"firi_seed_outside_m\":"<<seed_outside
+#endif
        <<",\"inverse_failures\":"<<inverse_failures<<",\"gradient_relative_error\":"<<gradient_error<<",\"sampled_feasible\":"<<(feasible?"true":"false")
-       <<",\"shape_mode\":\""<<shape_mode<<"\"";
+       <<",\"shape_mode\":\""<<geometry_mode<<"\"}\n";out.flush();
     std::cerr<<name<<" rep "<<rep<<" "<<optimize_ms<<"ms feasible="<<feasible<<" plane="<<max_plane<<" corridor="<<max_corridor<<" collision="<<penetration<<'\n';
   }
 }catch(const std::exception&e){std::cerr<<e.what()<<'\n';return 1;}}

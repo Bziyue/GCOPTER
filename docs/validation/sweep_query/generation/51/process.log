@@ -1,0 +1,23 @@
+	Command being timed: "/home/zdp/ForCodex/GCOPTER/.scratch/sweep_corridor/build/sweep_frozen .scratch/native_splines/e1/inputs/seed_78dda0aab0b66b17b43d354e05f6f1ee08d89143d69a1408d3f5633aa12bc1e5.xyz .scratch/native_splines/e1/inputs/map_0473ffd4fa132de3ec74d605bdbe5b309adda9c06cc122142b62c6c3d6360dc7.xyz docs/validation/sweep_query/generation/51 -11.0 -7.0 0.0 11.0 7.0 7.0 7 0"
+	User time (seconds): 0.40
+	System time (seconds): 0.00
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:00.40
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 9776
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 2750
+	Voluntary context switches: 1
+	Involuntary context switches: 3
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 1184
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
