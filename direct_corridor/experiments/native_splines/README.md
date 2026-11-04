@@ -8,6 +8,10 @@ geometry/trajectory coefficients are in
 This fifth round selects configurations by corridor generation time, union
 volume, geometric regularity and continuous safety. Trajectory optimization
 is retained as historical data and is not a selection criterion.
+The [next-stage improvement plan](../../../docs/原生三次走廊下一阶段改进方案.md)
+reconciles the independent review with the current implementation. It prioritizes
+tighter redundancy bounds, selective certificate replacement, incremental setup
+and smoothness control, with staged cubic generation as a separate experiment.
 The fourth-round report is
 [`原生三次走廊连续约束与自适应优化实验.md`](../../../docs/原生三次走廊连续约束与自适应优化实验.md).
 The [third-round report](../../../docs/原生三次走廊约束与求解加速.md) covers
