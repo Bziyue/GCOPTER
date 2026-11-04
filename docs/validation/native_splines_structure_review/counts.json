@@ -1,0 +1,198 @@
+[
+  {
+    "h5_constraints": 4560,
+    "h5_active": 2387,
+    "h5_nodes": 122,
+    "h5_newton": 60,
+    "c3_geometric_cuts": 8278,
+    "c3_groups": 596,
+    "c3_group_support_counts": [
+      73,
+      3903,
+      4074,
+      228
+    ],
+    "c3_group_dependency_counts": [
+      4,
+      219,
+      316,
+      57
+    ],
+    "rank2_candidate_groups": 4,
+    "rank2_candidate_rows": 54,
+    "rank2_candidate_survivors": 30,
+    "max_rank2_residual": 4.663415844540095e-14,
+    "projected_residual_proof_pruned": 3226,
+    "min_support_radius": 0.0024758559842070443,
+    "reconstruction_error": 7.412768752466902e-15,
+    "case": 0
+  },
+  {
+    "h5_constraints": 8566,
+    "h5_active": 3791,
+    "h5_nodes": 214,
+    "h5_newton": 60,
+    "c3_geometric_cuts": 15584,
+    "c3_groups": 938,
+    "c3_group_support_counts": [
+      67,
+      7450,
+      7702,
+      365
+    ],
+    "c3_group_dependency_counts": [
+      4,
+      366,
+      486,
+      82
+    ],
+    "rank2_candidate_groups": 15,
+    "rank2_candidate_rows": 290,
+    "rank2_candidate_survivors": 122,
+    "max_rank2_residual": 7.082310511107785e-14,
+    "projected_residual_proof_pruned": 4014,
+    "min_support_radius": 0.005902755869956195,
+    "reconstruction_error": 1.2854188117529924e-14,
+    "case": 1
+  },
+  {
+    "h5_constraints": 5161,
+    "h5_active": 3001,
+    "h5_nodes": 118,
+    "h5_newton": 60,
+    "c3_geometric_cuts": 8830,
+    "c3_groups": 640,
+    "c3_group_support_counts": [
+      78,
+      3957,
+      4473,
+      322
+    ],
+    "c3_group_dependency_counts": [
+      4,
+      214,
+      359,
+      63
+    ],
+    "rank2_candidate_groups": 4,
+    "rank2_candidate_rows": 78,
+    "rank2_candidate_survivors": 30,
+    "max_rank2_residual": 3.4219371797089426e-16,
+    "projected_residual_proof_pruned": 3146,
+    "min_support_radius": 0.00042121544141830985,
+    "reconstruction_error": 1.1305892270714554e-14,
+    "case": 2
+  },
+  {
+    "h5_constraints": 8046,
+    "h5_active": 3731,
+    "h5_nodes": 204,
+    "h5_newton": 60,
+    "c3_geometric_cuts": 13854,
+    "c3_groups": 803,
+    "c3_group_support_counts": [
+      55,
+      6712,
+      6799,
+      288
+    ],
+    "c3_group_dependency_counts": [
+      4,
+      347,
+      396,
+      56
+    ],
+    "rank2_candidate_groups": 4,
+    "rank2_candidate_rows": 55,
+    "rank2_candidate_survivors": 24,
+    "max_rank2_residual": 4.335559509131367e-16,
+    "projected_residual_proof_pruned": 4237,
+    "min_support_radius": 0.002910716730747504,
+    "reconstruction_error": 1.519566435284555e-14,
+    "case": 3
+  },
+  {
+    "h5_constraints": 4152,
+    "h5_active": 2117,
+    "h5_nodes": 113,
+    "h5_newton": 60,
+    "c3_geometric_cuts": 7650,
+    "c3_groups": 543,
+    "c3_group_support_counts": [
+      72,
+      3621,
+      3750,
+      207
+    ],
+    "c3_group_dependency_counts": [
+      4,
+      206,
+      282,
+      51
+    ],
+    "rank2_candidate_groups": 8,
+    "rank2_candidate_rows": 93,
+    "rank2_candidate_survivors": 34,
+    "max_rank2_residual": 4.586602711409538e-16,
+    "projected_residual_proof_pruned": 2767,
+    "min_support_radius": 0.00557773867902471,
+    "reconstruction_error": 4.573694423981165e-15,
+    "case": 4
+  },
+  {
+    "h5_constraints": 3709,
+    "h5_active": 1817,
+    "h5_nodes": 84,
+    "h5_newton": 60,
+    "c3_geometric_cuts": 6942,
+    "c3_groups": 497,
+    "c3_group_support_counts": [
+      66,
+      3049,
+      3496,
+      331
+    ],
+    "c3_group_dependency_counts": [
+      4,
+      153,
+      265,
+      75
+    ],
+    "rank2_candidate_groups": 2,
+    "rank2_candidate_rows": 33,
+    "rank2_candidate_survivors": 12,
+    "max_rank2_residual": 2.830524433501838e-16,
+    "projected_residual_proof_pruned": 2103,
+    "min_support_radius": 0.006765554642318411,
+    "reconstruction_error": 6.209954367043264e-15,
+    "case": 5
+  },
+  {
+    "h5_constraints": 5155,
+    "h5_active": 2590,
+    "h5_nodes": 124,
+    "h5_newton": 55,
+    "c3_geometric_cuts": 9056,
+    "c3_groups": 575,
+    "c3_group_support_counts": [
+      80,
+      4305,
+      4455,
+      216
+    ],
+    "c3_group_dependency_counts": [
+      4,
+      225,
+      299,
+      47
+    ],
+    "rank2_candidate_groups": 3,
+    "rank2_candidate_rows": 59,
+    "rank2_candidate_survivors": 29,
+    "max_rank2_residual": 3.514109192293773e-16,
+    "projected_residual_proof_pruned": 3506,
+    "min_support_radius": 0.001534727148475672,
+    "reconstruction_error": 7.501278088528162e-15,
+    "case": 6
+  }
+]

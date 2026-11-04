@@ -1,0 +1,229 @@
+{
+  "date": "2026-11-04",
+  "commit": "5ed3f99ade97e95060b678603ddc3f96ca04159a",
+  "worktree": "round3 and round4 modifications are uncommitted; see source hashes",
+  "address_space_limit_bytes": 4294967296,
+  "execution": "serial; structural counts only, not new speed measurements",
+  "compiler": "c++ (Ubuntu 15.2.0-16ubuntu1) 15.2.0",
+  "build_command": "prlimit --as=4294967296 -- c++ -O2 -std=c++17 -I direct_corridor/experiments/native_splines -I direct_corridor/include -I gcopter/include -I /usr/include/eigen3 docs/validation/native_splines_structure_review/probe.cpp .scratch/native_splines/build/libnative_splines.a .scratch/native_splines/build/direct/libgcopter_direct_corridor.a -o .scratch/native_splines/structure_review/probe",
+  "inputs": [
+    {
+      "case": 0,
+      "request": ".scratch/interactive/rviz/run_1793605002598226995_3712673/request_1",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_db505c46bc24c061128416d4f673259c3be655ecc474b1840790fac39c43fb00.xyz",
+      "seed_sha256": "db505c46bc24c061128416d4f673259c3be655ecc474b1840790fac39c43fb00",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1"
+    },
+    {
+      "case": 1,
+      "request": ".scratch/interactive/perlin_final/run_1793605176741410828_3715435/request_10",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_bd82e7f1ab28edfbbf014898b2be7a49c30e1d6f30ec09aaa488134aa9b62cf2.xyz",
+      "seed_sha256": "bd82e7f1ab28edfbbf014898b2be7a49c30e1d6f30ec09aaa488134aa9b62cf2",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1"
+    },
+    {
+      "case": 2,
+      "request": ".scratch/interactive/maze_connected/run_1793605479006343675_3719882/request_10",
+      "bounds_lower": [
+        -15,
+        -15,
+        0
+      ],
+      "bounds_upper": [
+        15,
+        15,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_d170e52ffa2f83709a066d84ae7a14f08392c73df0a5ecb7962b950c4c247d06.xyz",
+      "seed_sha256": "d170e52ffa2f83709a066d84ae7a14f08392c73df0a5ecb7962b950c4c247d06",
+      "map": ".scratch/native_splines/frozen/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz",
+      "map_sha256": "9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c"
+    },
+    {
+      "case": 3,
+      "request": ".scratch/interactive/rviz/run_1793605002598226995_3712673/request_2",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_e2034ad4c38b68bedb80983603b4358364b5bc00ab5cebd93f07269a8353d32c.xyz",
+      "seed_sha256": "e2034ad4c38b68bedb80983603b4358364b5bc00ab5cebd93f07269a8353d32c",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1"
+    },
+    {
+      "case": 4,
+      "request": ".scratch/interactive/perlin_final/run_1793605176741410828_3715435/request_5",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_ee1c173245146b51629407d8e03cb1fc80bb3dac7f85cd355f07d000e387654c.xyz",
+      "seed_sha256": "ee1c173245146b51629407d8e03cb1fc80bb3dac7f85cd355f07d000e387654c",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1"
+    },
+    {
+      "case": 5,
+      "request": ".scratch/interactive/maze_connected/run_1793605479006343675_3719882/request_4",
+      "bounds_lower": [
+        -15,
+        -15,
+        0
+      ],
+      "bounds_upper": [
+        15,
+        15,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_019b73adaac1c31fd85a1244699770d45e18c319cfc976548bc8791b4ef621ff.xyz",
+      "seed_sha256": "019b73adaac1c31fd85a1244699770d45e18c319cfc976548bc8791b4ef621ff",
+      "map": ".scratch/native_splines/frozen/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz",
+      "map_sha256": "9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c"
+    },
+    {
+      "case": 6,
+      "request": ".scratch/interactive/polished_rviz/run_1793701774600485813_61028/request_1",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_6d1bf777dbe2008f496213639d78b553fcecf0d30ceca7fdc6d9731d3bcb492c.xyz",
+      "seed_sha256": "6d1bf777dbe2008f496213639d78b553fcecf0d30ceca7fdc6d9731d3bcb492c",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1"
+    }
+  ],
+  "hashes": {
+    "docs/validation/native_splines_structure_review/probe.cpp": "4dd1352835d6b752579ba8f30f6d384a8c0e548da005107289ee215bc41fe561",
+    ".scratch/native_splines/structure_review/probe": "78ac661871b0c5c883e0bd89be8c899f95136b1f23d9c909cf562467fc22c846",
+    ".scratch/native_splines/build/libnative_splines.a": "182767b06d39ff3bd9ce429cd91fb795c4c1d01b288e8b042e85016fd09e8d28",
+    ".scratch/native_splines/build/direct/libgcopter_direct_corridor.a": "004b6021a2a307f0be4db393cbe4782bf9ad45bd51bb0eb26b5b81699fa9b325",
+    "direct_corridor/experiments/native_splines/cubic_optimizer.hpp": "e38cf19174afcb989c597ef75aea5706657a7996eeee511614f64b539915e4e2",
+    "direct_corridor/experiments/native_splines/geometry.hpp": "0853e9cc78e27f369232247749a9914d94fa78da8f0d5c8b364f4dbb08010305",
+    "direct_corridor/experiments/native_splines/obstacle_cover.hpp": "84392fcb27f6c99bb79b18156ba4e2cf1241bad0e88db1f3a8753e1bd0579317",
+    "direct_corridor/experiments/native_splines/cubic_generator.hpp": "05babd51a67c30c34dd83e7251a215f402e673064b435071b27ca22203365da7",
+    "direct_corridor/experiments/native_splines/cubic_certificates.hpp": "084e59d4c8b6ad7016c12c2fcc15095db23b1829072dccc15fdf5b9b04675530",
+    "direct_corridor/experiments/native_splines/lazy_obstacles.hpp": "13d3be6c0dffbcb4cf0a67083f58c17750899f78f6e320edad80285c85eee960",
+    "direct_corridor/experiments/native_splines/cubic_basis.hpp": "14c5bc20a2a82dfb96a085db27ed7bb7e20eda343d8e575d3444912c556550d3",
+    "direct_corridor/experiments/native_splines/cubic_adaptation.hpp": "7ef0ca95847bdba997ad005f85d27102e4577dce2a08e6463d8087d376db6409",
+    "direct_corridor/experiments/native_splines/cubic_volume.hpp": "2ae0621f04a3cc33ba87ae1c08fc8dae2cdb61cfde1e13a8f6f1b9fd185b144f",
+    "direct_corridor/experiments/native_splines/cubic_query.hpp": "8dfa4fd33633f46534300b002534a0dfcc4c2bd5ff2de9ec0cf44eb7f54dff76",
+    "direct_corridor/experiments/native_splines/banded_spd.hpp": "674a6ca268dcaa5c41aa537f83590cb8c88845710eb2b9b65f393dc92d1abb04",
+    "direct_corridor/experiments/native_splines/continuous_oracle.hpp": "c5ef9c43d3d77861bd1ad1b801e5b52be8524c0cd14ef147aa4a838bb503a528",
+    "direct_corridor/experiments/native_splines/geometry.cpp": "0ac828055e0bc07fa0fd0f6da05c8e3099bc757097e3511391f7fa7d365823a1",
+    "direct_corridor/experiments/native_splines/cubic_optimizer.cpp": "b0fdd438ca43a78d897d6a2be9952d5879892c45bd2df95bd8758c777170d1f2",
+    "direct_corridor/experiments/native_splines/benchmark.cpp": "a2929bbc98af5e4b54f5a5edab8b5a3a460f48d80d86a6e1f319a2130901c8da",
+    "direct_corridor/experiments/native_splines/cubic_refinement.cpp": "0df9627fdbc9b1cd3a1ab90dc42ba214f681442a9b5544a8ad171d497c768d49",
+    "direct_corridor/experiments/native_splines/cubic_generator.cpp": "4586d435034da616d216e0e026e86c4fd81ad489d49a45883c97516fc3d74ea5",
+    "direct_corridor/experiments/native_splines/volume.cpp": "f7405cf494cb03124e478b68d3fd2138442897ed233c513e0f13478f984f4d31",
+    "direct_corridor/src/generation_pipeline.hpp": "19bda351f71de86b782dffd3adec7b0ab03ff4e7f534a1ff943d38fcec639568",
+    "direct_corridor/src/sweep_smoothing.hpp": "a6b05f04b1b92649481422b40f138f9e8aa768e68008385828cf1b84c79427f7",
+    "direct_corridor/src/hermite_optimizer.hpp": "3027d43b69810a3230273567cd1efb08f802361c0ccf48b1b2576e4fa3f56236",
+    ".scratch/native_splines/round4/final/case_00/C3-OPT-native.csv": "412cc12797aa23a83f970a3fe4639579220008b355aea8bbbc963f2d1a2b2711",
+    ".scratch/native_splines/round4/final/case_00/C3-OPT-native_support_planes.csv": "a877d21c83cd5331f31bd1ed40e82f80f7048d8a5a150b0521d9a2a8e4c99ee7",
+    ".scratch/native_splines/round4/final/case_01/C3-OPT-native.csv": "9c34dd5c32100b64734003ad9e11eeed82f21e6c06780307c917bdd7460a1dd7",
+    ".scratch/native_splines/round4/final/case_01/C3-OPT-native_support_planes.csv": "6103b8602531ed95ed0b0685d5ae51a80922f89b436ea74ebaffad642edbd29a",
+    ".scratch/native_splines/round4/final/case_02/C3-OPT-native.csv": "56753dd2be840aca3f423e70dc139fd4cc5b1e86e09915044bf20047a9672469",
+    ".scratch/native_splines/round4/final/case_02/C3-OPT-native_support_planes.csv": "c69793781142291f541a832ef29f345aa73f00ad3917e8ea6b1eb93998fa5669",
+    ".scratch/native_splines/round4/final/case_03/C3-OPT-native.csv": "d87dccb3b6e9cd91e5dd486156a3234c7556a751200a15082cdcd99cb542ce6a",
+    ".scratch/native_splines/round4/final/case_03/C3-OPT-native_support_planes.csv": "e550965fabc7b39f0f57ed321b5e4fb4f737a4e0d540bb3e2cbddc712a4e21d8",
+    ".scratch/native_splines/round4/final/case_04/C3-OPT-native.csv": "9de53a14377e30a1755d43253326c767fa325df29a5072a0f887ded714386486",
+    ".scratch/native_splines/round4/final/case_04/C3-OPT-native_support_planes.csv": "3fe8e9a044e5112b513c8110d4f72e412aa2c3f8fa4cb244ba0f2d63df81d011",
+    ".scratch/native_splines/round4/final/case_05/C3-OPT-native.csv": "d67ebe8d417d8c57838371a12517ac16d1fcc94229f7a6fbee3a5b25a1b7cdfb",
+    ".scratch/native_splines/round4/final/case_05/C3-OPT-native_support_planes.csv": "e3cb278d3d5de52e4b4622020338e35e8c7e1a8f5abd74d826a2f0ec5f2f20b4",
+    ".scratch/native_splines/round4/final/case_06/C3-OPT-native.csv": "80a6012ea07ca14414f3ad38bd269e87365228389e2bad73c46f50a3f34d50d8",
+    ".scratch/native_splines/round4/final/case_06/C3-OPT-native_support_planes.csv": "1d3e734d209b92f2245eef687f8788de926747abac9cbb77df71fb6a45a4f2a8"
+  },
+  "generation_log_snapshots": [
+    {
+      "case": 0,
+      "source": "docs/validation/native_splines_round4/generation/final/case_00/rows.jsonl",
+      "archive": "generation/case_00/rows.jsonl",
+      "sha256": "4b18fc18bdb59f75880b2dbaef58eeca53d6ffc88fbaa97064ac042353b185dd"
+    },
+    {
+      "case": 1,
+      "source": "docs/validation/native_splines_round4/generation/final/case_01/rows.jsonl",
+      "archive": "generation/case_01/rows.jsonl",
+      "sha256": "aaef2c56fcff29cc31baf8ba78ac190988dd849f8fc5998d03f2b1ef48daa946"
+    },
+    {
+      "case": 2,
+      "source": "docs/validation/native_splines_round4/generation/final/case_02/rows.jsonl",
+      "archive": "generation/case_02/rows.jsonl",
+      "sha256": "06a4d7341afa4b78689fe7a5b10f758e80ea980f7689734bf98eec689a816788"
+    },
+    {
+      "case": 3,
+      "source": "docs/validation/native_splines_round4/generation/final/case_03/rows.jsonl",
+      "archive": "generation/case_03/rows.jsonl",
+      "sha256": "1dff5b7ce1c4bd5586f44a0d2720554df249a42f45ceb9b5c483175d652ad11c"
+    },
+    {
+      "case": 4,
+      "source": "docs/validation/native_splines_round4/generation/final/case_04/rows.jsonl",
+      "archive": "generation/case_04/rows.jsonl",
+      "sha256": "e2cd7d9a598aaeeb065246faaddfc7385585b8e36a063cbc77761c65f147ee13"
+    },
+    {
+      "case": 5,
+      "source": "docs/validation/native_splines_round4/generation/final/case_05/rows.jsonl",
+      "archive": "generation/case_05/rows.jsonl",
+      "sha256": "757db246f68b551c91becc1b478b94e3e8dac1fcd6a8ba294bc389d8d8b1e92d"
+    },
+    {
+      "case": 6,
+      "source": "docs/validation/native_splines_round4/generation/final/case_06/rows.jsonl",
+      "archive": "generation/case_06/rows.jsonl",
+      "sha256": "dc67617e09fe40e44c3f1c5bd246619faaabd17ee77061d8fa5f40083b6a08ef"
+    }
+  ]
+}
