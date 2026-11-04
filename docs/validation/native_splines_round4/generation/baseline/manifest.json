@@ -1,0 +1,332 @@
+{
+  "schema": "native-splines-run-v1",
+  "baseline": "15c70cdff162ed289aa23f8842bd5877b9b71fac",
+  "phase": "A-and-B-native-plus-projection",
+  "repeats": 21,
+  "samples_per_shift": 0,
+  "random_shifts": 8,
+  "cases": [
+    {
+      "case": 0,
+      "request": ".scratch/interactive/rviz/run_1793605002598226995_3712673/request_1",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_db505c46bc24c061128416d4f673259c3be655ecc474b1840790fac39c43fb00.xyz",
+      "seed_sha256": "db505c46bc24c061128416d4f673259c3be655ecc474b1840790fac39c43fb00",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+      "status": "completed",
+      "returncode": 0,
+      "elapsed_s": 1.4664524920008262,
+      "command": [
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/round4_baseline/native_spline_benchmark",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/frozen/seed_db505c46bc24c061128416d4f673259c3be655ecc474b1840790fac39c43fb00.xyz",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/round4/baseline/case_00",
+        "-25",
+        "-25",
+        "0",
+        "25",
+        "25",
+        "5",
+        "21",
+        "0"
+      ],
+      "output": ".scratch/native_splines/round4/baseline/case_00"
+    },
+    {
+      "case": 1,
+      "request": ".scratch/interactive/perlin_final/run_1793605176741410828_3715435/request_10",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_bd82e7f1ab28edfbbf014898b2be7a49c30e1d6f30ec09aaa488134aa9b62cf2.xyz",
+      "seed_sha256": "bd82e7f1ab28edfbbf014898b2be7a49c30e1d6f30ec09aaa488134aa9b62cf2",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+      "status": "completed",
+      "returncode": 0,
+      "elapsed_s": 2.5681349550013692,
+      "command": [
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/round4_baseline/native_spline_benchmark",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/frozen/seed_bd82e7f1ab28edfbbf014898b2be7a49c30e1d6f30ec09aaa488134aa9b62cf2.xyz",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/round4/baseline/case_01",
+        "-25",
+        "-25",
+        "0",
+        "25",
+        "25",
+        "5",
+        "21",
+        "0"
+      ],
+      "output": ".scratch/native_splines/round4/baseline/case_01"
+    },
+    {
+      "case": 2,
+      "request": ".scratch/interactive/maze_connected/run_1793605479006343675_3719882/request_10",
+      "bounds_lower": [
+        -15,
+        -15,
+        0
+      ],
+      "bounds_upper": [
+        15,
+        15,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_d170e52ffa2f83709a066d84ae7a14f08392c73df0a5ecb7962b950c4c247d06.xyz",
+      "seed_sha256": "d170e52ffa2f83709a066d84ae7a14f08392c73df0a5ecb7962b950c4c247d06",
+      "map": ".scratch/native_splines/frozen/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz",
+      "map_sha256": "9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c",
+      "status": "completed",
+      "returncode": 0,
+      "elapsed_s": 1.9169453590002377,
+      "command": [
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/round4_baseline/native_spline_benchmark",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/frozen/seed_d170e52ffa2f83709a066d84ae7a14f08392c73df0a5ecb7962b950c4c247d06.xyz",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/frozen/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/round4/baseline/case_02",
+        "-15",
+        "-15",
+        "0",
+        "15",
+        "15",
+        "5",
+        "21",
+        "0"
+      ],
+      "output": ".scratch/native_splines/round4/baseline/case_02"
+    },
+    {
+      "case": 3,
+      "request": ".scratch/interactive/rviz/run_1793605002598226995_3712673/request_2",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_e2034ad4c38b68bedb80983603b4358364b5bc00ab5cebd93f07269a8353d32c.xyz",
+      "seed_sha256": "e2034ad4c38b68bedb80983603b4358364b5bc00ab5cebd93f07269a8353d32c",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+      "status": "completed",
+      "returncode": 0,
+      "elapsed_s": 2.4674040070003684,
+      "command": [
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/round4_baseline/native_spline_benchmark",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/frozen/seed_e2034ad4c38b68bedb80983603b4358364b5bc00ab5cebd93f07269a8353d32c.xyz",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/round4/baseline/case_03",
+        "-25",
+        "-25",
+        "0",
+        "25",
+        "25",
+        "5",
+        "21",
+        "0"
+      ],
+      "output": ".scratch/native_splines/round4/baseline/case_03"
+    },
+    {
+      "case": 4,
+      "request": ".scratch/interactive/perlin_final/run_1793605176741410828_3715435/request_5",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_ee1c173245146b51629407d8e03cb1fc80bb3dac7f85cd355f07d000e387654c.xyz",
+      "seed_sha256": "ee1c173245146b51629407d8e03cb1fc80bb3dac7f85cd355f07d000e387654c",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+      "status": "completed",
+      "returncode": 0,
+      "elapsed_s": 1.3159137399998144,
+      "command": [
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/round4_baseline/native_spline_benchmark",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/frozen/seed_ee1c173245146b51629407d8e03cb1fc80bb3dac7f85cd355f07d000e387654c.xyz",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/round4/baseline/case_04",
+        "-25",
+        "-25",
+        "0",
+        "25",
+        "25",
+        "5",
+        "21",
+        "0"
+      ],
+      "output": ".scratch/native_splines/round4/baseline/case_04"
+    },
+    {
+      "case": 5,
+      "request": ".scratch/interactive/maze_connected/run_1793605479006343675_3719882/request_4",
+      "bounds_lower": [
+        -15,
+        -15,
+        0
+      ],
+      "bounds_upper": [
+        15,
+        15,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_019b73adaac1c31fd85a1244699770d45e18c319cfc976548bc8791b4ef621ff.xyz",
+      "seed_sha256": "019b73adaac1c31fd85a1244699770d45e18c319cfc976548bc8791b4ef621ff",
+      "map": ".scratch/native_splines/frozen/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz",
+      "map_sha256": "9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c",
+      "status": "completed",
+      "returncode": 0,
+      "elapsed_s": 1.3660273870009405,
+      "command": [
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/round4_baseline/native_spline_benchmark",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/frozen/seed_019b73adaac1c31fd85a1244699770d45e18c319cfc976548bc8791b4ef621ff.xyz",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/frozen/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/round4/baseline/case_05",
+        "-15",
+        "-15",
+        "0",
+        "15",
+        "15",
+        "5",
+        "21",
+        "0"
+      ],
+      "output": ".scratch/native_splines/round4/baseline/case_05"
+    },
+    {
+      "case": 6,
+      "request": ".scratch/interactive/polished_rviz/run_1793701774600485813_61028/request_1",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_6d1bf777dbe2008f496213639d78b553fcecf0d30ceca7fdc6d9731d3bcb492c.xyz",
+      "seed_sha256": "6d1bf777dbe2008f496213639d78b553fcecf0d30ceca7fdc6d9731d3bcb492c",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+      "status": "completed",
+      "returncode": 0,
+      "elapsed_s": 1.5156608879988198,
+      "command": [
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/round4_baseline/native_spline_benchmark",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/frozen/seed_6d1bf777dbe2008f496213639d78b553fcecf0d30ceca7fdc6d9731d3bcb492c.xyz",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/round4/baseline/case_06",
+        "-25",
+        "-25",
+        "0",
+        "25",
+        "25",
+        "5",
+        "21",
+        "0"
+      ],
+      "output": ".scratch/native_splines/round4/baseline/case_06"
+    }
+  ],
+  "source_commit": "5ed3f99ade97e95060b678603ddc3f96ca04159a",
+  "worktree_status": [
+    " M direct_corridor/experiments/native_splines/CMakeLists.txt",
+    " M direct_corridor/experiments/native_splines/README.md",
+    " M direct_corridor/experiments/native_splines/banded_spd.hpp",
+    " M direct_corridor/experiments/native_splines/benchmark.cpp",
+    " M direct_corridor/experiments/native_splines/cubic_generator.cpp",
+    " M direct_corridor/experiments/native_splines/cubic_generator.hpp",
+    " M direct_corridor/experiments/native_splines/cubic_optimizer.cpp",
+    " M direct_corridor/experiments/native_splines/cubic_optimizer.hpp",
+    " M direct_corridor/experiments/native_splines/obstacle_cover.hpp",
+    " M direct_corridor/experiments/native_splines/run.py",
+    " M direct_corridor/experiments/native_splines/tests/math.cpp",
+    " M direct_corridor/experiments/native_splines/tests/optimizer.cpp",
+    " M direct_corridor/experiments/native_splines/tests/scenes.cpp",
+    "?? direct_corridor/experiments/native_splines/analyze_round3.py",
+    "?? direct_corridor/experiments/native_splines/analyze_round4.py",
+    "?? direct_corridor/experiments/native_splines/continuous_oracle.hpp",
+    "?? direct_corridor/experiments/native_splines/cubic_adaptation.hpp",
+    "?? direct_corridor/experiments/native_splines/cubic_refinement.cpp",
+    "?? direct_corridor/experiments/native_splines/cubic_volume.hpp",
+    "?? direct_corridor/experiments/native_splines/explore.py",
+    "?? direct_corridor/experiments/native_splines/explore_round4.py",
+    "?? direct_corridor/experiments/native_splines/lazy_obstacles.hpp",
+    "?? direct_corridor/experiments/native_splines/tests/algorithms.cpp",
+    "?? docs/validation/native_splines_round3/",
+    "?? \"docs/\\345\\216\\237\\347\\224\\237\\344\\270\\211\\346\\254\\241\\350\\265\\260\\345\\273\\212\\347\\272\\246\\346\\235\\237\\344\\270\\216\\346\\261\\202\\350\\247\\243\\345\\212\\240\\351\\200\\237.md\""
+  ],
+  "binary_sha256": "ce9968adfc47a6ab8d70a7bf031ba4d0530b34397ce0018221326864ed2a3fd6",
+  "build_config": [
+    "CMAKE_BUILD_TYPE:STRING=Release",
+    "CMAKE_CXX_FLAGS:STRING=",
+    "CMAKE_CXX_FLAGS_DEBUG:STRING=-g",
+    "CMAKE_CXX_FLAGS_MINSIZEREL:STRING=-Os -DNDEBUG",
+    "CMAKE_CXX_FLAGS_RELEASE:STRING=-O3 -DNDEBUG",
+    "CMAKE_CXX_FLAGS_RELWITHDEBINFO:STRING=-O2 -g -DNDEBUG",
+    "NATIVE_SPLINE_NATIVE_ARCH:BOOL=OFF",
+    "CMAKE_CXX_FLAGS-ADVANCED:INTERNAL=1",
+    "CMAKE_CXX_FLAGS_DEBUG-ADVANCED:INTERNAL=1",
+    "CMAKE_CXX_FLAGS_MINSIZEREL-ADVANCED:INTERNAL=1",
+    "CMAKE_CXX_FLAGS_RELEASE-ADVANCED:INTERNAL=1",
+    "CMAKE_CXX_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL=1"
+  ],
+  "geometry_format": "native_sweep_v3_degree_explicit_bezier",
+  "energy_weights": null,
+  "native_environment": {
+    "NATIVE_CANDIDATES": "1",
+    "NATIVE_PRESET": "balanced",
+    "NATIVE_METHOD_COUNT": "1",
+    "NATIVE_GENERATION_ONLY": "1"
+  },
+  "source_snapshot": {
+    "path": ".scratch/native_splines/round4_baseline/source.tar.gz",
+    "sha256": "b3aae30918572a0b40204ef6b17750d9b8203bc94780927c88e152191ad12e00",
+    "reference": "round3-final-uncommitted"
+  },
+  "note": "Frozen round-three binary; source identity comes from the pre-edit snapshot, not the current runner checkout.",
+  "build_config_note": "Both reference and candidate were compiled in the same unchanged portable Release build configuration.",
+  "cpu_affinity": [
+    2
+  ],
+  "order": "alternate baseline/final order by frozen case",
+  "address_space_limit_bytes": 4294967296
+}

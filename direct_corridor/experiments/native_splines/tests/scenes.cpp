@@ -34,4 +34,27 @@ int main() {
       assert((r.corridor.section(1).center-scene.seed.back()).norm()<1e-10);
     }else assert(r.corridor.pieces()==0);
   }
+  // Reuse obstacle-side masks while refreshing the changed patch side.
+  const std::vector<Vec3> path{{-2,0,0},{2,0,0}};
+  auto model=CubicModel::fromSeed(path,.4,.4,1.5);
+  std::vector<Sphere> walls;
+  for(double x=-3;x<=3;x+=.25)for(double z=-2;z<=2;z+=.25)for(double sign:{-1.,1.})
+    walls.push_back({Vec3(x,2*sign,z),.1});
+  ObstacleIndex map(walls);Bounds bounds{Vec3::Constant(-5),Vec3::Constant(5)};
+  Options options;options.local_range=3;options.robot_radius=.2;options.safety_margin=.05;
+  QueryCache cache;SeparatorCache separated;CoverMetrics metrics;
+  const std::function<void()> stop=[]{};
+  auto cover=mapCover(model.geometry(),path,map,bounds,options,cache,metrics,stop,&separated,.2);
+  assert(certify(model.geometry(),cover).safe());
+  for(int i=0;i<model.basis.count;++i)model.x.segment<3>(5*i+2)*=1.2;
+  cover=mapCover(model.geometry(),path,map,bounds,options,cache,metrics,stop,&separated,.2);
+  assert(metrics.reused_planes>0&&metrics.reused_spheres>0);
+  assert(certify(model.geometry(),cover).safe());
+  QueryCache independent;CoverMetrics audit;
+  assert(certify(model.geometry(),mapCover(model.geometry(),path,map,bounds,options,independent,audit,stop)).safe());
+  for(int i=0;i<model.basis.count;++i){model.x[5*i+2]=2.1;model.x[5*i+4]=2.1;}
+  bool rejected=false;
+  try{mapCover(model.geometry(),path,map,bounds,options,cache,metrics,stop,&separated,.2);}
+  catch(const detail::Failure&){rejected=true;}
+  assert(rejected);
 }

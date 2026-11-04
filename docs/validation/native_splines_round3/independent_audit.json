@@ -1,0 +1,170 @@
+[
+  {
+    "case": 0,
+    "model": "H5-S",
+    "sample_points": 296208,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 2.856614538884122e-11
+  },
+  {
+    "case": 0,
+    "model": "C3-before",
+    "sample_points": 269280,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 3.9778019757489296e-13
+  },
+  {
+    "case": 0,
+    "model": "C3-after",
+    "sample_points": 269280,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 4.0570848655561655e-13
+  },
+  {
+    "case": 1,
+    "model": "H5-S",
+    "sample_points": 521424,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 3.2209212295873906e-11
+  },
+  {
+    "case": 1,
+    "model": "C3-before",
+    "sample_points": 447984,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 6.448120107145242e-13
+  },
+  {
+    "case": 1,
+    "model": "C3-after",
+    "sample_points": 447984,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 4.9079863765356e-13
+  },
+  {
+    "case": 2,
+    "model": "H5-S",
+    "sample_points": 286416,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 6.283078810319433e-12
+  },
+  {
+    "case": 2,
+    "model": "C3-before",
+    "sample_points": 264384,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 2.4074429040491517e-13
+  },
+  {
+    "case": 2,
+    "model": "C3-after",
+    "sample_points": 264384,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 1.9830132078286424e-13
+  },
+  {
+    "case": 3,
+    "model": "H5-S",
+    "sample_points": 496944,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 2.6136331187413725e-11
+  },
+  {
+    "case": 3,
+    "model": "C3-before",
+    "sample_points": 425952,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 5.73457428577877e-13
+  },
+  {
+    "case": 3,
+    "model": "C3-after",
+    "sample_points": 425952,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 6.703415077502086e-13
+  },
+  {
+    "case": 4,
+    "model": "H5-S",
+    "sample_points": 274176,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 6.05605223918645e-12
+  },
+  {
+    "case": 4,
+    "model": "C3-before",
+    "sample_points": 252144,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 2.746409214243843e-13
+  },
+  {
+    "case": 4,
+    "model": "C3-after",
+    "sample_points": 252144,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 2.7208512065186687e-13
+  },
+  {
+    "case": 5,
+    "model": "H5-S",
+    "sample_points": 203184,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 2.9173823214537042e-12
+  },
+  {
+    "case": 5,
+    "model": "C3-before",
+    "sample_points": 188496,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 2.1170338257682972e-13
+  },
+  {
+    "case": 5,
+    "model": "C3-after",
+    "sample_points": 188496,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 2.0430090245768748e-13
+  },
+  {
+    "case": 6,
+    "model": "H5-S",
+    "sample_points": 301104,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 6.080151514579031e-12
+  },
+  {
+    "case": 6,
+    "model": "C3-before",
+    "sample_points": 276624,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 2.7374000580641617e-13
+  },
+  {
+    "case": 6,
+    "model": "C3-after",
+    "sample_points": 276624,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 2.7635859736278134e-13
+  }
+]

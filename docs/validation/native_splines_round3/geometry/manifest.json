@@ -1,0 +1,181 @@
+{
+  "schema": "native-splines-round3-joint",
+  "baseline_commit": "5ed3f99",
+  "cases": [
+    {
+      "case": 0,
+      "request": ".scratch/interactive/rviz/run_1793605002598226995_3712673/request_1",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_db505c46bc24c061128416d4f673259c3be655ecc474b1840790fac39c43fb00.xyz",
+      "seed_sha256": "db505c46bc24c061128416d4f673259c3be655ecc474b1840790fac39c43fb00",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+      "output": ".scratch/native_splines/round3/joint/case_00",
+      "geometry_sha256": {
+        "C3-after": "412cc12797aa23a83f970a3fe4639579220008b355aea8bbbc963f2d1a2b2711",
+        "C3-before": "1c980be19ee0594e3d7e178e5afb4bd4ae7dce2ca9939c337407b0b78f9d381e",
+        "H5-S": "029266fd770a05d14bb6d853cfd18d24c4d4da0a76f78e8f96cdd3f406baa79d"
+      }
+    },
+    {
+      "case": 1,
+      "request": ".scratch/interactive/perlin_final/run_1793605176741410828_3715435/request_10",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_bd82e7f1ab28edfbbf014898b2be7a49c30e1d6f30ec09aaa488134aa9b62cf2.xyz",
+      "seed_sha256": "bd82e7f1ab28edfbbf014898b2be7a49c30e1d6f30ec09aaa488134aa9b62cf2",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+      "output": ".scratch/native_splines/round3/joint/case_01",
+      "geometry_sha256": {
+        "C3-after": "9c34dd5c32100b64734003ad9e11eeed82f21e6c06780307c917bdd7460a1dd7",
+        "C3-before": "8fff5a591b4c5ddae3390e0b673804f198c546021cb0bd79e2c9242349e6114b",
+        "H5-S": "b059a9ee76d055e829704f59673d2c6c4797a83bf3761088e8222231aa2f9c45"
+      }
+    },
+    {
+      "case": 2,
+      "request": ".scratch/interactive/maze_connected/run_1793605479006343675_3719882/request_10",
+      "bounds_lower": [
+        -15,
+        -15,
+        0
+      ],
+      "bounds_upper": [
+        15,
+        15,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_d170e52ffa2f83709a066d84ae7a14f08392c73df0a5ecb7962b950c4c247d06.xyz",
+      "seed_sha256": "d170e52ffa2f83709a066d84ae7a14f08392c73df0a5ecb7962b950c4c247d06",
+      "map": ".scratch/native_splines/frozen/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz",
+      "map_sha256": "9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c",
+      "output": ".scratch/native_splines/round3/joint/case_02",
+      "geometry_sha256": {
+        "C3-after": "56753dd2be840aca3f423e70dc139fd4cc5b1e86e09915044bf20047a9672469",
+        "C3-before": "60e44ed1412d066383afed0a0d397c34ced4de9bffcbc862bd79302cedf534ea",
+        "H5-S": "93584b0f58068895d3d34613b67b7c675a27571cd08750bc44f38c6c1c78f185"
+      }
+    },
+    {
+      "case": 3,
+      "request": ".scratch/interactive/rviz/run_1793605002598226995_3712673/request_2",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_e2034ad4c38b68bedb80983603b4358364b5bc00ab5cebd93f07269a8353d32c.xyz",
+      "seed_sha256": "e2034ad4c38b68bedb80983603b4358364b5bc00ab5cebd93f07269a8353d32c",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+      "output": ".scratch/native_splines/round3/joint/case_03",
+      "geometry_sha256": {
+        "C3-after": "d87dccb3b6e9cd91e5dd486156a3234c7556a751200a15082cdcd99cb542ce6a",
+        "C3-before": "8837cabd8aa8dd0cca98d481500f0d228d62e43a46cba6fed851a8b80ffc3972",
+        "H5-S": "fe525776e635010d538760b90746f1d0a4661014d3950c4194a1392d7efc0a2d"
+      }
+    },
+    {
+      "case": 4,
+      "request": ".scratch/interactive/perlin_final/run_1793605176741410828_3715435/request_5",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_ee1c173245146b51629407d8e03cb1fc80bb3dac7f85cd355f07d000e387654c.xyz",
+      "seed_sha256": "ee1c173245146b51629407d8e03cb1fc80bb3dac7f85cd355f07d000e387654c",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+      "output": ".scratch/native_splines/round3/joint/case_04",
+      "geometry_sha256": {
+        "C3-after": "9de53a14377e30a1755d43253326c767fa325df29a5072a0f887ded714386486",
+        "C3-before": "5b075b9ddd3b5a352f957b5b5b588bc14941d0ec7c73f6c0179a40939ea66011",
+        "H5-S": "895e49c68802ccd699e82beac5378945adca4ad9e99ba78dbafb4e28e71eb179"
+      }
+    },
+    {
+      "case": 5,
+      "request": ".scratch/interactive/maze_connected/run_1793605479006343675_3719882/request_4",
+      "bounds_lower": [
+        -15,
+        -15,
+        0
+      ],
+      "bounds_upper": [
+        15,
+        15,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_019b73adaac1c31fd85a1244699770d45e18c319cfc976548bc8791b4ef621ff.xyz",
+      "seed_sha256": "019b73adaac1c31fd85a1244699770d45e18c319cfc976548bc8791b4ef621ff",
+      "map": ".scratch/native_splines/frozen/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz",
+      "map_sha256": "9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c",
+      "output": ".scratch/native_splines/round3/joint/case_05",
+      "geometry_sha256": {
+        "C3-after": "d67ebe8d417d8c57838371a12517ac16d1fcc94229f7a6fbee3a5b25a1b7cdfb",
+        "C3-before": "b3b97bb09d4db2cfb91ab8ccb2da5c05f47d12db0cd7253ee2409f9bf6ae888d",
+        "H5-S": "48f5bef56d4bde63ef4fc586c3462992794baa41e093257101c58276c32c6295"
+      }
+    },
+    {
+      "case": 6,
+      "request": ".scratch/interactive/polished_rviz/run_1793701774600485813_61028/request_1",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_6d1bf777dbe2008f496213639d78b553fcecf0d30ceca7fdc6d9731d3bcb492c.xyz",
+      "seed_sha256": "6d1bf777dbe2008f496213639d78b553fcecf0d30ceca7fdc6d9731d3bcb492c",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+      "output": ".scratch/native_splines/round3/joint/case_06",
+      "geometry_sha256": {
+        "C3-after": "80a6012ea07ca14414f3ad38bd269e87365228389e2bad73c46f50a3f34d50d8",
+        "C3-before": "4a149bab90263d3914450e43b2eec9a06d0967cd256f3e223065c67c45d8bad2",
+        "H5-S": "5b9581d54d20a71829e65d30108cdbbb381fb04787d9ff60c9b7b5a4c7377d1c"
+      }
+    }
+  ]
+}

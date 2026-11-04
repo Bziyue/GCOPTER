@@ -1,0 +1,2 @@
+{"kind":"volume","model":"H5-S","baseline":654.02643442153931,"volume":606.7622389793396,"paired_delta":-47.264195442199707,"paired_ci95":0.36811223189777587,"samples":2097152,"cells":1943,"unresolved":0}
+{"kind":"volume","model":"C3-after","baseline":654.02643442153931,"volume":654.76855659484863,"paired_delta":0.74212217330932617,"paired_ci95":0.30420742380160437,"samples":2097152,"cells":1943,"unresolved":0}

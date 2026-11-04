@@ -1,0 +1,7 @@
+{
+  "commit": "5ed3f99ade97e95060b678603ddc3f96ca04159a",
+  "binaries": {
+    "native_trajectory_comparison": "1f2c4671c8a5ca31336345046707a6e461a96b0a35081501478405032cc3f4f2",
+    "native_spline_benchmark": "172297f24e743ad65254dd230574ddca6b042394826de72ecad3db15c7eef3b0"
+  }
+}

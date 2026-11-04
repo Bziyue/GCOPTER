@@ -1,0 +1,27 @@
+[  7%] Built target gcopter_direct_corridor
+[ 11%] Building CXX object CMakeFiles/native_splines.dir/cubic_optimizer.cpp.o
+[ 14%] Building CXX object CMakeFiles/native_splines.dir/cubic_generator.cpp.o
+[ 18%] Linking CXX static library libnative_splines.a
+[ 25%] Built target native_splines
+[ 29%] Linking CXX executable native_spline_tests
+[ 33%] Built target native_spline_tests
+[ 37%] Building CXX object CMakeFiles/native_optimizer_tests.dir/tests/optimizer.cpp.o
+[ 40%] Linking CXX executable native_optimizer_tests
+[ 40%] Built target native_optimizer_tests
+[ 44%] Linking CXX executable native_reference_test
+[ 48%] Built target native_reference_test
+[ 51%] Building CXX object CMakeFiles/native_scene_tests.dir/tests/scenes.cpp.o
+[ 55%] Linking CXX executable native_scene_tests
+[ 55%] Built target native_scene_tests
+[ 59%] Building CXX object CMakeFiles/native_query_tests.dir/tests/query.cpp.o
+[ 62%] Linking CXX executable native_query_tests
+[ 62%] Built target native_query_tests
+[ 66%] Building CXX object CMakeFiles/native_spline_benchmark.dir/benchmark.cpp.o
+[ 70%] Linking CXX executable native_spline_benchmark
+[ 70%] Built target native_spline_benchmark
+[ 74%] Linking CXX executable native_volume_refine
+[ 77%] Built target native_volume_refine
+[ 81%] Linking CXX executable native_trajectory_comparison
+[ 85%] Built target native_trajectory_comparison
+[ 92%] Built target direct_corridor_benchmark
+[100%] Built target direct_corridor_cli

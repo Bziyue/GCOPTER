@@ -1,0 +1,41 @@
+[ 22%] Built target gcopter_direct_corridor
+[ 33%] Building CXX object CMakeFiles/native_splines.dir/cubic_optimizer.cpp.o
+[ 44%] Building CXX object CMakeFiles/native_splines.dir/cubic_refinement.cpp.o
+[ 55%] Building CXX object CMakeFiles/native_splines.dir/cubic_generator.cpp.o
+[ 66%] Linking CXX static library libnative_splines.a
+[ 77%] Built target native_splines
+[ 88%] Building CXX object CMakeFiles/native_spline_benchmark.dir/benchmark.cpp.o
+[100%] Linking CXX executable native_spline_benchmark
+[100%] Built target native_spline_benchmark
+[ 22%] Built target gcopter_direct_corridor
+[ 77%] Built target native_splines
+[ 88%] Linking CXX executable native_spline_tests
+[100%] Built target native_spline_tests
+[ 22%] Built target gcopter_direct_corridor
+[ 77%] Built target native_splines
+[ 88%] Building CXX object CMakeFiles/native_optimizer_tests.dir/tests/optimizer.cpp.o
+[100%] Linking CXX executable native_optimizer_tests
+[100%] Built target native_optimizer_tests
+[ 22%] Built target gcopter_direct_corridor
+[ 77%] Built target native_splines
+[ 88%] Linking CXX executable native_reference_test
+[100%] Built target native_reference_test
+[ 22%] Built target gcopter_direct_corridor
+[ 77%] Built target native_splines
+[ 88%] Building CXX object CMakeFiles/native_scene_tests.dir/tests/scenes.cpp.o
+[100%] Linking CXX executable native_scene_tests
+[100%] Built target native_scene_tests
+[ 22%] Built target gcopter_direct_corridor
+[ 77%] Built target native_splines
+[ 88%] Building CXX object CMakeFiles/native_query_tests.dir/tests/query.cpp.o
+[100%] Linking CXX executable native_query_tests
+[100%] Built target native_query_tests
+[ 22%] Built target gcopter_direct_corridor
+[ 77%] Built target native_splines
+[ 88%] Building CXX object CMakeFiles/native_algorithm_tests.dir/tests/algorithms.cpp.o
+[100%] Linking CXX executable native_algorithm_tests
+[100%] Built target native_algorithm_tests
+[ 22%] Built target gcopter_direct_corridor
+[ 77%] Built target native_splines
+[ 88%] Linking CXX executable native_volume_refine
+[100%] Built target native_volume_refine

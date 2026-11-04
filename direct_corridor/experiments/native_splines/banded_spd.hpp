@@ -34,11 +34,14 @@ struct BandedSPD {
     }
     return true;
   }
-  Eigen::VectorXd solve(const Eigen::VectorXd& rhs)const {
-    Eigen::VectorXd x=rhs.cwiseProduct(scale);
+  void solveInto(const Eigen::VectorXd& rhs,Eigen::VectorXd& x,double sign=1)const {
+    x=sign*rhs.cwiseProduct(scale);
     for(int i=0;i<n;++i){for(int d=1;d<=std::min(i,width);++d)x[i]-=lower(i,d)*x[i-d];x[i]/=lower(i,0);}
     for(int i=n-1;i>=0;--i){for(int d=1;d<=std::min(n-1-i,width);++d)x[i]-=lower(i+d,d)*x[i+d];x[i]/=lower(i,0);}
-    return x.cwiseProduct(scale);
+    x.array()*=scale.array();
+  }
+  Eigen::VectorXd solve(const Eigen::VectorXd& rhs)const {
+    Eigen::VectorXd x;solveInto(rhs,x);return x;
   }
 };
 }

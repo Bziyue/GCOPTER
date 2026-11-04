@@ -1,0 +1,87 @@
+{
+  "binary_sha256": "5cd41fce25ea407bfc70c8a758ef56fa2538af70d8c8f8ec990d92f884dfee3b",
+  "samples_per_shift": 262144,
+  "shifts": 8,
+  "models": [
+    "C3-before",
+    "H5-S",
+    "C3-after",
+    "C3-predict-fast",
+    "C3-predict-quality",
+    "C3-adaptive",
+    "C3-volume",
+    "C3-predict"
+  ],
+  "cases": [
+    {
+      "case": 0,
+      "command": [
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/round4_baseline/native_volume_refine",
+        ".scratch/native_splines/frozen/seed_db505c46bc24c061128416d4f673259c3be655ecc474b1840790fac39c43fb00.xyz",
+        ".scratch/native_splines/round4/joint/case_00",
+        "262144",
+        "C3-before,H5-S,C3-after,C3-predict-fast,C3-predict-quality,C3-adaptive,C3-volume,C3-predict"
+      ]
+    },
+    {
+      "case": 1,
+      "command": [
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/round4_baseline/native_volume_refine",
+        ".scratch/native_splines/frozen/seed_bd82e7f1ab28edfbbf014898b2be7a49c30e1d6f30ec09aaa488134aa9b62cf2.xyz",
+        ".scratch/native_splines/round4/joint/case_01",
+        "262144",
+        "C3-before,H5-S,C3-after,C3-predict-fast,C3-predict-quality,C3-adaptive,C3-volume,C3-predict"
+      ]
+    },
+    {
+      "case": 2,
+      "command": [
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/round4_baseline/native_volume_refine",
+        ".scratch/native_splines/frozen/seed_d170e52ffa2f83709a066d84ae7a14f08392c73df0a5ecb7962b950c4c247d06.xyz",
+        ".scratch/native_splines/round4/joint/case_02",
+        "262144",
+        "C3-before,H5-S,C3-after,C3-predict-fast,C3-predict-quality,C3-adaptive,C3-volume,C3-predict"
+      ]
+    },
+    {
+      "case": 3,
+      "command": [
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/round4_baseline/native_volume_refine",
+        ".scratch/native_splines/frozen/seed_e2034ad4c38b68bedb80983603b4358364b5bc00ab5cebd93f07269a8353d32c.xyz",
+        ".scratch/native_splines/round4/joint/case_03",
+        "262144",
+        "C3-before,H5-S,C3-after,C3-predict-fast,C3-predict-quality,C3-adaptive,C3-volume,C3-predict"
+      ]
+    },
+    {
+      "case": 4,
+      "command": [
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/round4_baseline/native_volume_refine",
+        ".scratch/native_splines/frozen/seed_ee1c173245146b51629407d8e03cb1fc80bb3dac7f85cd355f07d000e387654c.xyz",
+        ".scratch/native_splines/round4/joint/case_04",
+        "262144",
+        "C3-before,H5-S,C3-after,C3-predict-fast,C3-predict-quality,C3-adaptive,C3-volume,C3-predict"
+      ]
+    },
+    {
+      "case": 5,
+      "command": [
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/round4_baseline/native_volume_refine",
+        ".scratch/native_splines/frozen/seed_019b73adaac1c31fd85a1244699770d45e18c319cfc976548bc8791b4ef621ff.xyz",
+        ".scratch/native_splines/round4/joint/case_05",
+        "262144",
+        "C3-before,H5-S,C3-after,C3-predict-fast,C3-predict-quality,C3-adaptive,C3-volume,C3-predict"
+      ]
+    },
+    {
+      "case": 6,
+      "command": [
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/round4_baseline/native_volume_refine",
+        ".scratch/native_splines/frozen/seed_6d1bf777dbe2008f496213639d78b553fcecf0d30ceca7fdc6d9731d3bcb492c.xyz",
+        ".scratch/native_splines/round4/joint/case_06",
+        "262144",
+        "C3-before,H5-S,C3-after,C3-predict-fast,C3-predict-quality,C3-adaptive,C3-volume,C3-predict"
+      ]
+    }
+  ]
+}

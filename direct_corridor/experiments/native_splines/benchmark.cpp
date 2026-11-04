@@ -145,11 +145,33 @@ int main(int argc,char** argv) {
         ns::applyNativePreset(value=="balanced"?ns::NativePreset::Balanced:value=="fast"?ns::NativePreset::Fast:ns::NativePreset::Volume,o,solver);
       }
       if(const char* v=std::getenv("NATIVE_ENERGY"))solver.center_energy=solver.shape_energy=std::stod(v);
+      if(const char* v=std::getenv("NATIVE_CENTER_ENERGY"))solver.center_energy=std::stod(v);
+      if(const char* v=std::getenv("NATIVE_SHAPE_ENERGY"))solver.shape_energy=std::stod(v);
       if(const char* v=std::getenv("NATIVE_RADIUS_FRACTION"))solver.initial_radius_fraction=std::stod(v);
       if(const char* v=std::getenv("NATIVE_BARRIER_STAGES"))solver.barrier_stages=std::stoi(v);
       if(const char* v=std::getenv("NATIVE_CORRECTOR_ITERATIONS"))solver.corrector_iterations=std::stoi(v);
       if(const char* v=std::getenv("NATIVE_PROGRESS_THRESHOLD"))solver.progress_threshold=std::stod(v);
+      if(const char* v=std::getenv("NATIVE_PROGRESS_SAMPLES"))solver.progress_samples=std::stoi(v);
+      if(const char* v=std::getenv("NATIVE_PROGRESS_DEPTH"))solver.progress_depth=std::stoi(v);
       if(const char* v=std::getenv("NATIVE_POLAR_PRUNING"))solver.polar_pruning=std::stoi(v)!=0;
+      if(const char* v=std::getenv("NATIVE_MERGE_SUPPORTS"))solver.merge_shared_supports=std::stoi(v)!=0;
+      if(const char* v=std::getenv("NATIVE_TENSOR_ASSEMBLY"))solver.tensor_assembly=std::stoi(v)!=0;
+      if(const char* v=std::getenv("NATIVE_TRIAL_FIRST"))solver.trial_first=std::stoi(v)!=0;
+      if(const char* v=std::getenv("NATIVE_WARM_STAGE"))solver.warm_start_stage=std::stoi(v);
+      if(const char* v=std::getenv("NATIVE_WARM_RESERVE"))solver.warm_reserve=std::stod(v);
+      if(const char* v=std::getenv("NATIVE_CACHED_LINE"))solver.cached_line=std::stoi(v)!=0;
+      if(const char* v=std::getenv("NATIVE_REUSE_ENERGY"))solver.reuse_energy=std::stoi(v)!=0;
+      if(const char* v=std::getenv("NATIVE_CACHE_VALUES"))solver.cache_values=std::stoi(v)!=0;
+      if(const char* v=std::getenv("NATIVE_SEPARATOR_REUSE_GAP"))solver.separator_reuse_gap=std::stod(v);
+      if(const char* v=std::getenv("NATIVE_SUPPORT_EXCHANGE"))solver.support_exchange=std::stoi(v);
+      if(const char* v=std::getenv("NATIVE_EXCHANGE_ROUNDS"))solver.exchange_rounds=std::stoi(v);
+      if(const char* v=std::getenv("NATIVE_EXCHANGE_ITERATIONS"))solver.exchange_iterations=std::stoi(v);
+      if(const char* v=std::getenv("NATIVE_LAZY_PRIORITIES"))solver.lazy_priorities=std::stoi(v)!=0;
+      if(const char* v=std::getenv("NATIVE_ADAPTIVE_KNOTS"))solver.adaptive_knots=std::stoi(v);
+      if(const char* v=std::getenv("NATIVE_PATH_PREDICTOR"))solver.path_predictor=std::stod(v);
+      if(const char* v=std::getenv("NATIVE_VOLUME_REFINEMENTS"))solver.volume_refinements=std::stoi(v);
+      if(const char* v=std::getenv("NATIVE_VOLUME_TRUST"))solver.volume_trust=std::stod(v);
+      if(const char* v=std::getenv("NATIVE_COORDINATE_SWEEPS"))solver.coordinate_sweeps=std::stoi(v);
       if(const char* v=std::getenv("NATIVE_WORKING_SET"))solver.working_set=std::stoi(v)!=0;
       if(const char* v=std::getenv("NATIVE_FRACTION_BOUNDARY"))solver.fraction_boundary=std::stod(v);
       if(const char* v=std::getenv("NATIVE_RECENTER"))solver.recenter_frames=std::stoi(v)!=0;
@@ -158,6 +180,22 @@ int main(int argc,char** argv) {
       if(const char* v=std::getenv("NATIVE_INFLATIONS"))o.inflation_iterations=std::stoi(v);
       if(const char* v=std::getenv("NATIVE_SPACING"))o.control_spacing=std::stod(v);
       bool success=false;ns::Geometry last;
+      log<<"{\"kind\":\"configuration\",\"model\":\""<<name<<"\",\"control_spacing\":"<<o.control_spacing
+         <<",\"initial_iterations\":"<<o.initial_iterations<<",\"iterations\":"<<solver.iterations
+         <<",\"corrector_iterations\":"<<solver.corrector_iterations<<",\"inflations\":"<<o.inflation_iterations
+         <<",\"center_energy\":"<<solver.center_energy<<",\"shape_energy\":"<<solver.shape_energy
+         <<",\"progress_samples\":"<<solver.progress_samples<<",\"progress_depth\":"<<solver.progress_depth
+         <<",\"merge_shared_supports\":"<<solver.merge_shared_supports<<",\"tensor_assembly\":"<<solver.tensor_assembly
+         <<",\"cached_line\":"<<solver.cached_line<<",\"trial_first\":"<<solver.trial_first
+         <<",\"reuse_energy\":"<<solver.reuse_energy<<",\"cache_values\":"<<solver.cache_values
+         <<",\"separator_reuse_gap\":"<<solver.separator_reuse_gap
+         <<",\"support_exchange\":"<<solver.support_exchange<<",\"exchange_rounds\":"<<solver.exchange_rounds<<",\"exchange_iterations\":"<<solver.exchange_iterations
+         <<",\"lazy_priorities\":"<<solver.lazy_priorities
+         <<",\"adaptive_knots\":"<<solver.adaptive_knots
+         <<",\"path_predictor\":"<<solver.path_predictor<<",\"volume_refinements\":"<<solver.volume_refinements<<",\"volume_trust\":"<<solver.volume_trust
+         <<",\"warm_start_stage\":"<<solver.warm_start_stage<<",\"warm_reserve\":"<<solver.warm_reserve
+         <<",\"coordinate_sweeps\":"<<solver.coordinate_sweeps<<",\"polar_pruning\":"<<solver.polar_pruning
+         <<",\"working_set\":"<<solver.working_set<<"}\n";
       for(int rep=-1;rep<repeats;++rep) {
         solver.check_gradients=rep==-1;
         auto result=ns::generateCubic(seed,index,bounds,o,solver,method?&base:nullptr);
@@ -169,10 +207,20 @@ int main(int argc,char** argv) {
            <<",\"initialization_ms\":"<<result.initialization_ms<<",\"refinements\":"<<result.refinements
            <<",\"initialization_attempts\":"<<result.initialization_attempts<<",\"cover_ms\":"<<c.total_ms
            <<",\"query_ms\":"<<c.query_ms<<",\"separation_ms\":"<<c.separation_ms
+           <<",\"reused_planes\":"<<c.reused_planes<<",\"reused_spheres\":"<<c.reused_spheres<<",\"separator_cache_bytes\":"<<c.separator_cache_bytes
+           <<",\"priority_evaluations\":"<<c.priority_evaluations
            <<",\"setup_ms\":"<<m.setup_ms<<",\"assembly_ms\":"<<m.assembly_ms<<",\"solve_ms\":"<<m.solve_ms
            <<",\"line_search_ms\":"<<m.line_search_ms<<",\"jacobian_check_ms\":"<<m.certificate_ms
            <<",\"verification_ms\":"<<result.verification_ms<<",\"variables\":"<<m.variables<<",\"controls\":"<<m.controls
            <<",\"active_constraints\":"<<m.active_constraints<<",\"final_decrement\":"<<m.final_decrement
+           <<",\"merged_supports\":"<<m.merged_supports<<",\"support_groups\":"<<m.support_groups<<",\"pruned_supports\":"<<m.pruned_supports
+           <<",\"full_step_accepts\":"<<m.full_step_accepts<<",\"feasible_scans\":"<<m.feasible_scans
+           <<",\"warm_reserves\":"<<m.warm_reserves
+           <<",\"energy_builds\":"<<m.energy_builds<<",\"minimum_step\":"<<m.minimum_step<<",\"mean_step\":"<<(m.steps?m.step_sum/m.steps:0)
+           <<",\"predictor_steps\":"<<m.predictor_steps<<",\"predictor_rejections\":"<<m.predictor_rejections<<",\"predictor_ms\":"<<m.predictor_ms
+           <<",\"volume_steps\":"<<m.volume_steps<<",\"volume_ms\":"<<m.volume_ms<<",\"volume_gain\":"<<m.volume_gain
+           <<",\"exchange_steps\":"<<m.exchange_steps<<",\"exchange_witnesses\":"<<m.exchange_witnesses<<",\"oracle_nodes\":"<<m.oracle_nodes<<",\"oracle_unresolved\":"<<m.oracle_unresolved<<",\"oracle_ms\":"<<m.oracle_ms
+           <<",\"coordinate_ms\":"<<m.coordinate_ms<<",\"coordinate_updates\":"<<m.coordinate_updates<<",\"coordinate_rejections\":"<<m.coordinate_rejections
            <<",\"constraints\":"<<m.constraints<<",\"newton_steps\":"<<m.steps<<",\"termination\":\""<<m.termination<<"\""
            <<",\"backtracks\":"<<m.backtracks<<",\"regularity_backtracks\":"<<m.regularity_backtracks
            <<",\"regularity_repairs\":"<<m.regularity_repairs

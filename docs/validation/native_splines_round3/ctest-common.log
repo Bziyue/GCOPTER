@@ -1,0 +1,21 @@
+Test project /home/zdp/ForCodex/GCOPTER/.scratch/trajectory_comparison/build
+    Start 1: shape_spline_test
+1/8 Test #1: shape_spline_test ................   Passed    0.02 sec
+    Start 2: core_corridor_test
+2/8 Test #2: core_corridor_test ...............   Passed    1.46 sec
+    Start 3: library_regression
+3/8 Test #3: library_regression ...............   Passed    0.01 sec
+    Start 4: native_optimizer
+4/8 Test #4: native_optimizer .................   Passed    0.00 sec
+    Start 5: lbfgs_recovery
+5/8 Test #5: lbfgs_recovery ...................   Passed    0.00 sec
+    Start 6: bezier_constraints
+6/8 Test #6: bezier_constraints ...............   Passed    0.00 sec
+    Start 7: tube_query_test
+7/8 Test #7: tube_query_test ..................   Passed    0.01 sec
+    Start 8: uz_test
+8/8 Test #8: uz_test ..........................   Passed    0.01 sec
+
+100% tests passed, 0 tests failed out of 8
+
+Total Test time (real) =   1.50 sec

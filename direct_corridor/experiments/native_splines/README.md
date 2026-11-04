@@ -3,7 +3,11 @@
 Research branch based on `ros2@15c70cd`. Production generation and ROS defaults
 remain H5-S. The report, figures, full measurement sequences and compressed
 geometry/trajectory coefficients are in
-[`原生三次走廊性能优化实验.md`](../../../docs/原生三次走廊性能优化实验.md).
+[`原生三次走廊连续约束与自适应优化实验.md`](../../../docs/原生三次走廊连续约束与自适应优化实验.md).
+The [third-round report](../../../docs/原生三次走廊约束与求解加速.md) covers
+shared supports, block assembly and scalar line searches.
+The [second-round report](../../../docs/原生三次走廊性能优化实验.md) records
+initialization, volume recovery and the native query implementation.
 The [first-round report](../../../docs/原生三次与最小jerk走廊实验.md) retains the
 original comparison and the broader research plan.
 
@@ -14,8 +18,10 @@ cubic initialization, five-variable control-point optimization, band Cholesky,
 natural-endpoint projection ablation, and common-backend trajectory replay.
 
 The current native path uses clearance-based initialization, grouped 9D
-support Hessians, banded assembly, analytical feasible steps, and proactive
-progress cones. It calls neither H5 nor FIRI. `generateNative(seed, index,
+support Hessians, shared-support merging, occupied 5×5 band blocks, cached
+quadratic line searches, shared fixed energy matrices,
+lazy obstacle metric priorities, and quadratic-derivative progress cones. It calls
+neither H5 nor FIRI. `generateNative(seed, index,
 bounds, options)` selects `NativePreset::Balanced`; `Fast` and `Volume` select
 the measured alternatives. `generateCubic()` exposes individual research
 settings and the optional H5 projection reference.
@@ -40,7 +46,7 @@ cmake --build .scratch/native_splines/build -j1
 ctest --test-dir .scratch/native_splines/build --output-on-failure -j1
 python3 direct_corridor/experiments/native_splines/run.py --native \
   --generation-only --method-count 1 --preset balanced --repeats 7 \
-  --output .scratch/native_splines/round2/balanced
+  --output .scratch/native_splines/round3/reproduce
 ```
 
 For trajectory replay, reconfigure with `-DNATIVE_SPLINE_TRAJECTORY=ON` and the
@@ -62,6 +68,19 @@ sampling audit. The continuous certificates remain the output acceptance test.
 `native_volume_refine` increases QMC samples without regenerating a corridor.
 `analyze_optimized.py` archives the second-round measurements, exploratory
 settings, and shared-domain QMC results, and renders the report figures.
+`explore.py` runs explicit serial third-round ablations; `analyze_round3.py`
+archives their outputs and the matched final measurements.
+`explore_round4.py` screens continuation, adaptive knots and exact swept-volume
+gradients under a 4 GiB address-space limit. `analyze_round4.py` archives the
+fourth-round measurements and all rejected alternatives. These alternatives
+remain opt-in: `NATIVE_SEPARATOR_REUSE_GAP`, `NATIVE_SUPPORT_EXCHANGE`,
+`NATIVE_ADAPTIVE_KNOTS`, `NATIVE_PATH_PREDICTOR`, `NATIVE_VOLUME_REFINEMENTS`.
+`NATIVE_CACHE_VALUES=1` enables the tested same-point cone cache; it is disabled
+by default because the measured implementation was slower than recomputing the dot products.
+The continuous oracle supports degree-six support slacks and degree-four fixed
+normal progress slacks; only support-point exchange is connected to generation.
+Exact knot insertion is tested independently; the current adaptive experiment
+selects an initial nonuniform knot vector rather than performing online insertion.
 
 The CSV v3 header begins `degree,u0,u1` followed by nine world-space geometric
 channels. There are exactly four or six controls per interval. The legacy v2

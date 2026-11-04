@@ -1,0 +1,132 @@
+{
+  "binary_sha256": "5cd41fce25ea407bfc70c8a758ef56fa2538af70d8c8f8ec990d92f884dfee3b",
+  "baseline": "C3-before",
+  "samples_per_shift": 262144,
+  "random_shifts": 8,
+  "models": [
+    "C3-before",
+    "H5-S",
+    "C3-after"
+  ],
+  "runs": [
+    {
+      "case": 0,
+      "elapsed_s": 1.7662808889999724,
+      "command": [
+        "/usr/bin/time",
+        "-f",
+        "%M",
+        "-o",
+        ".scratch/native_splines/round3/joint/case_00/volume_peak_rss_kib.txt",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/build/native_volume_refine",
+        ".scratch/native_splines/frozen/seed_db505c46bc24c061128416d4f673259c3be655ecc474b1840790fac39c43fb00.xyz",
+        ".scratch/native_splines/round3/joint/case_00",
+        "262144",
+        "C3-before,H5-S,C3-after"
+      ],
+      "peak_rss_kib": 6104
+    },
+    {
+      "case": 1,
+      "elapsed_s": 1.8663292350001939,
+      "command": [
+        "/usr/bin/time",
+        "-f",
+        "%M",
+        "-o",
+        ".scratch/native_splines/round3/joint/case_01/volume_peak_rss_kib.txt",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/build/native_volume_refine",
+        ".scratch/native_splines/frozen/seed_bd82e7f1ab28edfbbf014898b2be7a49c30e1d6f30ec09aaa488134aa9b62cf2.xyz",
+        ".scratch/native_splines/round3/joint/case_01",
+        "262144",
+        "C3-before,H5-S,C3-after"
+      ],
+      "peak_rss_kib": 7320
+    },
+    {
+      "case": 2,
+      "elapsed_s": 1.8163500929999827,
+      "command": [
+        "/usr/bin/time",
+        "-f",
+        "%M",
+        "-o",
+        ".scratch/native_splines/round3/joint/case_02/volume_peak_rss_kib.txt",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/build/native_volume_refine",
+        ".scratch/native_splines/frozen/seed_d170e52ffa2f83709a066d84ae7a14f08392c73df0a5ecb7962b950c4c247d06.xyz",
+        ".scratch/native_splines/round3/joint/case_02",
+        "262144",
+        "C3-before,H5-S,C3-after"
+      ],
+      "peak_rss_kib": 6048
+    },
+    {
+      "case": 3,
+      "elapsed_s": 1.8663650260000395,
+      "command": [
+        "/usr/bin/time",
+        "-f",
+        "%M",
+        "-o",
+        ".scratch/native_splines/round3/joint/case_03/volume_peak_rss_kib.txt",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/build/native_volume_refine",
+        ".scratch/native_splines/frozen/seed_e2034ad4c38b68bedb80983603b4358364b5bc00ab5cebd93f07269a8353d32c.xyz",
+        ".scratch/native_splines/round3/joint/case_03",
+        "262144",
+        "C3-before,H5-S,C3-after"
+      ],
+      "peak_rss_kib": 7300
+    },
+    {
+      "case": 4,
+      "elapsed_s": 1.866347544999826,
+      "command": [
+        "/usr/bin/time",
+        "-f",
+        "%M",
+        "-o",
+        ".scratch/native_splines/round3/joint/case_04/volume_peak_rss_kib.txt",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/build/native_volume_refine",
+        ".scratch/native_splines/frozen/seed_ee1c173245146b51629407d8e03cb1fc80bb3dac7f85cd355f07d000e387654c.xyz",
+        ".scratch/native_splines/round3/joint/case_04",
+        "262144",
+        "C3-before,H5-S,C3-after"
+      ],
+      "peak_rss_kib": 6220
+    },
+    {
+      "case": 5,
+      "elapsed_s": 1.9167117599999983,
+      "command": [
+        "/usr/bin/time",
+        "-f",
+        "%M",
+        "-o",
+        ".scratch/native_splines/round3/joint/case_05/volume_peak_rss_kib.txt",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/build/native_volume_refine",
+        ".scratch/native_splines/frozen/seed_019b73adaac1c31fd85a1244699770d45e18c319cfc976548bc8791b4ef621ff.xyz",
+        ".scratch/native_splines/round3/joint/case_05",
+        "262144",
+        "C3-before,H5-S,C3-after"
+      ],
+      "peak_rss_kib": 5848
+    },
+    {
+      "case": 6,
+      "elapsed_s": 1.8164261079996322,
+      "command": [
+        "/usr/bin/time",
+        "-f",
+        "%M",
+        "-o",
+        ".scratch/native_splines/round3/joint/case_06/volume_peak_rss_kib.txt",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/build/native_volume_refine",
+        ".scratch/native_splines/frozen/seed_6d1bf777dbe2008f496213639d78b553fcecf0d30ceca7fdc6d9731d3bcb492c.xyz",
+        ".scratch/native_splines/round3/joint/case_06",
+        "262144",
+        "C3-before,H5-S,C3-after"
+      ],
+      "peak_rss_kib": 6340
+    }
+  ]
+}

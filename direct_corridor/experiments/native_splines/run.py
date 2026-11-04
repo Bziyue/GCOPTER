@@ -42,6 +42,8 @@ def main():
     manifest = {"schema": "native-splines-run-v1", "baseline": frozen["baseline"],
                 "phase": "A-fixed-nodal-geometry", "repeats": args.repeats,
                 "samples_per_shift": args.samples, "random_shifts": 8, "cases": []}
+    manifest["source_commit"] = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+    manifest["worktree_status"] = subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT, text=True).splitlines()
     binary = ROOT / args.binary
     manifest["binary_sha256"] = hashlib.sha256(binary.read_bytes()).hexdigest()
     manifest["sources_sha256"] = {

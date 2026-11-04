@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
 #include "cubic_generator.hpp"
+#include "continuous_oracle.hpp"
+#include "cubic_adaptation.hpp"
 #include <chrono>
 namespace gcopter::direct::native {
 using Clock=std::chrono::steady_clock;
@@ -52,7 +54,14 @@ CubicResult generateCubic(const std::vector<Vec3>& input_seed,const ObstacleInde
   // the resulting finite, nonduplicate seed without repeating these checks.
   if(!bounds.lower.allFinite()||!bounds.upper.allFinite()||!(bounds.upper.array()>bounds.lower.array()).all()||
      !(o.control_spacing>0)||!(o.min_radius>0)||!(o.max_radius>o.min_radius)||!(o.local_range>0)||!(o.local_progress>0)||
-     !(o.budget_ms>0)||o.max_refinements<0||o.max_refinements>20) {
+     !(o.budget_ms>0)||o.max_refinements<0||o.max_refinements>20||
+     solver.barrier_stages<1||solver.barrier_stages>3||solver.warm_start_stage<0||solver.warm_start_stage>=solver.barrier_stages||
+     !(solver.warm_reserve>=0&&solver.warm_reserve<1)||
+     (solver.progress_samples!=1&&solver.progress_samples!=3)||solver.progress_depth<0||solver.progress_depth>1||
+     solver.coordinate_sweeps<0||solver.coordinate_sweeps>10||
+     solver.support_exchange<0||solver.support_exchange>3||solver.exchange_rounds<0||solver.exchange_iterations<1||
+     solver.adaptive_knots<0||solver.adaptive_knots>2||!(solver.path_predictor>=0&&solver.path_predictor<=2)||
+     solver.volume_refinements<0||solver.volume_refinements>8||!(solver.volume_trust>0)) {
     result.status="INVALID_INPUT";result.message="invalid cubic generator options/bounds";return result;
   }
   std::vector<Vec3> seed;
@@ -78,9 +87,23 @@ CubicResult generateCubic(const std::vector<Vec3>& input_seed,const ObstacleInde
       CubicModel model=projected_reference?CubicModel::project(naturalCubic(*projected_reference)):
         CubicModel::fromSeed(seed,std::ldexp(o.control_spacing,-refinement),o.min_radius*1.1,o.frame_smoothing);
       if(!projected_reference && solver.initial_radius_fraction>0)clearanceInitialization(model,index,bounds,o,solver.initial_radius_fraction);
+      if(!projected_reference&&solver.adaptive_knots) {
+        const auto breaks=adaptiveBreaks(model,solver.adaptive_knots);
+        if(breaks.size()<model.basis.breaks.size()) {
+          model=CubicModel::fromSeed(seed,o.control_spacing,o.min_radius*1.1,o.frame_smoothing,breaks);
+          if(solver.initial_radius_fraction>0)clearanceInitialization(model,index,bounds,o,solver.initial_radius_fraction);
+        }
+      }
       result.initialization_ms+=ms(timer);
       if(size_t(model.basis.count)>o.max_controls)throw Failure{Status::Capacity,"cubic control capacity"};
       QueryCache cache;std::vector<detail::SupportPlane> cover;bool initialized=false;
+      SeparatorCache separator_cache;
+      auto* reused_separators=solver.separator_reuse_gap>=0?&separator_cache:nullptr;
+      std::shared_ptr<const CubicEnergy> energy;
+      if(solver.reuse_energy) {
+        timer=Clock::now();energy=std::make_shared<CubicEnergy>(model,length,solver);
+        result.optimizer.setup_ms+=ms(timer);++result.optimizer.energy_builds;
+      }
       const auto original=model.x;
       for(int attempt=0;attempt<(projected_reference?20:solver.initial_radius_fraction>0?2:1);++attempt) {
         ++result.initialization_attempts;stop();
@@ -94,15 +117,18 @@ CubicResult generateCubic(const std::vector<Vec3>& input_seed,const ObstacleInde
         }
         try {
           const auto g=model.geometry();
-          cover=mapCover(g,seed,index,bounds,o,cache,result.cover_metrics,stop);
+          cover=mapCover(g,seed,index,bounds,o,cache,result.cover_metrics,stop,reused_separators,std::max(1e-6,solver.separator_reuse_gap),solver.lazy_priorities);
           if(!certify(g,cover).safe())throw Failure{Status::VerificationFailed,"initial full-disk certificate"};
-          CubicProblem test(model,cover,length,o,solver);
+          CubicProblem test(model,cover,length,o,solver,energy);
+          if(!energy)++result.optimizer.energy_builds;
           if(!std::isfinite(test.objective(model.x,.003/model.basis.count)))throw Failure{Status::InsufficientClearance,"initial SOC interior"};
           initialized=true;break;
         }catch(const Failure& error){result.message=error.message;}
       }
       if(!initialized)continue;
       std::vector<int> known_progress=solver.progress_spans;
+      auto known_strict=solver.strict_progress_spans;
+      std::sort(known_strict.begin(),known_strict.end());
       if(solver.progress_threshold>=0) {
         const auto g=model.geometry();
         for(int i=0;i<int(g.pieces());++i) {
@@ -115,27 +141,92 @@ CubicResult generateCubic(const std::vector<Vec3>& input_seed,const ObstacleInde
         stop();
         if(iteration) {
           if(solver.recenter_frames) {
-            timer=Clock::now();recenterFrames(model,cover,length,o,solver);
+            timer=Clock::now();
+            if(recenterFrames(model,cover,length,o,solver)&&energy) {
+              energy=std::make_shared<CubicEnergy>(model,length,solver);++result.optimizer.energy_builds;
+            }
             result.initialization_ms+=ms(timer);
           }
-          cover=mapCover(model.geometry(),seed,index,bounds,o,cache,result.cover_metrics,stop);
+          cover=mapCover(model.geometry(),seed,index,bounds,o,cache,result.cover_metrics,stop,reused_separators,std::max(1e-6,solver.separator_reuse_gap),solver.lazy_priorities);
         }
         timer=Clock::now();
         auto current=solver;current.progress_spans=known_progress;if(!iteration)current.iterations=o.initial_iterations;
+        current.strict_progress_spans=known_strict;
+        current.barrier_begin=iteration?solver.warm_start_stage:0;
         current.check_gradients=solver.check_gradients&&!iteration;
-        CubicProblem problem(model,cover,length,o,current);result.optimizer.setup_ms+=ms(timer);
+        auto working_cover=cover;
+        if(solver.support_exchange) {
+          working_cover.clear();
+          for(const auto& plane:cover)for(int i=0;i<solver.support_exchange;++i) {
+            auto point=plane;
+            const double t=solver.support_exchange==1?.5:double(i)/(solver.support_exchange-1);
+            point.begin=point.end=plane.begin+t*(plane.end-plane.begin);working_cover.push_back(point);
+          }
+        }
+        CubicProblem problem(model,working_cover,length,o,current,energy);result.optimizer.setup_ms+=ms(timer);
+        if(!energy)++result.optimizer.energy_builds;
         const Eigen::VectorXd initial=model.x;
         auto candidate=model.x;
-        problem.optimize(candidate,result.optimizer,stop);
+        if(iteration&&solver.warm_reserve>0) {
+          timer=Clock::now();
+          // Uniform shape contraction preserves each support halfspace and
+          // improves full-section progress. The objective checks the nodal
+          // radius floor before accepting this interior warm start.
+          for(int i=0;i<model.basis.count;++i)candidate.segment<3>(5*i+2)*=1-solver.warm_reserve;
+          if(std::isfinite(problem.objective(candidate,.0001/model.basis.count)))++result.optimizer.warm_reserves;
+          else candidate=initial;
+          result.optimizer.setup_ms+=ms(timer);
+        }
+        auto optimize_candidate=[&](const CubicProblem& p,const OptimizerSettings& configuration) {
+          p.optimize(candidate,result.optimizer,stop);
+          if(!solver.support_exchange)return;
+          for(int exchange=0;exchange<solver.exchange_rounds;++exchange) {
+            stop();auto started=Clock::now();const auto geometry=model.geometry(candidate);
+            int added=0;
+            for(const auto& plane:cover) {
+              const auto verdict=supportOracle(geometry,plane);
+              result.optimizer.oracle_nodes+=verdict.nodes;
+              if(verdict.safe)continue;
+              if(!verdict.witnessed){++result.optimizer.oracle_unresolved;continue;}
+              auto point=plane;point.begin=point.end=verdict.parameter;
+              working_cover.push_back(point);++added;
+            }
+            result.optimizer.oracle_ms+=ms(started);
+            if(!added)break;
+            result.optimizer.exchange_witnesses+=added;++result.optimizer.exchange_steps;
+            auto correction=configuration;
+            correction.barrier_begin=0;correction.barrier_stages=1;
+            correction.iterations=solver.exchange_iterations;correction.corrector_iterations=0;
+            correction.check_gradients=false;
+            started=Clock::now();CubicProblem next(model,working_cover,length,o,correction,energy);
+            result.optimizer.setup_ms+=ms(started);if(!energy)++result.optimizer.energy_builds;
+            // The initial geometry satisfies every newly generated point SOC.
+            // Restore its strict interior along the old-to-proposed segment.
+            candidate=initial+next.feasibleStep(initial,candidate-initial)*(candidate-initial);
+            next.optimize(candidate,result.optimizer,stop);
+          }
+        };
+        optimize_candidate(problem,current);
+        Eigen::VectorXd before_inflation;
+        bool inflated=current.coordinate_sweeps>0&&iteration+1==o.inflation_iterations;
+        if(inflated){before_inflation=candidate;problem.inflate(candidate,result.optimizer);}
         for(int repair=0;repair<3;++repair) {
+          timer=Clock::now();
           const auto g=model.geometry(candidate);std::vector<int> failed;
           for(int i=0;i<int(g.pieces());++i){Certificate c;if(!jacobianCertificate<3>(g.curve<3>(i),c))failed.push_back(i);}
+          result.optimizer.certificate_ms+=ms(timer);
           if(failed.empty())break;
+          if(inflated){candidate=std::move(before_inflation);inflated=false;++result.optimizer.coordinate_rejections;--repair;continue;}
           current.progress_spans.insert(current.progress_spans.end(),failed.begin(),failed.end());
           std::sort(current.progress_spans.begin(),current.progress_spans.end());
           current.progress_spans.erase(std::unique(current.progress_spans.begin(),current.progress_spans.end()),current.progress_spans.end());
+          current.strict_progress_spans.insert(current.strict_progress_spans.end(),failed.begin(),failed.end());
+          std::sort(current.strict_progress_spans.begin(),current.strict_progress_spans.end());
+          current.strict_progress_spans.erase(std::unique(current.strict_progress_spans.begin(),current.strict_progress_spans.end()),current.strict_progress_spans.end());
+          current.barrier_begin=0;
           current.check_gradients=false;++result.optimizer.regularity_repairs;
-          timer=Clock::now();CubicProblem repaired(model,cover,length,o,current);result.optimizer.setup_ms+=ms(timer);
+          timer=Clock::now();CubicProblem repaired(model,working_cover,length,o,current,energy);result.optimizer.setup_ms+=ms(timer);
+          if(!energy)++result.optimizer.energy_builds;
           // The old and proposed points already obey the geometric SOCs.
           // Find an interior warm start using only the new progress cones.
           auto feasible=[&](double alpha) {
@@ -150,9 +241,10 @@ CubicResult generateCubic(const std::vector<Vec3>& input_seed,const ObstacleInde
           if(feasible(1))lo=1;
           else for(int i=0;i<20;++i){const double mid=.5*(lo+hi);if(feasible(mid))lo=mid;else hi=mid;}
           candidate=initial+(.99*lo)*(candidate-initial);
-          repaired.optimize(candidate,result.optimizer,stop);
+          optimize_candidate(repaired,current);
         }
         known_progress=current.progress_spans;
+        known_strict=current.strict_progress_spans;
         timer=Clock::now();
         for(int backtrack=0;;++backtrack) {
           model.x=initial+std::ldexp(1.,-backtrack)*(candidate-initial);
@@ -160,7 +252,21 @@ CubicResult generateCubic(const std::vector<Vec3>& input_seed,const ObstacleInde
           ++result.optimizer.regularity_backtracks;
           if(backtrack==32){model.x=initial;break;}
         }
+        if(solver.support_exchange&&(model.x-candidate).norm()>1e-12) {
+          // Point-constraint exchange can leave a tiny continuous violation.
+          // Recover the largest certified fraction instead of accepting a
+          // coarse one-half contraction of every control point.
+          const auto direction=(candidate-initial).eval();
+          double lo=(model.x-initial).dot(direction)/direction.squaredNorm(),hi=std::min(1.,2*lo);
+          for(int i=0;i<12;++i) {
+            const double mid=.5*(lo+hi);
+            if(certify(model.geometry(initial+mid*direction),cover).safe())lo=mid;else hi=mid;
+          }
+          model.x=initial+lo*direction;
+        }
         result.optimizer.certificate_ms+=ms(timer);
+        if(iteration+1==o.inflation_iterations&&solver.volume_refinements&&!solver.support_exchange)
+          problem.refineVolume(model.x,result.optimizer,[&](const Eigen::VectorXd& x){stop();return certify(model.geometry(x),cover).safe();});
       }
       timer=Clock::now();auto g=model.geometry();const auto final=certify(g,cover);
       result.verification_ms+=ms(timer);
