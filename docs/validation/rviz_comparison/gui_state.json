@@ -1,0 +1,31 @@
+{
+  "status": "PASS [c3] request=1\nSearch 1010.9 ms; corridor 25.5 ms; total 1074.7 ms\nMin semiaxis 0.260 m",
+  "comparison": {
+    "state": "DONE",
+    "ready": true,
+    "busy": false,
+    "request": 1,
+    "firi": {
+      "optimize_ms": 122.440339,
+      "duration": 14.7612162582,
+      "length": 44.8478478929,
+      "jerk": 36.735042828,
+      "status": -1008,
+      "iterations": 800,
+      "max_violation": 0.0127674863217,
+      "penetration": 0,
+      "sampled_feasible": false
+    },
+    "c3": {
+      "optimize_ms": 358.747546,
+      "duration": 13.5804246155,
+      "length": 43.45356863,
+      "jerk": 22.8048964481,
+      "status": -1008,
+      "iterations": 800,
+      "max_violation": 0.00168130553853,
+      "penetration": 0,
+      "sampled_feasible": true
+    }
+  }
+}

@@ -1,0 +1,434 @@
+[
+  {
+    "case": 0,
+    "mode": "baseline",
+    "metrics": {
+      "24": {
+        "longitudinal": 68.33165466629269,
+        "surface": 1107.3074868214512,
+        "surface_area": 584.1063851869862,
+        "mean_surface_curvature": 1.8957291255547155
+      },
+      "48": {
+        "longitudinal": 68.33165464215796,
+        "surface": 1102.4809082309691,
+        "surface_area": 584.1064441049988,
+        "mean_surface_curvature": 1.8874657510759931
+      },
+      "96": {
+        "longitudinal": 68.33165464215779,
+        "surface": 1102.247407111874,
+        "surface_area": 584.1064444060495,
+        "mean_surface_curvature": 1.88706599228279
+      }
+    }
+  },
+  {
+    "case": 0,
+    "mode": "free_boundary",
+    "metrics": {
+      "24": {
+        "longitudinal": 46.77425169715597,
+        "surface": 937.3774820186136,
+        "surface_area": 577.359419116512,
+        "mean_surface_curvature": 1.6235596943287236
+      },
+      "48": {
+        "longitudinal": 46.774251698186795,
+        "surface": 937.3772982972818,
+        "surface_area": 577.3594190230943,
+        "mean_surface_curvature": 1.6235593763817797
+      },
+      "96": {
+        "longitudinal": 46.77425169818666,
+        "surface": 937.3772984960771,
+        "surface_area": 577.3594190230928,
+        "mean_surface_curvature": 1.6235593767261023
+      }
+    }
+  },
+  {
+    "case": 1,
+    "mode": "baseline",
+    "metrics": {
+      "24": {
+        "longitudinal": 533.9643022668944,
+        "surface": 31922.97944497085,
+        "surface_area": 932.4562061821174,
+        "mean_surface_curvature": 34.235365943541154
+      },
+      "48": {
+        "longitudinal": 517.4725753260743,
+        "surface": 30302.074117851065,
+        "surface_area": 932.4562263395899,
+        "mean_surface_curvature": 32.497047327147556
+      },
+      "96": {
+        "longitudinal": 516.041291577189,
+        "surface": 913417.4764061309,
+        "surface_area": 932.4562225059952,
+        "mean_surface_curvature": 979.5821555582553
+      }
+    }
+  },
+  {
+    "case": 1,
+    "mode": "free_boundary",
+    "metrics": {
+      "24": {
+        "longitudinal": 183.26614947884994,
+        "surface": 2872.97907503234,
+        "surface_area": 993.6060088989974,
+        "mean_surface_curvature": 2.891467089873835
+      },
+      "48": {
+        "longitudinal": 183.26436801902443,
+        "surface": 2873.2926205926897,
+        "surface_area": 993.6059977721973,
+        "mean_surface_curvature": 2.891782685526266
+      },
+      "96": {
+        "longitudinal": 183.26436796803708,
+        "surface": 2873.292177978233,
+        "surface_area": 993.6059977744501,
+        "mean_surface_curvature": 2.8917822400569633
+      }
+    }
+  },
+  {
+    "case": 2,
+    "mode": "baseline",
+    "metrics": {
+      "24": {
+        "longitudinal": 31.014596378713478,
+        "surface": 823.1847560320091,
+        "surface_area": 582.2374860410672,
+        "mean_surface_curvature": 1.4138298817365171
+      },
+      "48": {
+        "longitudinal": 31.014596378109985,
+        "surface": 767.079347267457,
+        "surface_area": 582.2377911808998,
+        "mean_surface_curvature": 1.3174674658470038
+      },
+      "96": {
+        "longitudinal": 31.01459637810992,
+        "surface": 763.0076861093953,
+        "surface_area": 582.2377941362234,
+        "mean_surface_curvature": 1.310474335046134
+      }
+    }
+  },
+  {
+    "case": 2,
+    "mode": "free_boundary",
+    "metrics": {
+      "24": {
+        "longitudinal": 30.709520012525232,
+        "surface": 601.7492581632782,
+        "surface_area": 577.459643262192,
+        "mean_surface_curvature": 1.0420628786522104
+      },
+      "48": {
+        "longitudinal": 30.709520012525225,
+        "surface": 601.7488254237041,
+        "surface_area": 577.4596432491583,
+        "mean_surface_curvature": 1.0420621292907664
+      },
+      "96": {
+        "longitudinal": 30.709520012525132,
+        "surface": 601.748810088227,
+        "surface_area": 577.4596432491934,
+        "mean_surface_curvature": 1.0420621027339083
+      }
+    }
+  },
+  {
+    "case": 5,
+    "mode": "baseline",
+    "metrics": {
+      "24": {
+        "longitudinal": 34.54048679670636,
+        "surface": 1205.2868228600703,
+        "surface_area": 481.80017561148827,
+        "mean_surface_curvature": 2.501632178382566
+      },
+      "48": {
+        "longitudinal": 34.54048664030795,
+        "surface": 960.20536318268,
+        "surface_area": 481.801091784,
+        "mean_surface_curvature": 1.9929497453549923
+      },
+      "96": {
+        "longitudinal": 34.5404866403078,
+        "surface": 916.4737996590445,
+        "surface_area": 481.8011149773419,
+        "mean_surface_curvature": 1.902182811889392
+      }
+    }
+  },
+  {
+    "case": 5,
+    "mode": "free_boundary",
+    "metrics": {
+      "24": {
+        "longitudinal": 22.37133976617257,
+        "surface": 435.9721839420745,
+        "surface_area": 468.5356740603048,
+        "mean_surface_curvature": 0.9304994434339718
+      },
+      "48": {
+        "longitudinal": 22.37133976617256,
+        "surface": 435.9949403073597,
+        "surface_area": 468.5356735110197,
+        "mean_surface_curvature": 0.9305480136446971
+      },
+      "96": {
+        "longitudinal": 22.371339766172515,
+        "surface": 435.99494005294304,
+        "surface_area": 468.5356735110205,
+        "mean_surface_curvature": 0.9305480131016917
+      }
+    }
+  },
+  {
+    "case": 54,
+    "mode": "baseline",
+    "metrics": {
+      "24": {
+        "longitudinal": 4.0861851409334085,
+        "surface": 117.82699308616368,
+        "surface_area": 126.57456719044356,
+        "mean_surface_curvature": 0.9308899544478132
+      },
+      "48": {
+        "longitudinal": 4.086185140933426,
+        "surface": 117.82699308616375,
+        "surface_area": 126.57456719044356,
+        "mean_surface_curvature": 0.9308899544478139
+      },
+      "96": {
+        "longitudinal": 4.086185140933388,
+        "surface": 117.82699308616361,
+        "surface_area": 126.57456719044356,
+        "mean_surface_curvature": 0.9308899544478126
+      }
+    }
+  },
+  {
+    "case": 54,
+    "mode": "free_boundary",
+    "metrics": {
+      "24": {
+        "longitudinal": 4.55203911032039,
+        "surface": 138.0436775116792,
+        "surface_area": 124.54087153201976,
+        "mean_surface_curvature": 1.1084206800029324
+      },
+      "48": {
+        "longitudinal": 4.552039110320421,
+        "surface": 138.04367751167942,
+        "surface_area": 124.54087153201978,
+        "mean_surface_curvature": 1.1084206800029341
+      },
+      "96": {
+        "longitudinal": 4.552039110320373,
+        "surface": 138.04367751167905,
+        "surface_area": 124.54087153201976,
+        "mean_surface_curvature": 1.1084206800029313
+      }
+    }
+  },
+  {
+    "case": 60,
+    "mode": "baseline",
+    "metrics": {
+      "24": {
+        "longitudinal": 1580.0250500328339,
+        "surface": 8871.359785626673,
+        "surface_area": 193.1145689479452,
+        "mean_surface_curvature": 45.938324767293885
+      },
+      "48": {
+        "longitudinal": 2227.352507690055,
+        "surface": 12006.700872167161,
+        "surface_area": 193.1145437569798,
+        "mean_surface_curvature": 62.17398564903892
+      },
+      "96": {
+        "longitudinal": 40160.7029390066,
+        "surface": 225907.19129745307,
+        "surface_area": 193.11453969857226,
+        "mean_surface_curvature": 1169.8093351752077
+      }
+    }
+  },
+  {
+    "case": 60,
+    "mode": "free_boundary",
+    "metrics": {
+      "24": {
+        "longitudinal": 37.78524969320431,
+        "surface": 470.59235987728255,
+        "surface_area": 188.73055206921998,
+        "mean_surface_curvature": 2.493461470428408
+      },
+      "48": {
+        "longitudinal": 37.785249692986085,
+        "surface": 470.5923598767936,
+        "surface_area": 188.73055206921998,
+        "mean_surface_curvature": 2.4934614704258173
+      },
+      "96": {
+        "longitudinal": 37.7852496929858,
+        "surface": 470.5923598767923,
+        "surface_area": 188.73055206921998,
+        "mean_surface_curvature": 2.4934614704258107
+      }
+    }
+  },
+  {
+    "case": 61,
+    "mode": "baseline",
+    "metrics": {
+      "24": {
+        "longitudinal": 919.5448727274055,
+        "surface": 4775.122222537343,
+        "surface_area": 198.07542937905632,
+        "mean_surface_curvature": 24.107594957672447
+      },
+      "48": {
+        "longitudinal": 3017.3815802961362,
+        "surface": 17183.989951159427,
+        "surface_area": 198.07537655100586,
+        "mean_surface_curvature": 86.75480138105114
+      },
+      "96": {
+        "longitudinal": 29870.349196338393,
+        "surface": 282744.25070116745,
+        "surface_area": 198.0753713416163,
+        "mean_surface_curvature": 1427.4578852790567
+      }
+    }
+  },
+  {
+    "case": 61,
+    "mode": "free_boundary",
+    "metrics": {
+      "24": {
+        "longitudinal": 35.56618012035168,
+        "surface": 466.78404905473104,
+        "surface_area": 193.3999738159656,
+        "mean_surface_curvature": 2.4135683156757333
+      },
+      "48": {
+        "longitudinal": 35.566180107198,
+        "surface": 466.784049050851,
+        "surface_area": 193.39997381596564,
+        "mean_surface_curvature": 2.4135683156556706
+      },
+      "96": {
+        "longitudinal": 35.56618010719783,
+        "surface": 466.78404905085034,
+        "surface_area": 193.3999738159656,
+        "mean_surface_curvature": 2.4135683156556675
+      }
+    }
+  },
+  {
+    "case": 62,
+    "mode": "baseline",
+    "metrics": {
+      "24": {
+        "longitudinal": 1461.636356908282,
+        "surface": 6962.16551102481,
+        "surface_area": 200.06035805054958,
+        "mean_surface_curvature": 34.800325156199456
+      },
+      "48": {
+        "longitudinal": 6003.576107577444,
+        "surface": 27811.577156918218,
+        "surface_area": 200.06031911383693,
+        "mean_surface_curvature": 139.01595918725425
+      },
+      "96": {
+        "longitudinal": 3500.104180751041,
+        "surface": 20389.713117247502,
+        "surface_area": 200.06031592758262,
+        "mean_surface_curvature": 101.91782924419715
+      }
+    }
+  },
+  {
+    "case": 62,
+    "mode": "free_boundary",
+    "metrics": {
+      "24": {
+        "longitudinal": 41.39108839893248,
+        "surface": 497.164576188063,
+        "surface_area": 195.1288857863663,
+        "mean_surface_curvature": 2.54787790226187
+      },
+      "48": {
+        "longitudinal": 41.391088195359266,
+        "surface": 497.164576186284,
+        "surface_area": 195.12888578636628,
+        "mean_surface_curvature": 2.547877902252753
+      },
+      "96": {
+        "longitudinal": 41.39108819535917,
+        "surface": 497.16457618628385,
+        "surface_area": 195.12888578636628,
+        "mean_surface_curvature": 2.5478779022527527
+      }
+    }
+  },
+  {
+    "case": 67,
+    "mode": "baseline",
+    "metrics": {
+      "24": {
+        "longitudinal": 346.1076028288571,
+        "surface": 12856.159426340293,
+        "surface_area": 709.8375773615211,
+        "mean_surface_curvature": 18.111410041332086
+      },
+      "48": {
+        "longitudinal": 352.1309453364888,
+        "surface": 10296.460930040936,
+        "surface_area": 709.8376064670251,
+        "mean_surface_curvature": 14.5053753650614
+      },
+      "96": {
+        "longitudinal": 352.47546165717233,
+        "surface": 10454.431281044834,
+        "surface_area": 709.8376062930456,
+        "mean_surface_curvature": 14.727919721865062
+      }
+    }
+  },
+  {
+    "case": 67,
+    "mode": "free_boundary",
+    "metrics": {
+      "24": {
+        "longitudinal": 82.05200556010858,
+        "surface": 1014.7870984185968,
+        "surface_area": 700.5106993470196,
+        "mean_surface_curvature": 1.4486389706317544
+      },
+      "48": {
+        "longitudinal": 82.05200553075602,
+        "surface": 1014.7872926730736,
+        "surface_area": 700.5106990480567,
+        "mean_surface_curvature": 1.4486392485540849
+      },
+      "96": {
+        "longitudinal": 82.05200553075561,
+        "surface": 1014.7872928430464,
+        "surface_area": 700.5106990480574,
+        "mean_surface_curvature": 1.4486392487967248
+      }
+    }
+  }
+]

@@ -8,7 +8,6 @@ struct OptimizerMetrics {
   double initial_problem_ms=0,initial_pruning_ms=0;
   int construction_reuses=0;
   int basis_cache_hits=0,basis_cache_misses=0,group_lookup_reuses=0;
-  double initial_scale=1;
   int steps=0,backtracks=0,damping_retries=0,regularity_backtracks=0;
   int regularity_repairs=0;
   int active_constraints=0;
@@ -30,10 +29,9 @@ struct OptimizerMetrics {
 };
 // One fixed algorithm configuration. Only explicit diagnostics are selectable.
 struct OptimizerSettings {
-  static constexpr double center_energy=1e-5,shape_energy=1e-5,offset_weight=.001;
-  static constexpr double gradient_tolerance=1e-7;
-  static constexpr double initial_radius_fraction=.65,fraction_boundary=.99,progress_threshold=.03;
-  static constexpr double volume_trust=.1;
+  static constexpr double center_energy=3e-5,shape_energy=3e-5,offset_weight=.001;
+  static constexpr double gradient_tolerance=1e-7,area_weight=.1,progress_weight=.01;
+  static constexpr double initial_radius_fraction=.65,fraction_boundary=.99;
   static constexpr int iterations=8,corrector_iterations=3,inflation_iterations=2;
   bool profile=false;
 };

@@ -69,7 +69,7 @@ struct GeometryOptions {
   double safety_margin = 0.02;
   double certificate_margin = 0.002; // Additional metric margin.
   double budget_ms = 1000;
-  double max_offset = 1.5; // Transverse center displacement.
+  double max_offset = 1.5; // Three-dimensional center displacement.
   // Seed-segment AABBs expand by local_range; long edges split at local_progress.
   double local_range = 0;
   double local_progress = 7;

@@ -116,17 +116,17 @@ std::vector<ExpansionBox> expansionBoxes(const std::vector<Vec3>& seed,
 FiriResult generateFiri(const std::vector<Vec3>& seed,
                         const std::vector<Vec3>& points, Bounds bounds,
                         double obstacle_radius, double pad, bool solid,
-                        double range) {
+                        double range, double progress=7., double certificate_margin=.002) {
   const auto start = Clock::now();
   FiriResult out;
-  const double erosion = solid ? obstacle_radius + pad + .002 : 0;
+  const double erosion = solid ? obstacle_radius + pad + certificate_margin : 0;
   // Expand artificial local limits before erosion, so their final nominal
   // range remains 3 m; adjust world bounds to end at the same robot clearance.
   if (solid) {
     bounds.lower.array() -= obstacle_radius;
     bounds.upper.array() += obstacle_radius;
   }
-  out.polys = cover(seed, points, bounds, 7., range + erosion);
+  out.polys = cover(seed, points, bounds, progress, range + erosion);
   out.cover_ms = ms(start);
   auto timer = Clock::now();
   for (auto& h : out.polys)

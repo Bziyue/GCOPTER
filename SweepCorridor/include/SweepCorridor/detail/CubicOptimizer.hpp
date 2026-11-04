@@ -13,15 +13,16 @@ struct CubicModel {
   std::vector<Vec3> reference;
   std::vector<Mat32> frames;
   Eigen::VectorXd x;
-  explicit CubicModel(const std::vector<double>& breaks):basis(breaks),reference(basis.count),frames(basis.count),x(5*basis.count){}
+  mutable std::array<double,2> anchor_parameters{{0.,1.}};
+  explicit CubicModel(const std::vector<double>& breaks):basis(breaks),reference(basis.count),frames(basis.count),x(6*basis.count){}
   Geometry geometry(const Eigen::VectorXd& values)const;
   Geometry geometry()const{return geometry(x);}
-  Eigen::Matrix<double,9,5> jacobian(int i)const;
+  Eigen::Matrix<double,9,6> jacobian(int i)const;
   static CubicModel fromSeed(const std::vector<Vec3>& seed,double spacing,double radius,double frame_smoothing,
                              const std::vector<double>& requested_breaks={});
 };
 struct ProgressConstraints {
-  std::vector<int> spans,strict_spans;
+  std::vector<int> spans;
 };
 struct CubicEnergy {
   BandedSPD quadratic;
@@ -32,6 +33,7 @@ struct CubicProblem {
   struct Cut {
     int first,count=4;double bound,center_sign=1;
     std::array<Eigen::Vector2d,4> normals;
+    std::array<Vec3,4> center_normals;
     Vec3 apply(const Eigen::VectorXd& x)const;
     bool compact();
     void accumulate(const Vec3& v,double mu,double slack,Eigen::VectorXd& gradient,BandedSPD& hessian)const;
@@ -58,6 +60,7 @@ struct CubicProblem {
     int first,count;
     V9 reference;
     std::array<Mat32,4> maps;
+    std::array<double,4> center_weights;
     std::vector<Support> supports;
     // Retained rows form a contiguous prefix. Original IDs stay stable after
     // partitioning so each deletion can be checked against retained witnesses.
@@ -89,7 +92,6 @@ struct CubicProblem {
                const ProgressConstraints& progress={});
   double objective(const Eigen::VectorXd& x,double mu,Eigen::VectorXd* gradient=nullptr,
                    BandedSPD* hessian=nullptr,bool evaluate_cost=true)const;
-  double feasibleStep(const Eigen::VectorXd& x,const Eigen::VectorXd& step)const;
   struct LineModel {
     struct Term {double a,b,weight;};
     std::vector<Term> terms;
@@ -98,7 +100,6 @@ struct CubicProblem {
     double upperBound(double alpha)const;
   };
   LineModel prepareLine(const Eigen::VectorXd& x,const Eigen::VectorXd& step,double mu)const;
-  void refineVolume(Eigen::VectorXd& x,OptimizerMetrics& metrics,const std::function<bool(const Eigen::VectorXd&)>& certify)const;
   void optimize(Eigen::VectorXd& x,OptimizerMetrics& metrics,const Deadline& deadline)const;
 };
 void pruneProjectedSupports(CubicProblem::Group& group,const Eigen::VectorXd& x,

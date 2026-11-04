@@ -1,0 +1,21 @@
+Test project /home/zdp/ForCodex/GCOPTER/.scratch/c3_cleanup/trajectory
+    Start 1: library_regression
+1/5 Test #1: library_regression ...............   Passed    0.00 sec
+    Start 2: native_optimizer
+2/5 Test #2: native_optimizer .................   Passed    0.00 sec
+    Start 3: lbfgs_recovery
+3/5 Test #3: lbfgs_recovery ...................   Passed    0.00 sec
+    Start 4: bezier_constraints
+4/5 Test #4: bezier_constraints ...............   Passed    0.00 sec
+    Start 5: tube_query_test
+5/5 Test #5: tube_query_test ..................   Passed    0.01 sec
+
+100% tests passed, 0 tests failed out of 5
+
+Total Test time (real) =   0.01 sec
+C3 gradient relative error 1.68975e-09
+C3 rep -1 0.903193ms feasible=1 plane=0 corridor=0 collision=0
+firi gradient relative error 1.68975e-09
+firi rep -1 0.347001ms feasible=1 plane=0 corridor=0 collision=0
+firi rep 0 0.343522ms feasible=1 plane=0 corridor=0 collision=0
+C3 rep 0 0.883913ms feasible=1 plane=0 corridor=0 collision=0

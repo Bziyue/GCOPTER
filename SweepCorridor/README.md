@@ -10,6 +10,19 @@ sweep corridors:
 The former H5 implementation and comparisons are preserved on branch
 `archive/h5-sweep-corridor` at commit `bd6d81f`.
 
+Generation uses six variables per control: a three-dimensional center
+displacement and a symmetric positive-definite 2x2 section shape. Centers at
+both ends are free. The original start and goal remain inside the sweep; they
+are no longer necessarily `section(0).center` and `section(1).center`.
+No extra seed points or prescribed endpoint extension lengths are added.
+
+The objective combines negative log swept volume, log-area and longitudinal
+spacing regularization, and center/shape smoothness. Endpoint inclusion is differentiated through a local
+section-plane root. The sparse solve keeps a half-bandwidth of 23 and handles the
+volume curvature's rank-one term without a dense Hessian. Fixed separation
+planes define convex support subproblems; the full volume/inclusion problem is
+nonlinear. Every accepted step retains the continuous Jacobian certificate.
+
 ## Use
 
 ```cpp

@@ -62,7 +62,7 @@ inline void pruneProjectedSupports(CubicProblem::Group& group,const Eigen::Vecto
       for(int k=0;k<group.count;++k) {
         const Eigen::Vector2d v=group.maps[k].transpose()*residual;
         const double norm=v.norm();
-        reach+=(max_offset+max_radius)*norm;
+        reach+=max_offset*std::abs(group.center_weights[k])*residual.norm()+max_radius*norm;
       }
       double upper=left+right+residual.dot(shift)+reach;
       double guard=1e-10*(1+left+right+residual.cwiseAbs().dot(shift.cwiseAbs())+reach);

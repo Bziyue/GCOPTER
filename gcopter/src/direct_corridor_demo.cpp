@@ -13,6 +13,8 @@
 #include <iomanip>
 #include <nav_msgs/msg/path.hpp>
 #include <optional>
+#include <future>
+#include "demo_comparison.hpp"
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <sensor_msgs/point_cloud2_iterator.hpp>
@@ -116,6 +118,13 @@ class DirectDemo final : public rclcpp::Node {
     fs::create_directories(session_);
     declare_parameter<std::string>("session_dir", session_.string());
     const auto qos = rclcpp::QoS(1).reliable().transient_local();
+    firi_pub_=create_publisher<Markers>("~/firi_corridor",qos);
+    c3_trajectory_pub_=create_publisher<Markers>("~/c3_trajectory",qos);
+    firi_trajectory_pub_=create_publisher<Markers>("~/firi_trajectory",qos);
+    comparison_pub_=create_publisher<std_msgs::msg::String>("~/comparison",qos);
+    optimize_sub_=create_subscription<std_msgs::msg::Empty>("~/optimize",1,
+        [this](std_msgs::msg::Empty::ConstSharedPtr){startOptimization();});
+    completion_timer_=create_wall_timer(std::chrono::milliseconds(100),[this]{finishOptimization();});
     corridor_pub_ = create_publisher<Markers>("~/corridor", qos);
     sections_pub_ = create_publisher<Markers>("~/cross_sections", qos);
     map_surface_pub_ = create_publisher<Markers>("~/map_surface", qos);
@@ -160,6 +169,8 @@ class DirectDemo final : public rclcpp::Node {
     RCLCPP_INFO(get_logger(), "shape_mode=%s; local_range=%.2f m",
                 "c3", options_.local_range);
   }
+
+  ~DirectDemo() override {if(cancel_)cancel_->store(true);if(job_.valid())job_.wait();}
 
  private:
   Vec3 posePoint(const geometry_msgs::msg::Pose& pose) const {
@@ -227,11 +238,16 @@ class DirectDemo final : public rclcpp::Node {
     selection_pub_->publish(markers);
   }
   void clearOutput() {
+    ++epoch_;
+    if(cancel_)cancel_->store(true);
+    ready_=false;stored_seed_.clear();stored_corridor_=DisplayCorridor{};stored_firi_={};
+    comparisonState("EMPTY");
     Markers m;
     Marker clear;
     clear.action = Marker::DELETEALL;
     m.markers.push_back(clear);
     corridor_pub_->publish(m);
+    firi_pub_->publish(m);c3_trajectory_pub_->publish(m);firi_trajectory_pub_->publish(m);
     sections_pub_->publish(m);
     nav_msgs::msg::Path p;
     p.header.frame_id = frame_;
@@ -347,7 +363,7 @@ class DirectDemo final : public rclcpp::Node {
           centers.push_back(p);
         }
       if (spheres.empty()) throw std::runtime_error("empty occupied map");
-      map_ = std::make_unique<ObstacleIndex>(std::move(spheres));
+      map_ = std::make_shared<ObstacleIndex>(std::move(spheres));
       ++map_version_;
       map_ms_ = milliseconds(start);
       writePoints(session_ / ("map_" + std::to_string(map_version_) + ".xyz"),
@@ -418,6 +434,7 @@ class DirectDemo final : public rclcpp::Node {
     std::string outcome = "SEARCH_FAILED";
     DisplayResult result;
     double adapter_ms=0;
+    bool valid_seed=false;
     sc::Options request_options = options_;
     if (std::isfinite(cost) && seed.size() >= 2 &&
         (seed.front() - endpoints_[0]).norm() < 1e-7 &&
@@ -426,6 +443,7 @@ class DirectDemo final : public rclcpp::Node {
       for (std::size_t k = 1; k < seed.size(); ++k)
         edges_ok &= search.segmentFree(seed[k - 1], seed[k]);
       if (edges_ok) {
+        valid_seed=true;
         status("GENERATING request=" + std::to_string(id));
         // Match the frozen-input experiments: local boxes provide the real
         // expansion limits, so radius/offset bounds must not clip at 1.5 m.
@@ -453,6 +471,15 @@ class DirectDemo final : public rclcpp::Node {
         outcome=result?"PASS":sc::statusName(result.status);
       } else
         outcome = "SEARCH_EDGE_COLLISION";
+    }
+    double firi_ms=0;
+    if(valid_seed) {
+      try {
+        stored_firi_=demo_comparison::buildFiri(seed,*map_,bounds_,request_options);
+        firi_ms=stored_firi_.milliseconds;
+        stored_corridor_=result.corridor;stored_seed_=seed;stored_dir_=dir;ready_=bool(result);
+        publishFiri();
+      } catch(const std::exception& e) {RCLCPP_WARN(get_logger(),"FIRI: %s",e.what());}
     }
     double length = 0;
     int turns = 0;
@@ -605,6 +632,7 @@ class DirectDemo final : public rclcpp::Node {
            << ",\"obstacles\":" << map_->obstacles().size()
            << ",\"map_build_ms\":" << map_ms_ << ",\"search_ms\":" << search_ms
            << ",\"corridor_ms\":" << result.metrics.total_ms
+           << ",\"firi_ms\":" << firi_ms << ",\"firi_ready\":" << (!stored_firi_.polys.empty()?"true":"false")
            << ",\"render_export_ms\":" << render_ms
            << ",\"total_ms\":" << total_ms << ",\"seed_points\":" << seed.size()
            << ",\"seed_length\":" << length << ",\"turns_over_30deg\":" << turns
@@ -635,7 +663,84 @@ class DirectDemo final : public rclcpp::Node {
     else
       label << "\n" << result.message;
     status(label.str());
+    comparisonState(ready_?"READY":"UNAVAILABLE");
   }
+  void comparisonState(const char* state) {
+    std_msgs::msg::String msg;std::ostringstream out;
+    out<<"{\"state\":\""<<state<<"\",\"request\":"<<request_
+       <<",\"busy\":"<<(job_.valid()?"true":"false")<<",\"ready\":"<<(ready_?"true":"false")<<"}";
+    msg.data=out.str();comparison_pub_->publish(msg);
+  }
+  void publishFiri() {
+    Markers markers;
+    auto mesh=baseMarker("firi_surface",0,Marker::TRIANGLE_LIST);
+    mesh.scale.x=mesh.scale.y=mesh.scale.z=1;
+    mesh.color.r=.08;mesh.color.g=.48;mesh.color.b=.9;mesh.color.a=.10;
+    for(const auto& p:stored_firi_.triangles)mesh.points.push_back(point(p));
+    mesh.colors.assign(mesh.points.size(),mesh.color);markers.markers.push_back(std::move(mesh));
+    auto edges=baseMarker("firi_edges",1,Marker::LINE_LIST);edges.scale.x=.018;
+    edges.color.r=.08;edges.color.g=.38;edges.color.b=.78;edges.color.a=.65;
+    for(const auto& p:stored_firi_.edges)edges.points.push_back(point(p));
+    markers.markers.push_back(std::move(edges));firi_pub_->publish(markers);
+  }
+  void startOptimization() {
+    if(!ready_||job_.valid())return;
+    cancel_=std::make_shared<std::atomic_bool>(false);job_epoch_=epoch_;
+    Markers clear;clear.markers.resize(1);clear.markers.front().action=Marker::DELETEALL;
+    c3_trajectory_pub_->publish(clear);firi_trajectory_pub_->publish(clear);
+    auto seed=stored_seed_;auto corridor=stored_corridor_;
+    demo_comparison::FiriCorridor firi;firi.polys=stored_firi_.polys;
+    auto map=map_;auto bounds=bounds_;double pad=options_.robot_radius+options_.safety_margin;
+    auto cancel=cancel_;
+    job_=std::async(std::launch::async,[seed=std::move(seed),corridor=std::move(corridor),firi=std::move(firi),map,bounds,pad,cancel]{
+      return demo_comparison::optimize(seed,corridor,firi,*map,bounds,pad,cancel);
+    });
+    comparisonState("RUNNING");
+  }
+  void publishTrajectory(const demo_comparison::Trajectory& trajectory,bool c3) {
+    Markers out;auto line=baseMarker(c3?"c3_trajectory":"firi_trajectory",0,Marker::LINE_STRIP);
+    line.scale.x=.10;line.color.a=1;
+    line.color.r=c3?.80:.02;line.color.g=c3?.06:.25;line.color.b=c3?.25:.68;
+    for(const auto& p:trajectory.points)line.points.push_back(point(p));
+    out.markers.push_back(std::move(line));
+    (c3?c3_trajectory_pub_:firi_trajectory_pub_)->publish(out);
+  }
+  void finishOptimization() {
+    if(!job_.valid()||job_.wait_for(std::chrono::seconds(0))!=std::future_status::ready)return;
+    try {
+      auto result=job_.get();
+      if(job_epoch_!=epoch_){comparisonState(ready_?"READY":"EMPTY");return;}
+      publishTrajectory(result.firi,false);publishTrajectory(result.c3,true);
+      auto record=[](const demo_comparison::Trajectory& t) {
+        std::ostringstream s;s<<std::setprecision(12)<<"{\"optimize_ms\":"<<t.optimize_ms
+          <<",\"duration\":"<<t.duration<<",\"length\":"<<t.length<<",\"jerk\":"<<t.jerk
+          <<",\"status\":"<<t.status<<",\"iterations\":"<<t.iterations
+          <<",\"max_violation\":"<<t.max_violation<<",\"penetration\":"<<t.penetration
+          <<",\"sampled_feasible\":"<<(t.feasible?"true":"false")<<"}";return s.str();
+      };
+      std_msgs::msg::String msg;msg.data="{\"state\":\"DONE\",\"ready\":true,\"busy\":false,\"request\":"+std::to_string(request_)+
+          ",\"firi\":"+record(result.firi)+",\"c3\":"+record(result.c3)+"}";
+      comparison_pub_->publish(msg);
+      std::ofstream(stored_dir_/"trajectory_comparison.json")<<msg.data<<'\n';
+      writePoints(stored_dir_/"firi_trajectory.xyz",result.firi.points);
+      writePoints(stored_dir_/"c3_trajectory.xyz",result.c3.points);
+    } catch(const std::exception& e) {
+      RCLCPP_ERROR(get_logger(),"trajectory comparison: %s",e.what());
+      comparisonState(job_epoch_==epoch_?"ERROR":(ready_?"READY":"EMPTY"));
+    }
+  }
+  bool ready_=false;
+  unsigned long epoch_=0,job_epoch_=0;
+  std::vector<Vec3> stored_seed_;
+  DisplayCorridor stored_corridor_;
+  demo_comparison::FiriCorridor stored_firi_;
+  fs::path stored_dir_;
+  std::shared_ptr<std::atomic_bool> cancel_;
+  std::future<demo_comparison::Comparison> job_;
+  rclcpp::TimerBase::SharedPtr completion_timer_;
+  rclcpp::Subscription<std_msgs::msg::Empty>::SharedPtr optimize_sub_;
+  rclcpp::Publisher<Markers>::SharedPtr firi_pub_,c3_trajectory_pub_,firi_trajectory_pub_;
+  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr comparison_pub_;
   std::string frame_, height_mode_;
   double resolution_, height_, reference_clearance_, search_timeout_,
       search_range_, map_ms_ = 0;
@@ -644,7 +749,7 @@ class DirectDemo final : public rclcpp::Node {
   sc::Options options_;
   fs::path session_;
   int map_version_ = 0, request_ = 0;
-  std::unique_ptr<ObstacleIndex> map_;
+  std::shared_ptr<ObstacleIndex> map_;
   sensor_msgs::msg::PointCloud2::ConstSharedPtr last_map_;
   std::vector<Vec3> endpoints_;
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr map_sub_;

@@ -4,18 +4,22 @@
 
 This branch adds a standalone **seed path → C² native cubic elliptical corridor**
 module, without FIRI/polytope generation. It includes continuous support
-certificates with adaptive Bézier subdivision, optimized transverse centers and ellipse orientations, analytic derivatives, a reusable obstacle BVH, CLI/ROS2 interfaces,
+certificates with adaptive Bézier subdivision, free three-dimensional centers and ellipse shapes, analytic derivatives, a reusable obstacle BVH, CLI/ROS2 interfaces,
 tests and reproducible benchmarks. The existing GCOPTER trajectory optimizer is
 unchanged. See [build and usage](SweepCorridor/README.md),
 [query and trajectory validation](docs/SweepCorridor统一查询与轨迹复测.md).
+The current generator optimizes free three-dimensional centers and endpoint
+inclusion; see [free-boundary inflation and paired validation](docs/C3自由边界自然膨胀实验.md).
 
 The integrated demo now uses the original **mockamap + Informed RRT*** search
 with interactive start/goal selection in RViz2. Run
 `gcopter/tools/run_direct_demo.sh` after building the three ROS2 packages.
 See [interactive setup, timings and original-map validation](docs/原始地图交互验证.md).
-The demo uses native C3 with continuous support/full-disk Jacobian certificates,
-without trajectory optimization. The portable [SweepCorridor](SweepCorridor)
+The demo uses native C3 with continuous support/full-disk Jacobian certificates.
+The portable [SweepCorridor](SweepCorridor)
 header library exposes `Generator`, `Corridor`, `Query` and `InverseQuery`.
+The RViz panel now compares C3/FIRI corridors and optimizes both trajectories on demand, with independent layer switches. See [interactive comparison](docs/同输入走廊与轨迹交互演示.md).
+
 H5 code and the final paired comparison are preserved on
 `archive/h5-sweep-corridor` (`bd6d81f`).
 

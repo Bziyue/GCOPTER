@@ -5,6 +5,7 @@
 #include "SweepCorridor/detail/CubicOptimizerImpl.hpp"
 #include "SweepCorridor/detail/CubicRefinement.hpp"
 #include "SweepCorridor/detail/SupportPruning.hpp"
+#include "SweepCorridor/detail/CubicSolve.hpp"
 #include "SweepCorridor/detail/CubicGeneratorImpl.hpp"
 #include <utility>
 

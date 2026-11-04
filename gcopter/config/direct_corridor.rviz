@@ -103,6 +103,36 @@ Visualization Manager:
       Durability Policy: Transient Local
       Reliability Policy: Reliable
       History Policy: Keep Last
+  - Class: rviz_default_plugins/MarkerArray
+    Name: FIRI corridor
+    Enabled: true
+    Value: true
+    Topic:
+      Value: /direct_demo/firi_corridor
+      Depth: 1
+      Durability Policy: Transient Local
+      Reliability Policy: Reliable
+      History Policy: Keep Last
+  - Class: rviz_default_plugins/MarkerArray
+    Name: C3 trajectory
+    Enabled: true
+    Value: true
+    Topic:
+      Value: /direct_demo/c3_trajectory
+      Depth: 1
+      Durability Policy: Transient Local
+      Reliability Policy: Reliable
+      History Policy: Keep Last
+  - Class: rviz_default_plugins/MarkerArray
+    Name: FIRI trajectory
+    Enabled: true
+    Value: true
+    Topic:
+      Value: /direct_demo/firi_trajectory
+      Depth: 1
+      Durability Policy: Transient Local
+      Reliability Policy: Reliable
+      History Policy: Keep Last
   Enabled: true
   Global Options:
     Background Color: 244; 247; 251

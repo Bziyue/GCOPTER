@@ -5,7 +5,7 @@ void banded() {
   using SweepCorridor::internal::cubic::BandedSPD;
   for(int n:{20,41,103}) {
     BandedSPD band(n);Eigen::MatrixXd dense=Eigen::MatrixXd::Zero(n,n);
-    for(int i=0;i<n;++i)for(int d=1;d<=std::min(i,19);++d) {
+    for(int i=0;i<n;++i)for(int d=1;d<=std::min(i,BandedSPD::width);++d) {
       double v=.01*std::sin(i*31+d*13);band.data(i,d)=v;dense(i,i-d)=dense(i-d,i)=v;
     }
     for(int i=0;i<n;++i)band.data(i,0)=dense(i,i)=1+dense.row(i).cwiseAbs().sum();

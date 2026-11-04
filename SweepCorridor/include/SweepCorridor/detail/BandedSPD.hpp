@@ -9,7 +9,7 @@ struct BandedSPD {
   Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> data,lower;
   Eigen::VectorXd scale;
   int n=0;
-  static constexpr int width=19; // Four cubic controls, five variables per control.
+  static constexpr int width=23; // Four cubic controls, six variables per control.
   BandedSPD()=default;
   explicit BandedSPD(int size):data(Eigen::MatrixXd::Zero(size,width+1)),n(size){}
   void add(int i,int j,double v){if(i<j)std::swap(i,j);data(i,i-j)+=v;}

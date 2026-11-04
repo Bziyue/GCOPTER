@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(SweepCorridor VERSION 0.2.0 LANGUAGES CXX)
+project(SweepCorridor VERSION 0.3.0 LANGUAGES CXX)
 find_package(Eigen3 3.3 REQUIRED NO_MODULE)
 add_library(SweepCorridor INTERFACE)
 add_library(SweepCorridor::SweepCorridor ALIAS SweepCorridor)
