@@ -11,7 +11,7 @@ template<int D> inline Section evaluate(const Curve<D,V9>& p,double t,double h) 
 inline Section Geometry::section(double u) const {
   const int i=std::clamp(int(std::upper_bound(breaks.begin(),breaks.end(),u)-breaks.begin())-1,0,int(pieces())-1);
   const double h=breaks[i+1]-breaks[i],t=(u-breaks[i])/h;
-  return evaluate<3>(curve<3>(i),t,h);
+  return evaluate<3>(curve(i),t,h);
 }
 inline Geometry Geometry::fromCubic(const CubicBasis& b,const std::vector<V9>& values) {
   Geometry g;g.breaks=b.breaks;g.controls.resize(4*b.spans.size());

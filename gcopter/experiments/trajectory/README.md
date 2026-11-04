@@ -96,3 +96,5 @@ OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 prlimit --as=536870912 --cpu=30 \
   docs/validation/trajectory_comparison/final_dense.json \
   docs/figures/trajectory_comparison.png
 ```
+
+C3-only replay uses the same executable with `SWEEP_C3_ONLY=1`; `compare_sweep.py` sets it automatically. Default runs compare C3 and FIRI.

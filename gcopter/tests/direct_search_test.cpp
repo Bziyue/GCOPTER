@@ -3,6 +3,7 @@
 
 #include "gcopter/direct_search_map.hpp"
 #include "gcopter/sfc_gen.hpp"
+using namespace SweepCorridor;
 using namespace gcopter::direct;
 void require(bool x, const char* why) {
   if (!x) throw std::runtime_error(why);

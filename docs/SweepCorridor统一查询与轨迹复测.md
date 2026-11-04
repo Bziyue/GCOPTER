@@ -132,5 +132,5 @@ python3 gcopter/experiments/trajectory/compare_sweep.py \
 - [生成命令、输入哈希与二进制哈希](validation/sweep_query/generation/manifest.json)
 - [轨迹复测命令与初值](validation/sweep_query/trajectory/manifest.json)
 - [计时诊断记录](validation/sweep_query/profile/manifest.json)
-- [几何系数与轨迹 CSV 归档](validation/sweep_query/raw_csv.tar.gz)
-- [源码快照](validation/sweep_query/source_snapshot.tar.gz)
+- [几何系数与轨迹 CSV 归档](https://github.com/Bziyue/GCOPTER/blob/62645e2fa2b7205d2a7492c05305734dd8534021/docs/validation/sweep_query/raw_csv.tar.gz)
+- [源码快照](https://github.com/Bziyue/GCOPTER/blob/62645e2fa2b7205d2a7492c05305734dd8534021/docs/validation/sweep_query/source_snapshot.tar.gz)

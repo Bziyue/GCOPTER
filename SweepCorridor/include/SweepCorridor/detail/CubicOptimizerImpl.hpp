@@ -168,7 +168,7 @@ inline CubicEnergy::CubicEnergy(const CubicModel& m,double length,const Optimize
   for(int i=0;i<m.basis.count;++i)for(int k=0;k<2;++k)quadratic.add(5*i+k,5*i+k,2*settings.offset_weight*m.basis.weight(i));
 }
 inline CubicProblem::CubicProblem(const CubicModel& m,const std::vector<detail::SupportPlane>& cover,
-    double length,const CubicOptions& o,const OptimizerSettings& s,
+    double length,const GeometryOptions& o,const OptimizerSettings& s,
     std::shared_ptr<const CubicEnergy> shared_energy,const CubicProblem* geometric_template,
     const ProgressConstraints& progress)
     :model(m),options(o),settings(s),

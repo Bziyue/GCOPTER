@@ -11,7 +11,7 @@
 #include "gcopter/sfc_gen.hpp"
 
 namespace {
-using namespace gcopter::direct;
+using namespace SweepCorridor;
 using Clock = std::chrono::steady_clock;
 using Polys = traj_opt_components::PolyhedraH;
 double ms(Clock::time_point start) {

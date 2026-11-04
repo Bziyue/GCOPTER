@@ -1,5 +1,0 @@
-[ 25%] Building CXX object CMakeFiles/sweep_tests.dir/tests/odr.cpp.o
-[ 50%] Building CXX object CMakeFiles/sweep_tests.dir/tests/queries.cpp.o
-[ 75%] Building CXX object CMakeFiles/sweep_tests.dir/tests/test.cpp.o
-[100%] Linking CXX executable sweep_tests
-[100%] Built target sweep_tests

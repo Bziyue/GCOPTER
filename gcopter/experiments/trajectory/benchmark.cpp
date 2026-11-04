@@ -150,22 +150,20 @@ int main(int argc,char**argv) {try {
   options.robot_radius=.2;options.safety_margin=.05;options.local_range=3;options.local_progress=7;
   double diagonal=0;for(auto b:expansionBoxes(seed,bounds,3,.252))diagonal=std::max(diagonal,(b.bounds.upper-b.bounds.lower).norm());
   options.max_radius=.5*diagonal+.001;options.max_offset=diagonal+.001;
-  auto direct=generate(seed,index,bounds,options);
+  auto direct=SweepCorridor::Generator(options).generate(seed,index,bounds);
   if(!direct)throw std::runtime_error(direct.message);
   if(!SweepCorridor::certify(direct.corridor,direct.support_planes).safe())throw std::runtime_error("certificate failed");
-#ifdef SWEEP_COMPARISON
+  const bool c3_only=std::getenv("SWEEP_C3_ONLY")!=nullptr;
   FiriResult firi;int disconnected=0,empty_polys=0;double seed_outside=0;
-  constexpr int method_count=1;
-#else
-  auto firi=generateFiri(seed,points,bounds,radius,.25,true,3);
-  int disconnected=0,empty_polys=0;Vec3 interior;
-  for(const auto& h:firi.polys)if(!geo_utils::findInterior(h,interior))++empty_polys;
-  for(size_t i=1;i<firi.polys.size();++i)if(!geo_utils::overlap(firi.polys[i-1],firi.polys[i]))++disconnected;
-  double seed_outside=0;Vec3 grad_seed;
-  for(size_t i=1;i<seed.size();++i)for(int k=0;k<=100;++k)
-    seed_outside=std::max(seed_outside,polyDistance(firi.polys,seed[i-1]+(seed[i]-seed[i-1])*(k/100.),grad_seed));
-  constexpr int method_count=2;
-#endif
+  if(!c3_only) {
+    firi=generateFiri(seed,points,bounds,radius,.25,true,3);
+    Vec3 interior,grad_seed;
+    for(const auto& h:firi.polys)if(!geo_utils::findInterior(h,interior))++empty_polys;
+    for(size_t i=1;i<firi.polys.size();++i)if(!geo_utils::overlap(firi.polys[i-1],firi.polys[i]))++disconnected;
+    for(size_t i=1;i<seed.size();++i)for(int k=0;k<=100;++k)
+      seed_outside=std::max(seed_outside,polyDistance(firi.polys,seed[i-1]+(seed[i]-seed[i-1])*(k/100.),grad_seed));
+  }
+  const int method_count=c3_only?1:2;
   std::vector<double> arc{0};for(size_t i=1;i<seed.size();++i)arc.push_back(arc.back()+(seed[i]-seed[i-1]).norm());
   const int pieces=std::max(2,int(std::ceil(arc.back()/spacing)));
   Opt::Problem problem;problem.waypoints.resize(pieces+1,3);
@@ -279,9 +277,7 @@ int main(int argc,char**argv) {try {
        <<",\"duration_s\":"<<duration<<",\"length_m\":"<<length<<",\"jerk_energy\":"<<run.optimizer.energy()<<",\"max_speed\":"<<max_speed<<",\"max_acceleration\":"<<max_acc
        <<",\"max_body_rate\":"<<max_rate<<",\"max_tilt\":"<<max_tilt<<",\"min_thrust\":"<<min_thrust<<",\"max_thrust\":"<<max_thrust
        <<",\"optimization_sample_violation_m\":"<<optimization_sample_violation<<",\"max_plane_error_m\":"<<max_plane<<",\"max_corridor_error_m\":"<<max_corridor<<",\"max_penetration_m\":"<<penetration
-#ifndef SWEEP_COMPARISON
        <<",\"firi_disconnected_neighbors\":"<<disconnected<<",\"firi_empty_polys\":"<<empty_polys<<",\"firi_seed_outside_m\":"<<seed_outside
-#endif
        <<",\"inverse_failures\":"<<inverse_failures<<",\"gradient_relative_error\":"<<gradient_error<<",\"sampled_feasible\":"<<(feasible?"true":"false")
        <<",\"shape_mode\":\""<<geometry_mode<<"\"}\n";out.flush();
     std::cerr<<name<<" rep "<<rep<<" "<<optimize_ms<<"ms feasible="<<feasible<<" plane="<<max_plane<<" corridor="<<max_corridor<<" collision="<<penetration<<'\n';

@@ -228,8 +228,8 @@ $$V_{\rm sweep}=\pi\int(M_0\times M_1)^Tc'\,du.$$
 成本，同时控制局部曲率峰值，继续只用走廊自身的速度、体积和几何质量选型。
 
 - [测量汇总与全部时间序列](validation/native_splines_round5/results.json)
-- [正式生成、几何和历史轨迹原始数据](validation/native_splines_round5/formal_raw.tar.gz)
-- [所有筛选实验](validation/native_splines_round5/exploration_raw.tar.gz)
+- [正式生成、几何和历史轨迹原始数据](https://github.com/Bziyue/GCOPTER/blob/62645e2fa2b7205d2a7492c05305734dd8534021/docs/validation/native_splines_round5/formal_raw.tar.gz)
+- [所有筛选实验](https://github.com/Bziyue/GCOPTER/blob/62645e2fa2b7205d2a7492c05305734dd8534021/docs/validation/native_splines_round5/exploration_raw.tar.gz)
 - [独立走廊几何检查](validation/native_splines_round5/corridor_audit.json)
 - [复现实验说明](../direct_corridor/experiments/native_splines/README.md)
 

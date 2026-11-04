@@ -17,7 +17,7 @@
   <depend>visualization_msgs</depend>
   <depend>ompl</depend>
   <depend>nav_msgs</depend>
-  <depend>gcopter_direct_corridor</depend>
+  <depend>SweepCorridor</depend>
   <depend>rviz_common</depend>
   <depend>pluginlib</depend>
   <exec_depend>mockamap</exec_depend>

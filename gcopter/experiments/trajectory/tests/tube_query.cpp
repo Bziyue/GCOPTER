@@ -9,7 +9,7 @@ int main(){
   // A narrow, regular tube is required for a meaningful local implicit-gradient
   // check. Wide curved tubes can switch inverse branches under perturbation.
   Options options;options.max_radius=0.2;options.max_offset=0.1;options.budget_ms=10000;
-  auto result=generate({Vec3(-3,0,1),Vec3(-1,1,1.5),Vec3(1,0,2),Vec3(3,1,2)},obstacles,bounds,options);
+  auto result=Generator(options).generate({Vec3(-3,0,1),Vec3(-1,1,1.5),Vec3(1,0,2),Vec3(3,1,2)},obstacles,bounds);
   require(bool(result),"generate curved test corridor");
   SweepCorridor::Query prepared(result.corridor);
   SweepCorridor::InverseQuery fast(result.corridor);

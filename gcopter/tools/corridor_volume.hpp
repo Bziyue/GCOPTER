@@ -14,10 +14,10 @@
 #include <stdexcept>
 #include <vector>
 
-#include "gcopter/direct_corridor.hpp"
+#include "SweepCorridor.hpp"
 
 namespace corridor_volume {
-using namespace gcopter::direct;
+using namespace SweepCorridor;
 inline double choose(int n, int k) {
   double a = 1;
   for (int j = 1; j <= k; ++j) a *= double(n + 1 - j) / j;

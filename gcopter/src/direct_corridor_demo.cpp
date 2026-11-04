@@ -27,6 +27,7 @@
 #include "gcopter/voxel_map.hpp"
 #include <SweepCorridor.hpp>
 
+using namespace SweepCorridor;
 using namespace gcopter::direct;
 using Clock = std::chrono::steady_clock;
 namespace fs = std::filesystem;

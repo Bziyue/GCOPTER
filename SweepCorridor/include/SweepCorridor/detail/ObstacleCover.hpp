@@ -5,7 +5,7 @@
 #include "LazyObstacles.hpp"
 #include "Runtime.hpp"
 #include "CubicMetrics.hpp"
-#include "CubicOptions.hpp"
+#include "Types.hpp"
 #include <memory>
 #include <chrono>
 
@@ -228,7 +228,7 @@ template<int D> struct MapCover {
     StageTimer total(profile);
     const double pad=options.robot_radius+options.safety_margin+options.certificate_margin;
     for(int i=0;i<int(g.pieces());++i) {
-      deadline.check();const Patch p{i,0,1,g.curve<D>(i)};
+      deadline.check();const Patch p{i,0,1,g.curve(i)};
       for(int axis=0;axis<3;++axis){limit(p,Vec3::Unit(axis),bounds.upper[axis]-pad);limit(p,-Vec3::Unit(axis),-bounds.lower[axis]-pad);}
       const auto& span=layout.spans[i];
       for(size_t j=span.begin;j<span.end;++j) {

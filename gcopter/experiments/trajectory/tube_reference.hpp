@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 #pragma once
-#include "gcopter/direct_corridor.hpp"
+#include "SweepCorridor.hpp"
 #include <Eigen/Geometry>
 #include <Eigen/Cholesky>
 #include <algorithm>
 #include <cstdint>
-using namespace gcopter::direct;
+using namespace SweepCorridor;
 struct TubeValue {
   double radial=0, plane=0, u=0;
   Vec3 grad_radial=Vec3::Zero(), grad_plane=Vec3::Zero();

@@ -86,8 +86,7 @@ target_link_libraries(your_target PRIVATE SweepCorridor::SweepCorridor)
 ```
 
 Installation supports `find_package(SweepCorridor REQUIRED)` with the same target.
-The GCOPTER repository's `direct_corridor` folder is now an adapter only; it is
-not needed when copying this library to another repository.
+GCOPTER links directly to this library; no forwarding package is required.
 
 ## Build and test
 
@@ -108,3 +107,19 @@ The implementation separates geometry/certificates from the C3 banded solver. `d
 configuration or extension API. Historical projection, Minkowski, jet-fitting
 and tuning experiments remain available in GCOPTER commit `92da988` and archived
 reports, not in this portable package.
+
+## Standalone tools and RViz2
+
+Enable `SWEEP_BUILD_TOOLS` for `sweep_cli` and `sweep_synthetic`, or
+`SWEEP_BUILD_BENCHMARKS` for the frozen-input benchmark. These are off by default.
+
+Build the ROS host serially (source your ROS installation first):
+
+```bash
+MAKEFLAGS=-j1 CMAKE_BUILD_PARALLEL_LEVEL=1 prlimit --as=4294967296 -- colcon build --cmake-clean-cache --executor sequential --packages-select SweepCorridor gcopter mockamap --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
+gcopter/tools/run_direct_demo.sh scene:=perlin
+gcopter/tools/run_direct_demo.sh scene:=maze search_timeout:=3.0
+```
+
+The demo retains map generation, path search and RViz2 start/goal picking.
+The former standalone map/path subscriber node has been removed.

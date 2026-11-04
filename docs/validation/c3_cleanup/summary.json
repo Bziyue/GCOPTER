@@ -1,0 +1,21 @@
+{
+  "baseline_commit": "62645e2",
+  "cases": 67,
+  "exact": true,
+  "successful": 65,
+  "before_ms": 1812.985576,
+  "after_ms": 1831.303016,
+  "peak_rss_kib": 31452,
+  "tests": {
+    "library": "passed",
+    "installed_consumer": "passed",
+    "trajectory_ctest": "5/5",
+    "host_ctest": "2/2",
+    "perlin": "passed",
+    "maze": "passed",
+    "runtime_modes": [
+      "C3+FIRI",
+      "C3"
+    ]
+  }
+}

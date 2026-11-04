@@ -1,0 +1,43 @@
+-- The CXX compiler identification is GNU 15.2.0
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Found ompl: /home/zdp/ForCodex/GCOPTER/.scratch/ompl/usr/include/ompl-1.6;/usr/include;/usr/include/eigen3;/usr/include/hdf5/openmpi;/usr/lib/x86_64-linux-gnu/openmpi/lib/../../fortran/gfortran-mod-16/openmpi;/usr/lib/x86_64-linux-gnu/openmpi/include;/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi
+-- Configuring done (0.1s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/zdp/ForCodex/GCOPTER/.scratch/c3_cleanup/trajectory
+[  8%] Building CXX object CMakeFiles/trajectory_comparison.dir/benchmark.cpp.o
+[ 16%] Linking CXX executable trajectory_comparison
+[ 16%] Built target trajectory_comparison
+[ 25%] Building CXX object CMakeFiles/library_regression.dir/tests/library_regression.cpp.o
+[ 33%] Linking CXX executable library_regression
+[ 33%] Built target library_regression
+[ 41%] Building CXX object CMakeFiles/native_optimizer.dir/tests/native_optimizer.cpp.o
+[ 50%] Linking CXX executable native_optimizer
+[ 50%] Built target native_optimizer
+[ 58%] Building CXX object CMakeFiles/lbfgs_recovery.dir/tests/lbfgs_recovery.cpp.o
+[ 66%] Linking CXX executable lbfgs_recovery
+[ 66%] Built target lbfgs_recovery
+[ 75%] Building CXX object CMakeFiles/bezier_constraints.dir/tests/bezier_constraints.cpp.o
+[ 83%] Linking CXX executable bezier_constraints
+[ 83%] Built target bezier_constraints
+[ 91%] Building CXX object CMakeFiles/tube_query_test.dir/tests/tube_query.cpp.o
+[100%] Linking CXX executable tube_query_test
+[100%] Built target tube_query_test
+Test project /home/zdp/ForCodex/GCOPTER/.scratch/c3_cleanup/trajectory
+    Start 1: library_regression
+1/5 Test #1: library_regression ...............   Passed    0.00 sec
+    Start 2: native_optimizer
+2/5 Test #2: native_optimizer .................   Passed    0.00 sec
+    Start 3: lbfgs_recovery
+3/5 Test #3: lbfgs_recovery ...................   Passed    0.00 sec
+    Start 4: bezier_constraints
+4/5 Test #4: bezier_constraints ...............   Passed    0.00 sec
+    Start 5: tube_query_test
+5/5 Test #5: tube_query_test ..................   Passed    0.00 sec
+
+100% tests passed, 0 tests failed out of 5
+
+Total Test time (real) =   0.01 sec

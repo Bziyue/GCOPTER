@@ -1,0 +1,10 @@
+{
+  "binaries": {
+    "before": "bcfd70a9832bbfd46481244d069f8168aa178016fd1f3ce2fb070151c8dfc446",
+    "after": "3cf4609f6b7f002a2d2ca479405b9db5c7ca862643dce7e0e04e8e1bda55d16e"
+  },
+  "inputs": ".scratch/native_splines/e1/inputs/manifest.json",
+  "repeats": 7,
+  "memory_limit": 4294967296,
+  "cpu": 2
+}

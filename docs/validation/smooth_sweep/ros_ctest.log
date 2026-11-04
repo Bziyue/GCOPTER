@@ -1,9 +1,0 @@
-Test project /home/zdp/ForCodex/GCOPTER/build/gcopter
-    Start 1: direct_search_test
-1/2 Test #1: direct_search_test ...............   Passed    0.24 sec
-    Start 2: corridor_volume_test
-2/2 Test #2: corridor_volume_test .............   Passed    0.01 sec
-
-100% tests passed, 0 tests failed out of 2
-
-Total Test time (real) =   0.25 sec

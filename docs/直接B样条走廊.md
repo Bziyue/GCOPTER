@@ -3,7 +3,7 @@
 > 历史阶段记录：以下实现或计时对应旧版 B 样条/离线实验。当前主生成器和 ROS 演示已使用 [五次 Hermite](五次Hermite走廊.md)，最新结果见 [验证报告](Hermite走廊验证.md)。交互启动方式保持一致。
 
 
-状态：已实现的第一版；从 `Bziyue/GCOPTER` 的 `ros2` 提交 `5f44faf88c486cb39dbd087afa3dbfb837fad05d` 新建分支。模块独立于原 GCOPTER 的 FIRI / SFC / 轨迹优化链路。构建入口见 [模块 README](../direct_corridor/README.md)。
+状态：已实现的第一版；从 `Bziyue/GCOPTER` 的 `ros2` 提交 `5f44faf88c486cb39dbd087afa3dbfb837fad05d` 新建分支。模块独立于原 GCOPTER 的 FIRI / SFC / 轨迹优化链路。构建入口见 [模块 README](https://github.com/Bziyue/GCOPTER/blob/62645e2/direct_corridor/README.md)。
 
 ## 目标与取舍
 
@@ -104,4 +104,4 @@ c' 为二次、M 两列为三次，D 最高八次。通过 Bernstein 乘积公�
 
 - 基础仓库：<https://github.com/Bziyue/GCOPTER/tree/ros2>，上述提交。
 - 概念参考：Arrizabalaga / Manchester / Ryll, *Differentiable Collision-Free Parametric Corridors*, <https://arxiv.org/abs/2407.12283>。
-- 新模块为独立实现，不复制 CorrGen 或 DiffPlannerSwarm 的算法源码；使用 Eigen 数值类型及标准 B 样条、凸支撑和 Bernstein 性质。保留原仓库所有作者及许可，新模块采用 MIT，见 [LICENSE](../direct_corridor/LICENSE)。
+- 新模块为独立实现，不复制 CorrGen 或 DiffPlannerSwarm 的算法源码；使用 Eigen 数值类型及标准 B 样条、凸支撑和 Bernstein 性质。保留原仓库所有作者及许可，新模块采用 MIT，见 [LICENSE](https://github.com/Bziyue/GCOPTER/blob/62645e2/direct_corridor/LICENSE)。

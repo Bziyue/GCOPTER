@@ -59,7 +59,7 @@ int main(int argc, char** argv) {
     FiriResult firi;
     std::vector<double> ht, ft, ct, et, st;
     for (int rep = -1; rep < repeats; ++rep) {
-      auto h = [&] { cubic = generate(seed, map, bounds, options); };
+      auto h = [&] { cubic = SweepCorridor::Generator(options).generate(seed, map, bounds); };
       auto f = [&] {
         firi = generateFiri(seed, points, bounds, obstacle_radius,
                             options.robot_radius + options.safety_margin, solid,

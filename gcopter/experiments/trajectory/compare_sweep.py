@@ -33,7 +33,7 @@ def main():
                 if digest != c[kind + '_sha256']:
                     raise ValueError(f'Input hash mismatch: {c[kind]}')
                 checked.add(c[kind])
-    env = dict(os.environ, OMP_NUM_THREADS='1', OPENBLAS_NUM_THREADS='1', MKL_NUM_THREADS='1')
+    env = dict(os.environ, OMP_NUM_THREADS='1', OPENBLAS_NUM_THREADS='1', MKL_NUM_THREADS='1', SWEEP_C3_ONLY='1')
     for key in ('GCOPTER_PROFILE', 'SWEEP_QUERY_MEASURE'):
         env.pop(key, None)
     if args.stage == 'profile':

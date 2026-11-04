@@ -6,7 +6,7 @@
 #include <chrono>
 namespace SweepCorridor::internal::cubic {
 inline void clearanceInitialization(CubicModel& model,const ObstacleIndex& index,
-    const Bounds& bounds,const CubicOptions& o,double fraction) {
+    const Bounds& bounds,const GeometryOptions& o,double fraction) {
   const double pad=o.robot_radius+o.safety_margin+o.certificate_margin;
   std::vector<int> ids;
   for(int i=0;i<model.basis.count;++i) {
@@ -20,7 +20,7 @@ inline void clearanceInitialization(CubicModel& model,const ObstacleIndex& index
   }
 }
 inline CubicResult generateCubic(const std::vector<Vec3>& input_seed,const ObstacleIndex& index,
-                          const Bounds& bounds,const CubicOptions& o,const OptimizerSettings& solver) {
+                          const Bounds& bounds,const GeometryOptions& o,const OptimizerSettings& solver) {
   CubicResult result;const auto start=Clock::now();
   // Validate at this boundary; the model, objective and Newton loop consume
   // the resulting finite, nonduplicate seed without repeating these checks.
@@ -32,15 +32,15 @@ inline CubicResult generateCubic(const std::vector<Vec3>& input_seed,const Obsta
      o.certificate_depth<0||o.certificate_depth>20||
      !std::isfinite(o.robot_radius)||!(o.robot_radius>=0)||!std::isfinite(o.safety_margin)||!(o.safety_margin>=0)||
      !std::isfinite(o.certificate_margin)||!(o.certificate_margin>=0)||!std::isfinite(o.frame_smoothing)||!(o.frame_smoothing>=0)) {
-    result.status="INVALID_INPUT";result.message="invalid cubic generator options/bounds";return result;
+    result.status=Status::InvalidInput;result.message="invalid cubic generator options/bounds";return result;
   }
   std::vector<Vec3> seed;
   for(const auto& p:input_seed) {
-    if(!p.allFinite()){result.status="INVALID_INPUT";return result;}
+    if(!p.allFinite()){result.status=Status::InvalidInput;return result;}
     if(seed.empty()||(p-seed.back()).norm()>1e-10)seed.push_back(p);
   }
   double length=0;for(size_t i=1;i<seed.size();++i)length+=(seed[i]-seed[i-1]).norm();
-  if(seed.size()<2 || !std::isfinite(length) || length<=0){result.status="INVALID_INPUT";return result;}
+  if(seed.size()<2 || !std::isfinite(length) || length<=0){result.status=Status::InvalidInput;return result;}
   const int refinements=o.max_refinements;
   Deadline deadline(o.budget_ms,start);
   try {
@@ -113,7 +113,7 @@ inline CubicResult generateCubic(const std::vector<Vec3>& input_seed,const Obsta
         for(int repair=0;repair<3;++repair) {
           timer.restart();
           const auto g=model.geometry(candidate);std::vector<int> failed;
-          for(int i=0;i<int(g.pieces());++i){Certificate c;if(!jacobianCertificate<3>(g.curve<3>(i),c))failed.push_back(i);}
+          for(int i=0;i<int(g.pieces());++i){Certificate c;if(!jacobianCertificate<3>(g.curve(i),c))failed.push_back(i);}
           result.optimizer.certificate_ms+=timer.elapsed();
           if(failed.empty())break;
           progress.spans.insert(progress.spans.end(),failed.begin(),failed.end());
@@ -153,12 +153,12 @@ inline CubicResult generateCubic(const std::vector<Vec3>& input_seed,const Obsta
       }
       // Every accepted iterate (including volume refinement) is certified.
       // Export that state without repeating the same full certificate.
-      result.corridor=model.geometry();result.cover=std::move(cover);result.status="SUCCESS";result.message.clear();break;
+      result.corridor=model.geometry();result.cover=std::move(cover);result.status=Status::Success;result.message.clear();break;
     }
-    if(result.status!="SUCCESS")result.status="INITIALIZATION_FAILED";
-  }catch(const DeadlineExceeded&){result.status="TIMEOUT";result.message="cubic generation deadline";}
-   catch(const Failure& error){result.status=statusName(error.status);result.message=error.message;}
-   catch(const std::exception& error){result.status="NUMERICAL_FAILURE";result.message=error.what();}
+    if(result.status!=Status::Success)result.status=Status::InitializationFailed;
+  }catch(const DeadlineExceeded&){result.status=Status::Timeout;result.message="cubic generation deadline";}
+   catch(const Failure& error){result.status=error.status;result.message=error.message;}
+   catch(const std::exception& error){result.status=Status::NumericalFailure;result.message=error.what();}
   result.total_ms=elapsedMs(start);return result;
 }
 }

@@ -2,7 +2,7 @@
 #pragma once
 #include "GeometryData.hpp"
 #include "CubicMetrics.hpp"
-#include "CubicOptions.hpp"
+#include "Types.hpp"
 #include "BandedSPD.hpp"
 #include "Runtime.hpp"
 #include <cstdint>
@@ -36,7 +36,7 @@ struct CubicProblem {
     bool compact();
     void accumulate(const Vec3& v,double mu,double slack,Eigen::VectorXd& gradient,BandedSPD& hessian)const;
   };
-  const CubicModel& model;const CubicOptions& options;OptimizerSettings settings;
+  const CubicModel& model;const GeometryOptions& options;OptimizerSettings settings;
   std::vector<Cut> cuts; // Progress cones only; geometric rows live in groups.
   struct Support {
     Vec3 normal;double bound;bool redundant=false;
@@ -83,7 +83,7 @@ struct CubicProblem {
   const BandedSPD& quadratic;
   const Eigen::VectorXd& linear;
   CubicProblem(const CubicModel& m,const std::vector<detail::SupportPlane>& cover,
-               double length,const CubicOptions& o,const OptimizerSettings& s,
+               double length,const GeometryOptions& o,const OptimizerSettings& s,
                std::shared_ptr<const CubicEnergy> shared_energy={},
                const CubicProblem* geometric_template=nullptr,
                const ProgressConstraints& progress={});

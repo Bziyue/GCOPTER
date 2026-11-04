@@ -73,7 +73,7 @@ struct GeometryOptions {
   // Seed-segment AABBs expand by local_range; long edges split at local_progress.
   double local_range = 0;
   double local_progress = 7;
-  double frame_smoothing = 0; // Arc-length filter scale; zero uses seed tangents.
+  double frame_smoothing = 1.5; // Arc-length filter scale; zero uses seed tangents.
   int certificate_depth = 9;
   int max_refinements = 6;
   std::size_t max_controls = 20000; // B-spline control points, not export rows.
@@ -86,7 +86,21 @@ enum class Status {
   DegeneratePath,
   Capacity,
   Timeout,
-  VerificationFailed
+  VerificationFailed,
+  InitializationFailed,
+  NumericalFailure
 };
-const char* statusName(Status status);
+inline const char* statusName(Status s) {
+  switch(s) {
+#define SWEEP_STATUS(x,y) case Status::x:return y;
+    SWEEP_STATUS(Success,"SUCCESS") SWEEP_STATUS(InvalidInput,"INVALID_INPUT")
+    SWEEP_STATUS(SeedCollision,"SEED_COLLISION") SWEEP_STATUS(InsufficientClearance,"INSUFFICIENT_CLEARANCE")
+    SWEEP_STATUS(DegeneratePath,"DEGENERATE_PATH") SWEEP_STATUS(Capacity,"CAPACITY")
+    SWEEP_STATUS(Timeout,"TIMEOUT") SWEEP_STATUS(VerificationFailed,"VERIFICATION_FAILED")
+    SWEEP_STATUS(InitializationFailed,"INITIALIZATION_FAILED") SWEEP_STATUS(NumericalFailure,"NUMERICAL_FAILURE")
+#undef SWEEP_STATUS
+  }
+  return "NUMERICAL_FAILURE";
+}
+
 } // namespace SweepCorridor::internal

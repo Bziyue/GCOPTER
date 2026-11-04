@@ -6,7 +6,7 @@ This branch adds a standalone **seed path → C² native cubic elliptical corrid
 module, without FIRI/polytope generation. It includes continuous support
 certificates with adaptive Bézier subdivision, optimized transverse centers and ellipse orientations, analytic derivatives, a reusable obstacle BVH, CLI/ROS2 interfaces,
 tests and reproducible benchmarks. The existing GCOPTER trajectory optimizer is
-unchanged. See [build and usage](direct_corridor/README.md),
+unchanged. See [build and usage](SweepCorridor/README.md),
 [query and trajectory validation](docs/SweepCorridor统一查询与轨迹复测.md).
 
 The integrated demo now uses the original **mockamap + Informed RRT*** search

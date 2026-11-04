@@ -29,28 +29,9 @@ struct Options : internal::GeometryOptions {
               local_range=3;frame_smoothing=1.5; }
   bool profile=false;
 };
-enum class Status { Success, InvalidInput, SeedCollision, InsufficientClearance,
-  DegeneratePath, Capacity, Timeout, VerificationFailed, InitializationFailed,
-  NumericalFailure };
-inline const char* statusName(Status s) {
-  switch(s) {
-#define SWEEP_STATUS(x,y) case Status::x:return y;
-    SWEEP_STATUS(Success,"SUCCESS") SWEEP_STATUS(InvalidInput,"INVALID_INPUT")
-    SWEEP_STATUS(SeedCollision,"SEED_COLLISION") SWEEP_STATUS(InsufficientClearance,"INSUFFICIENT_CLEARANCE")
-    SWEEP_STATUS(DegeneratePath,"DEGENERATE_PATH") SWEEP_STATUS(Capacity,"CAPACITY")
-    SWEEP_STATUS(Timeout,"TIMEOUT") SWEEP_STATUS(VerificationFailed,"VERIFICATION_FAILED")
-    SWEEP_STATUS(InitializationFailed,"INITIALIZATION_FAILED") SWEEP_STATUS(NumericalFailure,"NUMERICAL_FAILURE")
-#undef SWEEP_STATUS
-  }
-  return "NUMERICAL_FAILURE";
-}
+using Status = internal::Status;
+using internal::statusName;
 namespace detail {
-inline Status status(const std::string& name) {
-  for(auto s:{Status::Success,Status::InvalidInput,Status::SeedCollision,Status::InsufficientClearance,
-      Status::DegeneratePath,Status::Capacity,Status::Timeout,Status::VerificationFailed,
-      Status::InitializationFailed})if(name==statusName(s))return s;
-  return Status::NumericalFailure;
-}
 // Shared exact differential of the affine-disc section, with world and u jets.
 inline Differential differential(const Section& s,const Vec3& x) {
   const auto& m = s.shape;
@@ -188,8 +169,8 @@ public:
   Result generate(const std::vector<Vec3>& seed,const ObstacleIndex& map,const Bounds& bounds)const {
     Result out;
       internal::cubic::OptimizerSettings settings;settings.profile=options_.profile;
-      auto r=internal::cubic::generateCubic(seed,map,bounds,internal::cubic::CubicOptions(options_),settings);
-      out.status=detail::status(r.status);out.message=std::move(r.message);
+      auto r=internal::cubic::generateCubic(seed,map,bounds,options_,settings);
+      out.status=r.status;out.message=std::move(r.message);
       out.metrics.total_ms=r.total_ms;out.metrics.controls=r.optimizer.controls;
       out.metrics.constraints=r.optimizer.constraints;out.metrics.iterations=r.optimizer.steps;
       out.metrics.refinements=r.refinements;out.metrics.solver=std::move(r.optimizer);

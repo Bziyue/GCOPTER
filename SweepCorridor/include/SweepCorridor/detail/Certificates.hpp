@@ -77,11 +77,11 @@ template<int D> inline bool jacobianCertificate(const Curve<D,V9>& p,Certificate
 inline Certificate certify(const Geometry& g,const std::vector<detail::SupportPlane>& cover,int support_depth=9) {
   Certificate out;
   for(const auto& c:cover) {
-    const bool ok=supportCertificate<3>(restrictCurve<3>(g.curve<3>(c.span),c.begin,c.end),c.normal,c.bound,support_depth,out);
+    const bool ok=supportCertificate<3>(restrictCurve<3>(g.curve(c.span),c.begin,c.end),c.normal,c.bound,support_depth,out);
     out.support_failed+=!ok;
   }
   for(int i=0;i<int(g.pieces());++i) {
-    const bool ok=jacobianCertificate<3>(g.curve<3>(i),out);
+    const bool ok=jacobianCertificate<3>(g.curve(i),out);
     out.jacobian_failed+=!ok;
   }
   out.support=out.support_failed==0;out.jacobian=out.jacobian_failed==0;return out;

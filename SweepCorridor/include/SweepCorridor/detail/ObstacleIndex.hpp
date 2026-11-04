@@ -78,26 +78,4 @@ inline void ObstacleIndex::query(const Vec3& lower, const Vec3& upper,
   }
 }
 
-inline const char* statusName(Status s) {
-  switch (s) {
-    case Status::Success:
-      return "SUCCESS";
-    case Status::InvalidInput:
-      return "INVALID_INPUT";
-    case Status::SeedCollision:
-      return "SEED_COLLISION";
-    case Status::InsufficientClearance:
-      return "INSUFFICIENT_CLEARANCE";
-    case Status::DegeneratePath:
-      return "DEGENERATE_PATH";
-    case Status::Capacity:
-      return "CAPACITY";
-    case Status::Timeout:
-      return "TIMEOUT";
-    case Status::VerificationFailed:
-      return "VERIFICATION_FAILED";
-  }
-  return "UNKNOWN";
-}
-
 }

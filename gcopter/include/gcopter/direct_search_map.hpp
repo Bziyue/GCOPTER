@@ -2,9 +2,13 @@
 #pragma once
 #include <algorithm>
 #include <cmath>
-#include <gcopter/direct_corridor.hpp>
+#include <SweepCorridor.hpp>
 
 namespace gcopter::direct {
+using SweepCorridor::Vec3;
+using SweepCorridor::Bounds;
+using SweepCorridor::Sphere;
+using SweepCorridor::ObstacleIndex;
 /** Read-only adapter for GCOPTER's OMPL search. The reference clearance is
  * reserved during search only; the corridor uses the physical padding itself.
  * All closed search edges are checked against the same solid sphere snapshot.
