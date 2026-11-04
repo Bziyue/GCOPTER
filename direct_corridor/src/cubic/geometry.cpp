@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-#include "geometry.hpp"
+#include "gcopter/cubic/geometry.hpp"
 #include <Eigen/Cholesky>
 #include <Eigen/SparseCholesky>
 #include <Eigen/Eigenvalues>

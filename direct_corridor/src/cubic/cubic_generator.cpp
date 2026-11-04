@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MIT
-#include "cubic_generator.hpp"
+#include "gcopter/cubic/cubic_generator.hpp"
+#include "cubic_optimizer.hpp"
+#include "obstacle_cover.hpp"
 #include <chrono>
 namespace gcopter::direct::native {
 static void clearanceInitialization(CubicModel& model,const ObstacleIndex& index,
-    const Bounds& bounds,const Options& o,double fraction) {
+    const Bounds& bounds,const CubicOptions& o,double fraction) {
   const double pad=o.robot_radius+o.safety_margin+o.certificate_margin;
   std::vector<int> ids;
   for(int i=0;i<model.basis.count;++i) {
@@ -17,7 +19,7 @@ static void clearanceInitialization(CubicModel& model,const ObstacleIndex& index
   }
 }
 CubicResult generateCubic(const std::vector<Vec3>& input_seed,const ObstacleIndex& index,
-                          const Bounds& bounds,const Options& o,const OptimizerSettings& solver,
+                          const Bounds& bounds,const CubicOptions& o,const OptimizerSettings& solver,
                           const Geometry* projected_reference) {
   CubicResult result;const auto start=Clock::now();
   // Validate at this boundary; the model, objective and Newton loop consume

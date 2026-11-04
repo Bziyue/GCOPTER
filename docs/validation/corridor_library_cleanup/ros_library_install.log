@@ -1,0 +1,48 @@
+-- Install configuration: "Release"
+-- Installing: /home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/lib/gcopter_direct_corridor/direct_corridor_node
+-- Set non-toolchain portion of runtime path of "/home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/lib/gcopter_direct_corridor/direct_corridor_node" to ""
+-- Up-to-date: /home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/share/gcopter_direct_corridor/environment/library_path.sh
+-- Up-to-date: /home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/share/gcopter_direct_corridor/environment/library_path.dsv
+-- Installing: /home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/lib/libgcopter_direct_corridor.so
+-- Installing: /home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/lib/libgcopter_cubic_corridor.so
+-- Set non-toolchain portion of runtime path of "/home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/lib/libgcopter_cubic_corridor.so" to ""
+-- Installing: /home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/lib/gcopter_direct_corridor/direct_corridor_cli
+-- Set non-toolchain portion of runtime path of "/home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/lib/gcopter_direct_corridor/direct_corridor_cli" to ""
+-- Installing: /home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/lib/gcopter_direct_corridor/direct_corridor_benchmark
+-- Set non-toolchain portion of runtime path of "/home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/lib/gcopter_direct_corridor/direct_corridor_benchmark" to ""
+-- Up-to-date: /home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/include
+-- Up-to-date: /home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/include/gcopter
+-- Installing: /home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/include/gcopter/direct_corridor.hpp
+-- Installing: /home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/include/gcopter/support_plane.hpp
+-- Installing: /home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/include/gcopter/cubic
+-- Installing: /home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/include/gcopter/cubic/geometry.hpp
+-- Installing: /home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/include/gcopter/cubic/cubic_generator.hpp
+-- Installing: /home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/include/gcopter/cubic/metrics.hpp
+-- Installing: /home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/include/gcopter/cubic/options.hpp
+-- Installing: /home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/include/gcopter/cubic/cubic_certificates.hpp
+-- Installing: /home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/include/gcopter/cubic/cubic_basis.hpp
+-- Up-to-date: /home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/include/gcopter/corridor_evaluator.hpp
+-- Old export file "/home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/lib/cmake/gcopter_direct_corridor/direct_corridorTargets.cmake" will be replaced.  Removing files [/home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/lib/cmake/gcopter_direct_corridor/direct_corridorTargets-release.cmake].
+-- Installing: /home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/lib/cmake/gcopter_direct_corridor/direct_corridorTargets.cmake
+-- Installing: /home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/lib/cmake/gcopter_direct_corridor/direct_corridorTargets-release.cmake
+-- Up-to-date: /home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/share/ament_index/resource_index/package_run_dependencies/gcopter_direct_corridor
+-- Up-to-date: /home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/share/ament_index/resource_index/parent_prefix_path/gcopter_direct_corridor
+-- Up-to-date: /home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/share/gcopter_direct_corridor/environment/ament_prefix_path.sh
+-- Up-to-date: /home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/share/gcopter_direct_corridor/environment/ament_prefix_path.dsv
+-- Up-to-date: /home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/share/gcopter_direct_corridor/environment/path.sh
+-- Up-to-date: /home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/share/gcopter_direct_corridor/environment/path.dsv
+-- Up-to-date: /home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/share/gcopter_direct_corridor/local_setup.bash
+-- Up-to-date: /home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/share/gcopter_direct_corridor/local_setup.fish
+-- Up-to-date: /home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/share/gcopter_direct_corridor/local_setup.sh
+-- Up-to-date: /home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/share/gcopter_direct_corridor/local_setup.zsh
+-- Up-to-date: /home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/share/gcopter_direct_corridor/local_setup.dsv
+-- Up-to-date: /home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/share/gcopter_direct_corridor/package.dsv
+-- Up-to-date: /home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/share/ament_index/resource_index/packages/gcopter_direct_corridor
+-- Old export file "/home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/share/gcopter_direct_corridor/cmake/direct_corridorTargetsExport.cmake" will be replaced.  Removing files [/home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/share/gcopter_direct_corridor/cmake/direct_corridorTargetsExport-release.cmake].
+-- Installing: /home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/share/gcopter_direct_corridor/cmake/direct_corridorTargetsExport.cmake
+-- Installing: /home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/share/gcopter_direct_corridor/cmake/direct_corridorTargetsExport-release.cmake
+-- Up-to-date: /home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/share/gcopter_direct_corridor/cmake/ament_cmake_export_dependencies-extras.cmake
+-- Up-to-date: /home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/share/gcopter_direct_corridor/cmake/ament_cmake_export_targets-extras.cmake
+-- Up-to-date: /home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/share/gcopter_direct_corridor/cmake/gcopter_direct_corridorConfig.cmake
+-- Up-to-date: /home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/share/gcopter_direct_corridor/cmake/gcopter_direct_corridorConfig-version.cmake
+-- Up-to-date: /home/zdp/ForCodex/GCOPTER/install/gcopter_direct_corridor/share/gcopter_direct_corridor/package.xml

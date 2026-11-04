@@ -16,6 +16,7 @@ ROOT=Path(__file__).resolve().parents[3]
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output",required=True)
+    parser.add_argument("--baseline",default=".scratch/native_splines/default_baseline/native_spline_benchmark")
     parser.add_argument("--cases",default="all")
     parser.add_argument("--configurations",default="frozen,clean")
     parser.add_argument("--repeats",type=int,default=7)
@@ -32,13 +33,13 @@ def main():
     names=args.configurations.split(",")
     configurations={"frozen":{},"clean":{},"profiled":{"NATIVE_PROFILE":"1"}}
     assert all(name in configurations for name in names)
-    binaries={name:ROOT/(".scratch/native_splines/default_baseline/native_spline_benchmark" if name.startswith("frozen")
+    binaries={name:ROOT/(args.baseline if name.startswith("frozen")
                         else ".scratch/native_splines/build/native_spline_benchmark") for name in names}
     manifest=dict(source_commit=subprocess.check_output(["git","rev-parse","HEAD"],cwd=ROOT,text=True).strip(),
                   configurations=configurations,repeats=args.repeats,blocks=args.blocks,cpu=args.cpu,address_space_limit_bytes=4*1024**3,
                   binaries={name:hashlib.sha256(p.read_bytes()).hexdigest() for name,p in binaries.items()},
                   sources={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest()
-                           for p in Path(__file__).parent.rglob("*") if p.suffix in (".cpp",".hpp",".py")},cases=[])
+                           for tree in (Path(__file__).parent,ROOT/"direct_corridor/src",ROOT/"direct_corridor/include") for p in tree.rglob("*") if p.suffix in (".cpp",".hpp",".py")},cases=[])
     summary={name:[] for name in names}
     for row in inputs:
         case=row["case"]

@@ -36,23 +36,7 @@ target_link_libraries(global_planning
 target_link_directories(global_planning PRIVATE ${OMPL_LIBRARY_DIRS})
 
 add_executable(direct_corridor_demo src/direct_corridor_demo.cpp)
-set(NATIVE_CORRIDOR_DIR ../direct_corridor/experiments/native_splines)
-add_library(direct_corridor_demo_cubic STATIC
-  ${NATIVE_CORRIDOR_DIR}/geometry.cpp
-  ${NATIVE_CORRIDOR_DIR}/cubic_optimizer.cpp
-  ${NATIVE_CORRIDOR_DIR}/cubic_diagnostics.cpp
-  ${NATIVE_CORRIDOR_DIR}/cubic_refinement.cpp
-  ${NATIVE_CORRIDOR_DIR}/support_pruning.cpp
-  ${NATIVE_CORRIDOR_DIR}/cubic_generator.cpp)
-target_include_directories(direct_corridor_demo_cubic PUBLIC ${NATIVE_CORRIDOR_DIR})
-target_link_libraries(direct_corridor_demo_cubic PUBLIC gcopter::direct_corridor)
-add_library(direct_corridor_demo_shape STATIC
-  ../direct_corridor/experiments/shape_spline/refit.cpp)
-target_include_directories(direct_corridor_demo_shape PUBLIC
-  ../direct_corridor/experiments/shape_spline)
-target_link_libraries(direct_corridor_demo_shape PUBLIC gcopter::direct_corridor)
-target_link_libraries(direct_corridor_demo PRIVATE direct_corridor_demo_shape
-  direct_corridor_demo_cubic
+target_link_libraries(direct_corridor_demo PRIVATE gcopter::cubic_corridor
   ${OMPL_LIBRARIES} rclcpp::rclcpp ${std_msgs_TARGETS} ${geometry_msgs_TARGETS}
   ${sensor_msgs_TARGETS} ${visualization_msgs_TARGETS} ${nav_msgs_TARGETS})
 target_link_directories(direct_corridor_demo PRIVATE ${OMPL_LIBRARY_DIRS})

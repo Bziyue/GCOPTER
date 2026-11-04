@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MIT
 #pragma once
-#include "cubic_certificates.hpp"
-#include "../../src/hermite_optimizer.hpp"
+#include "gcopter/cubic/cubic_certificates.hpp"
+#include "../hermite_optimizer.hpp"
 #include "lazy_obstacles.hpp"
 #include "runtime.hpp"
+#include "gcopter/cubic/metrics.hpp"
+#include "gcopter/cubic/options.hpp"
 #include <memory>
 #include <chrono>
 
@@ -22,13 +24,6 @@ template<int D> struct GeometryPatch {
     return {{span,begin,mid,p.first},{span,mid,end,p.second}};
   }
 };
-struct CoverMetrics {
-  double query_ms=0, separation_ms=0, total_ms=0;
-  double topology_ms=0;
-  int topology_builds=0,reused_cover_spans=0;
-  size_t priority_evaluations=0;
-  Metrics primitives;
-};
 // Valid for one seed/knots/bounds/options tuple. The generator owns a fresh
 // layout per knot refinement, while changing geometry reuses these intervals.
 // Dynamic support tests and separation planes are still computed each pass.
@@ -37,7 +32,7 @@ struct CoverLayout {
   struct Span {size_t begin,end;Vec3 lower,upper;};
   std::vector<Span> spans;
   std::vector<Part> parts;
-  CoverLayout(const std::vector<double>& breaks,const std::vector<Vec3>& seed,const Bounds& bounds,const Options& options) {
+  CoverLayout(const std::vector<double>& breaks,const std::vector<Vec3>& seed,const Bounds& bounds,const GeometryOptions& options) {
     const double pad=options.robot_radius+options.safety_margin+options.certificate_margin;
     std::vector<detail::LocalBox> boxes;
     double length=0;Vec3 a,b=seed.front();
@@ -67,12 +62,12 @@ struct CoverLayout {
 // packets. Only the polynomial control count and emission of raw planes differ.
 template<int D> struct MapCover {
   using Patch=GeometryPatch<D>;
-  const ObstacleIndex& map;const Bounds& bounds;const Options& options;
+  const ObstacleIndex& map;const Bounds& bounds;const GeometryOptions& options;
   QueryCache& query_cache;CoverMetrics& timings;Metrics& metrics;
   Deadline& deadline;
   bool profile;
   std::vector<detail::SupportPlane> planes;
-  MapCover(const ObstacleIndex& m,const Bounds& b,const Options& o,QueryCache& cache,
+  MapCover(const ObstacleIndex& m,const Bounds& b,const GeometryOptions& o,QueryCache& cache,
            CoverMetrics& t,Deadline& budget,bool profiling)
     :map(m),bounds(b),options(o),query_cache(cache),timings(t),metrics(t.primitives),deadline(budget),profile(profiling){}
   void add(const Patch& p,const Vec3& n,double h) {planes.push_back({p.span,p.begin,p.end,n,h});}
@@ -250,7 +245,7 @@ template<int D> struct MapCover {
   }
 };
 inline std::vector<detail::SupportPlane> mapCover(const Geometry& g,const ObstacleIndex& map,
-    const Bounds& bounds,const Options& options,QueryCache& cache,CoverMetrics& metrics,
+    const Bounds& bounds,const GeometryOptions& options,QueryCache& cache,CoverMetrics& metrics,
     Deadline& deadline,const CoverLayout& layout,bool profile=false) {
   if(g.degree==3){MapCover<3> c(map,bounds,options,cache,metrics,deadline,profile);c.build(g,layout);return c.planes;}
   MapCover<5> c(map,bounds,options,cache,metrics,deadline,profile);c.build(g,layout);return c.planes;

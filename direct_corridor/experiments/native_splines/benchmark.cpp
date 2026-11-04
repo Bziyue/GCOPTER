@@ -2,6 +2,7 @@
 #include "cubic_certificates.hpp"
 #include "obstacle_cover.hpp"
 #include "cubic_generator.hpp"
+#include "cubic_optimizer.hpp"
 #include <ctime>
 #include "corridor_volume.hpp"
 #include <chrono>
@@ -157,7 +158,7 @@ int main(int argc,char** argv) {
       for(int rep=-1;rep<repeats;++rep) {
         solver.check_gradients=rep==-1;
         const auto cpu_start=std::clock();
-        auto result=ns::generateCubic(seed,index,bounds,o,solver,method?&base:nullptr);
+        auto result=ns::generateCubic(seed,index,bounds,ns::CubicOptions(o),solver,method?&base:nullptr);
         const double cpu_ms=1000.*(std::clock()-cpu_start)/CLOCKS_PER_SEC;
         const auto& m=result.optimizer;const auto& c=result.cover_metrics;
         log<<"{\"kind\":\"generation\",\"model\":\""<<name<<"\",\"repeat\":"<<rep
@@ -222,10 +223,10 @@ int main(int argc,char** argv) {
     for(int i=0;i<int(names.size());++i) {
       ns::QueryCache cache;ns::CoverMetrics timing;start=Clock::now();
       ns::Deadline deadline(10000);
-      const ns::CoverLayout layout(variants[i].breaks,seed,bounds,o);
+      const ns::CoverLayout layout(variants[i].breaks,seed,bounds,ns::CubicOptions(o));
       log<<"{\"kind\":\"fresh_map_certificate\",\"model\":\""<<names[i]<<"\"";
       try {
-        const auto fresh=ns::mapCover(variants[i],index,bounds,o,cache,timing,deadline,layout,true);
+        const auto fresh=ns::mapCover(variants[i],index,bounds,ns::CubicOptions(o),cache,timing,deadline,layout,true);
         const auto c=ns::certify(variants[i],fresh);
         log<<",\"status\":\""<<(c.safe()?"SUCCESS":"CERTIFICATE_FAILED")<<"\"";certificate(log,c);
       }catch(const ns::DeadlineExceeded&){log<<",\"status\":\"TIMEOUT\"";}

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
-#include "../../src/hermite_optimizer.hpp"
+#include "../hermite_optimizer.hpp"
 #include <memory>
 #include <queue>
 

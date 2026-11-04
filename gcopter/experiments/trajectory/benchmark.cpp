@@ -156,7 +156,8 @@ int main(int argc,char**argv) {try {
   std::filesystem::path dir=argv[3];std::filesystem::create_directories(dir);
   std::vector<Sphere> spheres;for(auto p:points)spheres.push_back({p,radius});
   auto clock=Clock::now();ObstacleIndex index(std::move(spheres));double index_ms=ms(clock);
-  Options options;options.control_spacing=.4;options.min_radius=.03;options.budget_ms=10000;
+  Options options;options.frame_smoothing=0;options.section_smoothing=0;options.jet_smoothing=0;
+  options.certify_jacobian=false;options.initial_iterations=12;options.control_spacing=.4;options.min_radius=.03;options.budget_ms=10000;
   options.robot_radius=.2;options.safety_margin=.05;options.local_range=3;options.local_progress=7;
   double diagonal=0;for(auto b:expansionBoxes(seed,bounds,3,.252))diagonal=std::max(diagonal,(b.bounds.upper-b.bounds.lower).norm());
   options.max_radius=.5*diagonal+.001;options.max_offset=diagonal+.001;

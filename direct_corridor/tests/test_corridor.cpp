@@ -19,8 +19,11 @@ void success(const Result& r) {
   check(bool(r), std::string(statusName(r.status)) + ": " + r.message);
 }
 Bounds box() { return {Vec3(-30, -30, -30), Vec3(30, 30, 30)}; }
-Options opts() {
+// Explicit historical fixture for the low-level Hermite regression cases.
+Options legacyOptions() {
   Options o;
+  o.frame_smoothing=0;o.section_smoothing=0;o.jet_smoothing=0;
+  o.certify_jacobian=false;o.initial_iterations=12;
   o.robot_radius = .05;
   o.safety_margin = .01;
   o.budget_ms = 10000;
@@ -98,8 +101,22 @@ void derivatives(const Corridor& c) {
 }  // namespace
 int main() {
   {
+    Options defaults;
+    auto explicit_smooth=defaults;
+    explicit_smooth.frame_smoothing=1.5;explicit_smooth.section_smoothing=.2;
+    explicit_smooth.jet_smoothing=.01;explicit_smooth.certify_jacobian=true;
+    explicit_smooth.initial_iterations=8;
     const std::vector<Vec3> seed{{-3,0,0},{0,.5,0},{3,1,0}};
-    ObstacleIndex map({});auto options=opts();
+    ObstacleIndex map({});
+    const auto a=generate(seed,map,box(),defaults),b=generate(seed,map,box(),explicit_smooth);
+    success(a);success(b);
+    check(a.corridor.centerControls()==b.corridor.centerControls(),"H5 default smooth centers");
+    check(a.corridor.shapeControls()==b.corridor.shapeControls(),"H5 default smooth shapes");
+  }
+
+  {
+    const std::vector<Vec3> seed{{-3,0,0},{0,.5,0},{3,1,0}};
+    ObstacleIndex map({});auto options=legacyOptions();
     const auto plain=generate(seed,map,box(),options);success(plain);
     options.profile=true;
     const auto profiled=generate(seed,map,box(),options);success(profiled);
@@ -214,7 +231,7 @@ int main() {
     // Independent finite differences of the full barrier objective check the
     // closed-form logdet derivatives together with SOC and coupling terms.
     {
-      Options options = opts();
+      Options options = legacyOptions();
       options.section_smoothing = .2;
       detail::Stop stop = [] {};
       detail::Optimizer optimizer(options, stop);
@@ -291,7 +308,7 @@ int main() {
       check(both == std::vector<int>({0, 1, 2, 3, 44, 45, 46, 47, 48, 49}),
             "polar keeps ambiguous boundary and handles right endpoints");
     }
-    Options o = opts();
+    Options o = legacyOptions();
     ObstacleIndex empty({});
     // Positive center Jacobian alone misses a fold inside the disk. Here
     // J(u,z)=1+1.875*a*z0 at the span midpoint, while J(u,0)=1 everywhere.
@@ -347,7 +364,7 @@ int main() {
     derivatives(straight.corridor);
     // Analytic empty rectangular tunnel with a 2000:1 axis ratio. Constraint
     // curvature has very different scales, but the large axis must still grow.
-    Options slender = opts();
+    Options slender = legacyOptions();
     slender.robot_radius = slender.safety_margin = 0;
     slender.numerical_guard = 1e-10;
     slender.certificate_margin = 1e-9;
@@ -364,7 +381,7 @@ int main() {
           "equilibrated solver expands highly anisotropic section");
     // Local range is a world-axis box expansion, not an ellipse-radius cap.
     // Exercise a 7 m box transition inside a nonaligned Hermite interval.
-    Options ranged = opts();
+    Options ranged = legacyOptions();
     ranged.max_radius = 10;
     ranged.max_offset = 20;
     ranged.local_range = 3;
@@ -528,17 +545,17 @@ int main() {
     check(generate(route, wall, box(), o).status == Status::Capacity,
           "capacity");
     o.max_controls = 20000;
-    o = opts();
+    o = legacyOptions();
     o.max_constraints = 1;
     check(generate({Vec3(-3, 0, 0), Vec3(3, 0, 0)}, wall, box(), o).status ==
               Status::Capacity,
           "constraint capacity");
-    o = opts();
+    o = legacyOptions();
     o.min_radius = .5;
     auto tooNarrow = generate({Vec3(-3, 0, 0), Vec3(3, 0, 0)}, local, box(), o);
     check(!tooNarrow && tooNarrow.corridor.pieces() == 0,
           "positive minimum size is not bypassed");
-    o = opts();
+    o = legacyOptions();
     o.max_radius = -1;
     check(generate(route, empty, box(), o).status == Status::InvalidInput,
           "invalid options");
@@ -569,7 +586,7 @@ int main() {
     }
     // Slender safe polyline whose coarse rounded control hull approaches an
     // obstacle.
-    o = opts();
+    o = legacyOptions();
     o.control_spacing = 1.;
     o.max_radius = .3;
     ObstacleIndex corner({{Vec3(.65, .35, 0), .1}});
@@ -590,7 +607,7 @@ int main() {
     // Independent random cross-section oracle; generated obstacles are not used
     // to tune expectations, and any returned success must exclude every input
     // sphere.
-    o = opts();
+    o = legacyOptions();
     o.max_radius = .7;
     int randomSuccesses = 0;
     for (int trial = 0; trial < 24; ++trial) {

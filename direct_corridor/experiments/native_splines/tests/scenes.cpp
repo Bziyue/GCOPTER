@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
 #include "cubic_generator.hpp"
+#include "cubic_optimizer.hpp"
+#include "obstacle_cover.hpp"
 #include <cassert>
 #include <iostream>
 using namespace gcopter::direct;
@@ -20,7 +22,7 @@ int main() {
   scenes.push_back(helix);
   Scene overlap;overlap.name="close_nonadjacent_legs";overlap.seed={{-3,0,0},{0,0,0},{0,.4,0},{-3,.4,0}};scenes.push_back(overlap);
   for(const auto& scene:scenes) {
-    Options o;o.control_spacing=.4;o.min_radius=.03;o.max_radius=3;o.max_offset=3;
+    CubicOptions o;o.control_spacing=.4;o.min_radius=.03;o.max_radius=3;o.max_offset=3;
     o.robot_radius=.2;o.safety_margin=.05;
     o.local_range=3;o.frame_smoothing=1.5;o.budget_ms=3000;o.max_refinements=3;
     ObstacleIndex index(scene.spheres);Bounds bounds{Vec3::Constant(-10),Vec3::Constant(10)};

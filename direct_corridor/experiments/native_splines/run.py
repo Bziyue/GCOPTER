@@ -37,7 +37,8 @@ def main():
     manifest["binary_sha256"] = hashlib.sha256(binary.read_bytes()).hexdigest()
     manifest["sources_sha256"] = {
         str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
-        for p in pathlib.Path(__file__).parent.rglob("*")
+        for tree in (pathlib.Path(__file__).parent, ROOT / "direct_corridor/src", ROOT / "direct_corridor/include")
+        for p in tree.rglob("*")
         if p.is_file() and p.suffix in {".hpp", ".cpp", ".py", ".txt"}}
     cache = binary.parent / "CMakeCache.txt"
     manifest["build_config"] = [line for line in cache.read_text().splitlines()

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
-#include "../../src/generation_pipeline.hpp"
+#include "gcopter/support_plane.hpp"
 #include <chrono>
 #include <stdexcept>
 

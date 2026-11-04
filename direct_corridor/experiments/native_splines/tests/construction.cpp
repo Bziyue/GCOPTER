@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
 #include "cubic_generator.hpp"
+#include "cubic_optimizer.hpp"
+#include "obstacle_cover.hpp"
 #include <cassert>
 #include <cstring>
 #include <iostream>
@@ -25,7 +27,7 @@ int main() {
   for(double x=-5;x<=5;x+=.5)for(double z=-1;z<=2;z+=.5)for(double sign:{-1.,1.})
     obstacles.push_back({Vec3(x,2*sign,z),.2});
   ObstacleIndex index(obstacles);Bounds bounds{Vec3(-8,-6,-5),Vec3(8,6,5)};
-  Options options;OptimizerSettings settings;
+  CubicOptions options;OptimizerSettings settings;
   options.max_radius=3;options.max_offset=3;options.local_range=3;options.local_progress=3;
   options.robot_radius=.2;options.safety_margin=.05;options.budget_ms=3000;
   auto model=CubicModel::fromSeed(seed,.5,.3,1.5,{0,.07,.13,.31,.4,.63,.89,1});

@@ -98,35 +98,37 @@ class Corridor {
   std::vector<HermiteNode> nodes_;
 };
 
-struct Options {
-  bool profile = false; // Optional stage timers; total time and deadlines remain active.
+// Geometry and resource inputs shared by the C3 and H5 generators.
+// Lengths are in metres; the generation budget is in milliseconds.
+struct GeometryOptions {
   double control_spacing = 0.5;
-  double min_radius =
-      0.02;  // native optimizer floor, not a floor after optional jet smoothing
+  double min_radius = 0.02; // Optimizer floor, before H5 jet smoothing.
   double max_radius = 1.5;
   double robot_radius = 0.2;
   double safety_margin = 0.02;
-  double numerical_guard = 1e-8;
+  double certificate_margin = 0.002; // Additional metric margin.
   double budget_ms = 1000;
-  double max_offset = 1.5;  // transverse center displacement at Hermite nodes
-  // Optional seed-segment AABBs, expanded by local_range in each world axis.
-  // Zero disables these limits. Long seed edges are split at local_progress.
+  double max_offset = 1.5; // Transverse center displacement.
+  // Seed-segment AABBs expand by local_range; long edges split at local_progress.
+  // H5 accepts zero to disable local boxes; C3 requires a positive range.
   double local_range = 0;
   double local_progress = 7;
-  // Arc-length scale for the section-normal filter (metres); zero uses the
-  // original seed tangents. The center reference itself is unchanged.
-  double frame_smoothing = 0;
-  double section_smoothing = 0; // neighboring offset/shape coupling weight
-  bool certify_jacobian = false; // continuous full-disk Bernstein cone test
-  double jet_smoothing = 0;  // radius reserve fraction for shared cubic jets; refilled afterward
-  int initial_iterations = 12;
-  double certificate_margin =
-      .002;  // additional metric margin, not a radius scale
-  int inflation_iterations = 2;
+  double frame_smoothing = 0; // Arc-length filter scale; zero uses seed tangents.
   int certificate_depth = 9;
   int max_refinements = 6;
-  std::size_t max_controls =
-      20000;  // limit on Hermite nodes, not exported rows
+  std::size_t max_controls = 20000; // C3 control points or H5 nodes, not export rows.
+};
+// H5 defaults match the established smooth generation pipeline.
+struct Options : GeometryOptions {
+  Options() { frame_smoothing = 1.5; }
+  explicit Options(const GeometryOptions& geometry) : GeometryOptions(geometry) {}
+  bool profile = false; // Stage timers; total time and deadlines remain active.
+  double numerical_guard = 1e-8;
+  double section_smoothing = 0.2; // Neighboring offset/shape coupling.
+  double jet_smoothing = 0.01; // Radius reserve for shared jets; refilled afterward.
+  bool certify_jacobian = true; // Continuous full-disk Bernstein cone certificate.
+  int initial_iterations = 8;
+  int inflation_iterations = 2;
   std::size_t max_constraints = 2000000;
   std::function<bool()> cancelled;
 };

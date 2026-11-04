@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include "geometry.hpp"
-#include "../../src/generation_pipeline.hpp"
+#include "gcopter/support_plane.hpp"
 #include <limits>
 
 namespace gcopter::direct::native {

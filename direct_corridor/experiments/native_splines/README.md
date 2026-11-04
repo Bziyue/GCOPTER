@@ -1,7 +1,7 @@
 # Native C3 corridor generation
 
-This module generates a continuously certified C² corridor directly from a seed
-path. The RViz2 demo uses `generateNative()` with one fixed default algorithm; see
+The production C3 library generates a continuously certified C² corridor directly
+from a seed path. This directory contains its benchmarks and regression tests. The RViz2 demo uses `generateNative()` with one fixed default algorithm; see
 [interactive commands](../../../docs/C3交互可视化.md). H5 remains available through
 its separate `generate()` entry and as a projection quality reference.
 
@@ -13,17 +13,25 @@ certificates. Each volume-refinement update follows the same acceptance rule.
 
 ## Implementation
 
-| File | Responsibility |
+Production headers are installed under `gcopter/cubic/`; implementation files
+live in `direct_corridor/src/cubic/`. Applications link `gcopter::cubic_corridor`.
+Tests and benchmarks link that same library, with private headers exposed only
+to the experiment targets. ROS no longer builds a second copy of C3 sources.
+
+| Location | Responsibility |
 | --- | --- |
-| `cubic_basis.hpp`, `geometry.*` | Exact extraction, geometry, degree-aware import/export |
-| `cubic_generator.*` | Input validation, initialization, inflation and certified acceptance |
-| `obstacle_cover.hpp`, `lazy_obstacles.hpp` | Cached local-box layout, BVH queries and dynamic separation |
-| `cubic_optimizer.*` | Shared immutable geometric constraints, progress cones, grouped Newton kernel |
-| `support_pruning.cpp` | Projected candidate selection with a sufficient 3D implication proof |
-| `cubic_refinement.cpp` | Cached exact line model and certified swept-volume refinement |
-| `cubic_diagnostics.cpp` | Independent dense derivatives and finite-difference checks |
-| `runtime.hpp` | Optional stage profiling and generation deadline |
-| `cubic_query.hpp` | Native cubic evaluation and section inversion |
+| `include/gcopter/cubic/cubic_generator.hpp` | Public generation and result interface |
+| `include/gcopter/cubic/options.hpp` | C3 geometric inputs, without H5 solver parameters |
+| `include/gcopter/cubic/geometry.hpp` | Geometry, exact basis conversion and import/export |
+| `src/cubic/cubic_generator.cpp` | Initialization, inflation and certified acceptance |
+| `src/cubic/obstacle_cover.hpp` | Shared layout, BVH queries and dynamic separation |
+| `src/cubic/cubic_optimizer.*` | Geometric constraints, progress cones and Newton kernel |
+| `src/cubic/support_pruning.cpp` | Sufficient 3D support implication proof |
+| `src/cubic/cubic_refinement.cpp` | Exact line model and certified volume refinement |
+| `src/cubic/cubic_diagnostics.cpp` | Independent dense derivatives and finite differences |
+
+Paths in this table are relative to `direct_corridor/`. Projection and
+representation comparisons remain in this experiment harness.
 
 A fixed knot/model layout owns one coverage layout and one bending-energy
 matrix. Initialization, the first solve and progress repairs share immutable

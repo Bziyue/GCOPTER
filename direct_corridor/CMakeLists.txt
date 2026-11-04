@@ -9,6 +9,15 @@ target_include_directories(gcopter_direct_corridor PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
 target_link_libraries(gcopter_direct_corridor PUBLIC Eigen3::Eigen)
 target_compile_options(gcopter_direct_corridor PRIVATE -Wall -Wextra -Wpedantic)
+add_library(gcopter_cubic_corridor
+  src/cubic/geometry.cpp src/cubic/cubic_optimizer.cpp
+  src/cubic/cubic_diagnostics.cpp src/cubic/cubic_refinement.cpp
+  src/cubic/support_pruning.cpp src/cubic/cubic_generator.cpp)
+add_library(gcopter::cubic_corridor ALIAS gcopter_cubic_corridor)
+set_target_properties(gcopter_cubic_corridor PROPERTIES EXPORT_NAME cubic_corridor)
+target_compile_features(gcopter_cubic_corridor PUBLIC cxx_std_17)
+target_link_libraries(gcopter_cubic_corridor PUBLIC gcopter_direct_corridor)
+target_compile_options(gcopter_cubic_corridor PRIVATE -Wall -Wextra -Wpedantic)
 include(CTest)
 if(BUILD_TESTING)
   add_executable(direct_corridor_tests tests/test_corridor.cpp)
@@ -55,7 +64,7 @@ if(DIRECT_CORRIDOR_BUILD_ROS2)
   ament_export_dependencies(Eigen3)
   ament_export_targets(direct_corridorTargets HAS_LIBRARY_TARGET NAMESPACE gcopter::)
 endif()
-install(TARGETS gcopter_direct_corridor EXPORT direct_corridorTargets
+install(TARGETS gcopter_direct_corridor gcopter_cubic_corridor EXPORT direct_corridorTargets
   ARCHIVE DESTINATION lib LIBRARY DESTINATION lib)
 install(TARGETS direct_corridor_cli direct_corridor_benchmark DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY include/ DESTINATION include)

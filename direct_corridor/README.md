@@ -4,7 +4,7 @@
 
 实现、数学证书、输出 v2 格式和边界见 [设计说明](../docs/五次Hermite走廊.md)，同地图同路径对照见 [Hermite 验证报告](../docs/Hermite走廊验证.md)。主生成器已替换为五次 Hermite → 等价 Bézier → 局部细分，联合优化截面偏移与椭圆主轴方向。
 
-交互演示默认使用 `smooth` 模式：平滑截面方向、联合调整中心和形状的共享导数、补充扩张，并检查整个截面的连续 Jacobian。七组同输入的曲面、体积、耗时及轨迹回归见[平滑走廊与全截面折叠修复](../docs/平滑走廊与全截面折叠修复.md)。核心库启用同一配置时，设置 `frame_smoothing=1.5`、`section_smoothing=0.2`、`jet_smoothing=0.01`、`certify_jacobian=true`、`initial_iterations=8`。
+交互演示默认使用原生 C3；`shape_mode:=smooth` 运行 H5 对照。H5 核心库的默认 `Options` 已采用同一 smooth 配置：`frame_smoothing=1.5`、`section_smoothing=0.2`、`jet_smoothing=0.01`、`certify_jacobian=true`、`initial_iterations=8`。正常演示不再提供历史 `baseline`、`boundary-12` 模式。
 
 数学化简、数值稳定性修复及同范围 FIRI 复测见[体积与速度优化](../docs/Hermite体积与速度优化.md)和[第二轮加速](../docs/Hermite第二轮加速.md)，球障碍度量分离与查询复用见[第三轮优化](../docs/Hermite第三轮优化.md)，当前的分组剔除、块求解缓存和六例复核见[最新加速报告](../docs/分组剔除与块求解加速.md)。
 
@@ -103,3 +103,26 @@ ros2 run gcopter_direct_corridor direct_corridor_node
 - `min_radius` 是原生节点优化的半轴下界；旋转混合和可选导数调整后的实际短半轴不必等于该下界。`smooth` 模式用整个截面的 Jacobian 证书验收局部不折回。
 - 任意连续曲线的有限采样并不代表原曲线已知。这里接受的是**给定折线**，检查其闭线段，构造安全平滑近似；尖点、回折、净空不足或资源上限返回失败。
 - 不保证扫掠全局不自交，也不保证整个管内世界坐标映射的一一性。不包含时间参数化、动力学、集群避碰或执行控制，未替换原 GCOPTER 轨迹优化器。
+
+## C3 与 H5 库接口
+
+安装包同时导出 `gcopter::direct_corridor`（H5）和
+`gcopter::cubic_corridor`（C3）。C3 使用正式库，实验目录只保留测试与比较工具。
+
+```cpp
+#include <gcopter/cubic/cubic_generator.hpp>
+using namespace gcopter::direct;
+
+GeometryOptions geometry;
+geometry.frame_smoothing = 1.5;
+geometry.local_range = 3.0;
+native::CubicOptions c3(geometry);
+Options h5(geometry);
+// native::generateNative(seed, map, bounds, c3);
+// generate(seed, map, bounds, h5);
+```
+
+`GeometryOptions` 表示地图、机器人、几何尺度和资源上限。H5 的平滑、
+Newton 迭代、取消回调和诊断参数属于 `Options`；C3 的固定求解常量与显式
+诊断属于 `native::OptimizerSettings`。C3 不再接受 H5 配置对象，跨算法比较时
+显式复制共同的几何输入。

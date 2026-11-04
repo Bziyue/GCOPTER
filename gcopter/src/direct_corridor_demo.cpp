@@ -25,8 +25,7 @@
 #include "gcopter/direct_search_map.hpp"
 #include "gcopter/sfc_gen.hpp"
 #include "gcopter/voxel_map.hpp"
-#include "refit.hpp"
-#include "cubic_generator.hpp"
+#include "gcopter/cubic/cubic_generator.hpp"
 
 using namespace gcopter::direct;
 using Clock = std::chrono::steady_clock;
@@ -71,17 +70,9 @@ class DirectDemo final : public rclcpp::Node {
     options_.local_range = declare_parameter<double>("local_range", 0.);
     options_.local_progress = declare_parameter<double>("local_progress", 7.);
     shape_mode_ = declare_parameter<std::string>("shape_mode", "c3");
-    if (shape_mode_ != "baseline" && shape_mode_ != "boundary-12" && shape_mode_ != "smooth" && shape_mode_ != "c3")
-      throw std::invalid_argument("shape_mode must be c3, baseline, boundary-12 or smooth");
-    if(shape_mode_=="smooth" || shape_mode_=="c3") {
-      options_.frame_smoothing=1.5;
-      options_.section_smoothing=.2;
-      options_.jet_smoothing=.01;
-      options_.certify_jacobian=true;
-      options_.initial_iterations=8;
-    }
-    if (shape_mode_ != "c3")
-      options_.inflation_iterations = declare_parameter<int>("inflation_iterations", 2);
+    if (shape_mode_ != "smooth" && shape_mode_ != "c3")
+      throw std::invalid_argument("shape_mode must be c3 or smooth (H5)");
+    options_.frame_smoothing=1.5;
     options_.certificate_depth = declare_parameter<int>("certificate_depth", 9);
     options_.budget_ms = declare_parameter<double>("corridor_budget_ms", 1000.);
     reference_clearance_ = declare_parameter<double>("reference_clearance", .2);
@@ -92,6 +83,8 @@ class DirectDemo final : public rclcpp::Node {
     if (!bounds_.lower.allFinite() || !bounds_.upper.allFinite() ||
         (bounds_.upper.array() <= bounds_.lower.array()).any() ||
         !std::isfinite(resolution_) || resolution_ <= 0 ||
+        !std::isfinite(options_.local_progress) || options_.local_progress < 1e-6 ||
+        !std::isfinite(options_.local_range) || options_.local_range < 0 ||
         !std::isfinite(reference_clearance_) || reference_clearance_ < 0 ||
         !std::isfinite(search_timeout_) || search_timeout_ <= 0 ||
         !std::isfinite(search_range_) || search_range_ <= 0 ||
@@ -99,14 +92,6 @@ class DirectDemo final : public rclcpp::Node {
         (height_mode_ != "fixed" && height_mode_ != "arrow"))
       throw std::invalid_argument(
           "invalid demo geometry/search/height parameters");
-    // Validate all core options before creating publishers or accepting
-    // endpoints.
-    const auto option_check =
-        generate({(bounds_.lower + bounds_.upper) * .5,
-                  (bounds_.lower + bounds_.upper) * .5 + Vec3(.01, 0, 0)},
-                 ObstacleIndex({}), bounds_, options_);
-    if (option_check.status == Status::InvalidInput)
-      throw std::invalid_argument(option_check.message);
     const Vec3 dimensions =
         ((bounds_.upper - bounds_.lower) / resolution_).array().ceil().matrix();
     if (dimensions.prod() > 10000000)
@@ -427,8 +412,7 @@ class DirectDemo final : public rclcpp::Node {
     Result result;
     native::CubicResult cubic;
     double adapter_ms=0;
-    Options request_options = options_;
-    experiment::ShapeFitMetrics shape_metrics;
+    GeometryOptions request_options = options_;
     if (std::isfinite(cost) && seed.size() >= 2 &&
         (seed.front() - endpoints_[0]).norm() < 1e-7 &&
         (seed.back() - endpoints_[1]).norm() < 1e-7) {
@@ -460,7 +444,7 @@ class DirectDemo final : public rclcpp::Node {
           request_options.max_offset = diagonal + .001;
         }
         if(shape_mode_=="c3") {
-          cubic=native::generateNative(seed,*map_,bounds_,request_options);
+          cubic=native::generateNative(seed,*map_,bounds_,native::CubicOptions(request_options));
           result.metrics.total_ms=cubic.total_ms;
           result.metrics.nodes=cubic.optimizer.controls;
           result.metrics.controls=cubic.corridor.controls.size();
@@ -480,10 +464,7 @@ class DirectDemo final : public rclcpp::Node {
           }
           outcome=cubic.status=="SUCCESS"?"PASS":cubic.status;
         } else {
-        result = shape_mode_ == "boundary-12"
-            ? experiment::generateCoordinateShape(seed, *map_, bounds_, request_options,
-                                                   shape_metrics, 12, false, true)
-            : generate(seed, *map_, bounds_, request_options);
+        result = generate(seed, *map_, bounds_, Options(request_options));
         outcome = result ? "PASS" : statusName(result.status);
         }
       } else
@@ -660,7 +641,6 @@ class DirectDemo final : public rclcpp::Node {
            << ",\"min_axis\":" << min_axis
            << ",\"median_minor\":" << median_minor
            << ",\"median_major\":" << median_major;
-    experiment::writeShapeMetrics(metric, shape_metrics);
     metric << '}';
     std::ofstream file(dir / "metrics.json");
     file << metric.str() << '\n';
@@ -682,7 +662,7 @@ class DirectDemo final : public rclcpp::Node {
       search_range_, map_ms_ = 0;
   Bounds bounds_;
   Eigen::Vector3i dims_;
-  Options options_;
+  GeometryOptions options_;
   fs::path session_;
   int map_version_ = 0, request_ = 0;
   std::unique_ptr<ObstacleIndex> map_;

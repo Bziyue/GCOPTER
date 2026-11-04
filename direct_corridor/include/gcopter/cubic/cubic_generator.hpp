@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 #pragma once
-#include "cubic_optimizer.hpp"
-#include "obstacle_cover.hpp"
+#include "geometry.hpp"
+#include "metrics.hpp"
+#include "options.hpp"
+#include "gcopter/support_plane.hpp"
 namespace gcopter::direct::native {
 struct CubicResult {
   Geometry corridor;
@@ -13,10 +15,10 @@ struct CubicResult {
   std::string status="not_started",message;
 };
 CubicResult generateCubic(const std::vector<Vec3>& seed,const ObstacleIndex& index,
-                          const Bounds& bounds,const Options& options,const OptimizerSettings& solver,
+                          const Bounds& bounds,const CubicOptions& options,const OptimizerSettings& solver,
                           const Geometry* projected_reference=nullptr);
 inline CubicResult generateNative(const std::vector<Vec3>& seed,const ObstacleIndex& index,
-    const Bounds& bounds,Options options) {
+    const Bounds& bounds,CubicOptions options) {
   OptimizerSettings solver;
   return generateCubic(seed,index,bounds,options,solver);
 }

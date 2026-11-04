@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
 #include "cubic_generator.hpp"
+#include "cubic_optimizer.hpp"
+#include "obstacle_cover.hpp"
 #include "cubic_volume.hpp"
 #include <cassert>
 #include <iostream>
@@ -21,7 +23,7 @@ int main() {
     planes.push_back({i,0,1,Vec3(1,2,3).normalized(),8.});
     planes.push_back({i,.13,.83,Vec3(-2,3,1).normalized(),8.});
   }
-  Options o;o.max_radius=3;o.max_offset=3;o.min_radius=.03;o.budget_ms=10000;o.local_range=3;
+  CubicOptions o;o.max_radius=3;o.max_offset=3;o.min_radius=.03;o.budget_ms=10000;o.local_range=3;
   OptimizerSettings settings;settings.check_gradients=true;
   CubicProblem problem(model,planes,6.2,o,settings);OptimizerMetrics metrics;
   CubicProblem shared(model,planes,6.2,o,settings,problem.energy);
