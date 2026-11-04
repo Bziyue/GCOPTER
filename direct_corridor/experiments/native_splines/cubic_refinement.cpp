@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 #include "cubic_optimizer.hpp"
 #include "cubic_volume.hpp"
-#include "support_barrier.hpp"
 #include <chrono>
 #include <limits>
 
@@ -28,17 +27,9 @@ double CubicProblem::LineModel::delta(double alpha)const {
     if(change<=-1)return INFINITY;
     out-=t.weight*std::log1p(change);
   }
-  for(const auto& t:distances) {
-    const double square_change=alpha*(t.b+alpha*t.a);
-    const double radius=std::sqrt(std::max(support_epsilon*support_epsilon,t.c+square_change));
-    const double change=(alpha*t.derivative-square_change/(radius+t.radius))/t.gap;
-    if(change<=-1)return INFINITY;
-    out-=t.weight*std::log1p(change);
-  }
   return out;
 }
 double CubicProblem::LineModel::upperBound(double alpha)const {
-  if(!distances.empty())return INFINITY;
   double out=alpha*(linear+alpha*quadratic),magnitude=std::abs(out);
   for(const auto& t:terms) {
     const double change=alpha*(t.b+alpha*t.a);
@@ -55,10 +46,9 @@ double CubicProblem::LineModel::upperBound(double alpha)const {
   return out+8*std::numeric_limits<double>::epsilon()*(terms.size()+2)*(1+magnitude);
 }
 CubicProblem::LineModel CubicProblem::prepareLine(const Eigen::VectorXd& x,
-    const Eigen::VectorXd& direction,double mu,const Evaluation* cache)const {
-  LineModel line;line.terms.reserve(cuts.size()+4*model.basis.count);
-  if(settings.distance_barrier)line.distances.reserve(geometric_cuts);
-  line.linear=cache?direction.dot(cache->energy_gradient):direction.dot(quadratic.multiply(x)+linear);
+    const Eigen::VectorXd& direction,double mu)const {
+  LineModel line;line.terms.reserve(geometry->count+cuts.size()+4*model.basis.count);
+  line.linear=direction.dot(quadratic.multiply(x)+linear);
   line.quadratic=.5*direction.dot(quadratic.multiply(direction));
   double limit=INFINITY;
   auto append=[&](double a,double b,double c,double weight) {
@@ -84,100 +74,42 @@ CubicProblem::LineModel CubicProblem::prepareLine(const Eigen::VectorXd& x,
     const double a=-v.squaredNorm(),b=-2*c.dot(v),gap=options.max_offset*options.max_offset-c.squaredNorm();
     append(a,b,gap,mu);boundary(a,b,gap,1,0);
   }
-  auto cone=[&](const Vec3& v,const Vec3& d,bool active,bool smooth=false) {
+  auto cone=[&](const Vec3& v,const Vec3& d,bool active) {
     const double a=d[0]*d[0]-d.tail<2>().squaredNorm();
     const double b=2*(v[0]*d[0]-v.tail<2>().dot(d.tail<2>()));
-    const double c=v[0]*v[0]-v.tail<2>().squaredNorm()-(smooth?support_epsilon*support_epsilon:0);
+    const double c=v[0]*v[0]-v.tail<2>().squaredNorm();
     boundary(a,b,c,v[0],d[0]);
-    if(active) {
-      if(smooth) {
-        const double radius=supportRadius(v);
-        line.distances.push_back({d.tail<2>().squaredNorm(),2*v.tail<2>().dot(d.tail<2>()),
-          radius*radius,radius,v[0]-radius,d[0],mu});
-      } else append(a,b,c,mu);
-    }
+    if(active)append(a,b,c,mu);
   };
-  size_t id=0;
-  for(const auto& group:groups) {
-    V9 y;if(!cache)y=group.geometry(x);
+  for(const auto& group:geometry->groups) {
+    const V9 y=group.geometry(x);
     const V9 d=group.direction(direction);
-    for(size_t j=0;j<group.boundary_count;++j) {
+    for(size_t j=0;j<group.retained;++j) {
       const auto& p=group.supports[j];
-      const Vec3 v=cache?cache->cones[id+j]:p.project(y);
-      cone(v,p.projectDirection(d),
-           !p.redundant&&(!settings.grouped_assembly||settings.reference_assembly||p.active),
-           settings.distance_barrier&&!p.redundant);
+      const Vec3 v=p.project(y);
+      cone(v,p.projectDirection(d),!p.redundant);
     }
-    id+=group.supports.size();
   }
-  for(size_t j=geometric_cuts;j<cuts.size();++j) {
-    const auto& c=cuts[j];Vec3 v;
-    if(cache)v=cache->cones[j];else{v=c.apply(x);v[0]=c.bound-v[0];}
+  for(const auto& c:cuts) {
+    Vec3 v=c.apply(x);v[0]=c.bound-v[0];
     auto d=c.apply(direction);d[0]=-d[0];cone(v,d,true);
   }
-  line.step=std::min(1.,(settings.fraction_boundary>0?settings.fraction_boundary:.99)*limit);
+  line.step=std::min(1.,settings.fraction_boundary*limit);
   return line;
 }
 
-void CubicProblem::inflate(Eigen::VectorXd& x,OptimizerMetrics& metrics,int sweeps,double fraction)const {
-  const auto start=std::chrono::steady_clock::now();
-  struct Incident {int cut,local;};
-  std::vector<std::vector<Incident>> incident(model.basis.count);
-  std::vector<Vec3> values(cuts.size());
-  for(size_t j=0;j<cuts.size();++j) {
-    const auto& c=cuts[j];values[j]=c.apply(x);values[j][0]=c.bound-values[j][0];
-    for(int k=0;k<c.count;++k)if(!c.normals[k].isZero(0))incident[c.first/5+k].push_back({int(j),k});
-  }
-  Eigen::VectorXd energy_gradient=quadratic.multiply(x)+linear;
-  for(int sweep=0;sweep<(sweeps<0?settings.coordinate_sweeps:sweeps);++sweep)for(int order=0;order<model.basis.count;++order) {
-    const int node=sweep%2?model.basis.count-1-order:order,offset=5*node;
-    const Vec3 s=x.segment<3>(offset+2);
-    const double largest=.5*(s[0]+s[2])+std::hypot(.5*(s[0]-s[2]),s[1]);
-    double alpha=fraction*(options.max_radius/largest-1);
-    for(const auto& entry:incident[node]) {
-      const auto& n=cuts[entry.cut].normals[entry.local];const auto& v=values[entry.cut];
-      const Eigen::Vector2d d(s[0]*n[0]+s[1]*n[1],s[1]*n[0]+s[2]*n[1]);
-      const double a=d.squaredNorm();if(a==0)continue;
-      const double b=v.tail<2>().dot(d),gap=v[0]*v[0]-v.tail<2>().squaredNorm();
-      const double root=std::sqrt(b*b+a*gap);
-      alpha=std::min(alpha,fraction*(b>=0?gap/(root+b):(root-b)/a));
-    }
-    // Minimize the exact logdet-plus-bending objective along this radius ray.
-    const double l=s.dot(energy_gradient.segment<3>(offset+2));
-    double q=0;for(int i=0;i<3;++i)for(int j=0;j<3;++j)q+=s[i]*quadratic.get(offset+2+i,offset+2+j)*s[j];
-    q=std::max(0.,q);const double c=l-2*model.basis.weight(node);
-    if(c>=0)continue;
-    const double optimum=q>0?positiveRoot(q,q+l,c):(l>0?-c/l:INFINITY);
-    alpha=std::min(alpha,optimum);if(alpha<=1e-10)continue;
-    x.segment<3>(offset+2)+=alpha*s;++metrics.coordinate_updates;
-    for(const auto& entry:incident[node]) {
-      const auto& n=cuts[entry.cut].normals[entry.local];
-      values[entry.cut][1]+=alpha*(s[0]*n[0]+s[1]*n[1]);
-      values[entry.cut][2]+=alpha*(s[1]*n[0]+s[2]*n[1]);
-    }
-    for(int row=std::max(0,offset+2-quadratic.width);row<=std::min(int(x.size())-1,offset+4+quadratic.width);++row)
-      for(int j=0;j<3;++j)energy_gradient[row]+=alpha*quadratic.get(row,offset+2+j)*s[j];
-  }
-  metrics.coordinate_ms+=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count();
-}
 void CubicProblem::refineVolume(Eigen::VectorXd& x,OptimizerMetrics& metrics,
     const std::function<bool(const Eigen::VectorXd&)>& certificate)const {
-  const auto start=std::chrono::steady_clock::now();
+  StageTimer timer(settings.profile);
   for(int iteration=0;iteration<settings.volume_refinements;++iteration) {
     Eigen::VectorXd gradient,unused,direction;BandedSPD hessian;
     const double before=sweptVolume(model,x,&gradient);
-    objective(x,.00001/model.basis.count,&unused,&hessian);
+    objective(x,.00001/model.basis.count,&unused,&hessian,false);
     for(int id:{0,1,int(x.size())-5,int(x.size())-4}){gradient[id]=0;hessian.fix(id);}
     double damping=0;
     while(!hessian.factor(damping)){damping=damping==0?1e-8:damping*10;if(damping>1e6)break;}
     if(damping>1e6)break;
     hessian.solveInto(gradient,direction);
-    if(equalities.rows()) {
-      Eigen::MatrixXd inverse(x.size(),equalities.rows());
-      for(int j=0;j<equalities.rows();++j)inverse.col(j)=hessian.solve(equalities.row(j).transpose());
-      const Eigen::MatrixXd schur=equalities*inverse;
-      direction-=inverse*schur.ldlt().solve(equalities*direction);
-    }
     double movement=0;
     for(int i=0;i<model.basis.count;++i) {
       const auto p=direction.segment<5>(5*i);
@@ -206,6 +138,6 @@ void CubicProblem::refineVolume(Eigen::VectorXd& x,OptimizerMetrics& metrics,
     }
     if(!accepted)break;
   }
-  metrics.volume_ms+=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count();
+  metrics.volume_ms+=timer.elapsed();
 }
 } // namespace gcopter::direct::native

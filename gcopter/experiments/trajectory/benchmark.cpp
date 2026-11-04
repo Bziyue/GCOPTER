@@ -177,8 +177,9 @@ int main(int argc,char**argv) {try {
     native_geometry=gcopter::direct::native::Geometry::read(path);
     const auto& g=native_geometry;
     gcopter::direct::native::QueryCache cache;gcopter::direct::native::CoverMetrics timing;
-    const std::function<void()> stop=[]{};
-    const auto cover=gcopter::direct::native::mapCover(g,seed,index,bounds,options,cache,timing,stop);
+    gcopter::direct::native::Deadline deadline(10000);
+    const gcopter::direct::native::CoverLayout layout(g.breaks,seed,bounds,options);
+    const auto cover=gcopter::direct::native::mapCover(g,index,bounds,options,cache,timing,deadline,layout);
     if(!gcopter::direct::native::certify(g,cover).safe())throw std::runtime_error("frozen geometry is not certified on this map");
     direct.corridor=g.quinticAdapter();direct.status=Status::Success;
     // This is replay/adapter time, not original corridor generation time.

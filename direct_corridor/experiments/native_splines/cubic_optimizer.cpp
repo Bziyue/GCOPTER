@@ -1,17 +1,11 @@
 // SPDX-License-Identifier: MIT
 #include "cubic_optimizer.hpp"
-#include "support_refinement.hpp"
-#include "support_barrier.hpp"
 #include "cubic_certificates.hpp"
 #include <Eigen/Eigenvalues>
 #include <Eigen/SparseCholesky>
-#include <Eigen/QR>
 #include <chrono>
 #include <map>
-#include <gcopter/quickhull.hpp>
 namespace gcopter::direct::native {
-using Clock=std::chrono::steady_clock;
-static double ms(Clock::time_point t){return std::chrono::duration<double,std::milli>(Clock::now()-t).count();}
 static Eigen::Matrix2d matrix(const Eigen::VectorXd& x,int i) {
   Eigen::Matrix2d s;s<<x[5*i+2],x[5*i+3],x[5*i+3],x[5*i+4];return s;
 }
@@ -81,15 +75,6 @@ CubicModel CubicModel::fromSeed(const std::vector<Vec3>& seed,double spacing,dou
     out.x[5*i+2]=out.x[5*i+4]=radius;
   }
   return out;
-}
-Eigen::Matrix<double,3,20> CubicProblem::Cut::dense()const {
-  Eigen::Matrix<double,3,20> a=Eigen::Matrix<double,3,20>::Zero();
-  for(int k=0;k<count;++k) {
-    const auto& n=normals[k];
-    a.block<1,2>(0,5*k)=center_sign*n.transpose();
-    a(1,5*k+2)=n[0];a(1,5*k+3)=n[1];a(2,5*k+3)=n[0];a(2,5*k+4)=n[1];
-  }
-  return a;
 }
 Vec3 CubicProblem::Cut::apply(const Eigen::VectorXd& x)const {
   Vec3 v=Vec3::Zero();
@@ -186,16 +171,6 @@ void CubicProblem::Group::accumulateGradient(const V9& g,Eigen::VectorXd& out)co
     out[offset+4]+=f.col(1).dot(g.tail<3>());
   }
 }
-void CubicProblem::Group::accumulateCenter(const Eigen::Matrix3d& h,BandedSPD& out)const {
-  for(int b=0;b<count;++b) {
-    const Mat32 product=h*maps[b];
-    for(int a=b;a<count;++a) {
-      const Eigen::Matrix2d block=maps[a].transpose()*product;
-      for(int j=0;j<2;++j)for(int k=0;k<(a==b?j+1:2);++k)
-        out.add(first+5*a+j,first+5*b+k,block(j,k));
-    }
-  }
-}
 CubicEnergy::CubicEnergy(const CubicModel& m,double length,const OptimizerSettings& settings)
     :quadratic(5*m.basis.count,19),linear(Eigen::VectorXd::Zero(5*m.basis.count)) {
   // Exact two-point Gauss integration of squared cubic second derivatives.
@@ -218,226 +193,125 @@ CubicEnergy::CubicEnergy(const CubicModel& m,double length,const OptimizerSettin
   for(int i=0;i<m.basis.count;++i)for(int k=0;k<2;++k)quadratic.add(5*i+k,5*i+k,2*settings.offset_weight*m.basis.weight(i));
 }
 CubicProblem::CubicProblem(const CubicModel& m,const std::vector<detail::SupportPlane>& cover,
-                           double length,const Options& o,const OptimizerSettings& s,
-                           std::shared_ptr<const CubicEnergy> shared_energy,const CubicProblem* geometric_template)
+    double length,const Options& o,const OptimizerSettings& s,
+    std::shared_ptr<const CubicEnergy> shared_energy,const CubicProblem* geometric_template,
+    const ProgressConstraints& progress)
     :model(m),options(o),settings(s),
      energy(shared_energy?std::move(shared_energy):std::make_shared<CubicEnergy>(m,length,s)),
      quadratic(energy->quadratic),linear(energy->linear) {
-  // The generator supplies this template only while model, cover, geometric
-  // settings and the pruning reference x are unchanged. Solver/progress
-  // settings may change. State-dependent progress cones are rebuilt below.
   if(geometric_template) {
-    groups=geometric_template->groups;
-    cuts.assign(geometric_template->cuts.begin(),geometric_template->cuts.begin()+geometric_template->geometric_cuts);
-    merged_supports=geometric_template->merged_supports;reused_construction=true;
-    for(auto& group:groups)group.reach_candidates=group.exact_reach_evaluations=group.exact_reach_additional=0;
+    geometry=geometric_template->geometry;reused_construction=true;
   }else {
-  // On the same parameter interval, equal normals only need the tightest
-  // bound. World/local-box duplicates otherwise add both work and barrier bias.
-  std::map<std::tuple<int,double,double,double,double,double>,detail::SupportPlane> unique;
-  std::vector<detail::SupportPlane> planes;
-  if(settings.fast_construction) {
-    // Stable ordering reproduces std::map's first/minimum-bound winner,
-    // including equal normals and signed-zero payloads, without per-node allocation.
+    auto data=std::make_shared<GeometricConstraints>();auto& groups=data->groups;
     auto key=[](const auto& p){return std::make_tuple(p.span,p.begin,p.end,p.normal[0],p.normal[1],p.normal[2]);};
-    planes=cover;std::stable_sort(planes.begin(),planes.end(),[&](const auto& a,const auto& b){return key(a)<key(b);});
+    auto planes=cover;
+    std::stable_sort(planes.begin(),planes.end(),[&](const auto& a,const auto& b){return key(a)<key(b);});
     size_t count=0;
     for(const auto& p:planes) {
       if(count&&key(p)==key(planes[count-1])){if(p.bound<planes[count-1].bound)planes[count-1]=p;}
       else planes[count++]=p;
     }
     planes.resize(count);
-  }else for(const auto& p:cover) {
-    const auto key=std::make_tuple(p.span,p.begin,p.end,p.normal[0],p.normal[1],p.normal[2]);
-    auto found=unique.find(key);
-    if(found==unique.end()||p.bound<found->second.bound)unique[key]=p;
-  }
-  SupportRefinement refinement;
-  if(settings.certificate_refinement&&settings.certificate_fraction>0) {
-    const auto start=Clock::now();
-    if(!settings.fast_construction){planes.reserve(unique.size());for(const auto& entry:unique)planes.push_back(entry.second);}
-    refinement=selectSupportRefinement(m.geometry(),planes,settings.certificate_refinement,settings.certificate_fraction);
-    support_selection_ms=ms(start);support_intervals=refinement.intervals;
-    refined_intervals=refinement.selected_intervals;refined_planes=refinement.selected_planes;
-    refinement_extra_rows=refinement.extra_rows;support_gap_sum=refinement.gap_sum;
-  }
-  std::map<std::tuple<int,double,double,int>,size_t> group_ids;
-  struct IntervalRows {
-    Curve<5,Eigen::Vector4d> weights;
-    std::array<int,6> groups{{-1,-1,-1,-1,-1,-1}};
-  };
-  std::map<std::tuple<int,double,double,int>,IntervalRows> interval_rows;
-  auto add_plane=[&](const detail::SupportPlane& plane,auto degree_tag) {
-    constexpr int degree=decltype(degree_tag)::value;
-    const auto& span=m.basis.spans[plane.span];
-    Curve<degree,Eigen::Vector4d> basis;
-    IntervalRows* cached=nullptr;bool extract=true;
-    if(settings.fast_construction) {
-      const auto found=interval_rows.try_emplace(std::make_tuple(plane.span,plane.begin,plane.end,degree));
-      cached=&found.first->second;extract=found.second;
-      if(extract)++basis_cache_misses;else ++basis_cache_hits;
-    }
-    if(extract) {
-      if constexpr(degree==3) {
+    std::map<std::tuple<int,double,double,int>,size_t> group_ids;
+    struct IntervalRows {
+      Curve<3,Eigen::Vector4d> weights;
+      std::array<int,4> groups{{-1,-1,-1,-1}};
+    };
+    std::map<std::tuple<int,double,double>,IntervalRows> interval_rows;
+    for(const auto& plane:planes) {
+      const auto& span=m.basis.spans[plane.span];
+      const auto found=interval_rows.try_emplace(std::make_tuple(plane.span,plane.begin,plane.end));
+      auto& cached=found.first->second;
+      if(found.second) {
+        Curve<3,Eigen::Vector4d> basis;
         for(int j=0;j<4;++j)basis[j]=span.extraction.row(j);
-        basis=restrictCurve<3>(basis,plane.begin,plane.end);
-      }else {
-        Curve<3,Eigen::Vector4d> cubic;
-        for(int j=0;j<4;++j)cubic[j]=span.extraction.row(j);
-        basis=elevate<3,5>(restrictCurve<3>(cubic,plane.begin,plane.end));
-      }
-      if(cached)for(int j=0;j<=degree;++j)cached->weights[j]=basis[j];
-    }
-    for(int j=0;j<(plane.begin==plane.end?1:degree+1);++j) {
-      int local_span=plane.span;
-      Eigen::Vector4d weights=cached?cached->weights[j]:basis[j];
-      // Disjoint interior row IDs prevent cubic/elevated group aliasing.
-      auto group_key=std::make_tuple(plane.span,plane.begin,plane.end,j+(degree==5?4:0));
-      if(settings.merge_shared_supports&&(j==0||j==degree)) {
-        const double t=j==0?plane.begin:plane.end;
-        // Adjacent cubic spans share this VALUE, with the same three global
-        // controls. Give it a single identity, also at subdivision boundaries.
-        group_key=t==1?std::make_tuple(plane.span+1,0.,0.,0):std::make_tuple(plane.span,t,t,0);
-        if(t==1&&plane.span+1<int(m.basis.spans.size())) {
-          local_span=plane.span+1;weights=m.basis.spans[local_span].extraction.row(0);
+        cached.weights=restrictCurve<3>(basis,plane.begin,plane.end);++basis_cache_misses;
+      }else ++basis_cache_hits;
+      for(int j=0;j<(plane.begin==plane.end?1:4);++j) {
+        int local_span=plane.span;
+        Eigen::Vector4d weights=cached.weights[j];
+        auto group_key=std::make_tuple(plane.span,plane.begin,plane.end,j);
+        if(j==0||j==3) {
+          const double t=j==0?plane.begin:plane.end;
+          // Adjacent cubic spans share this VALUE, with the same three global
+          // controls. Give it a single identity, also at subdivision boundaries.
+          group_key=t==1?std::make_tuple(plane.span+1,0.,0.,0):std::make_tuple(plane.span,t,t,0);
+          if(t==1&&plane.span+1<int(m.basis.spans.size())) {
+            local_span=plane.span+1;weights=m.basis.spans[local_span].extraction.row(0);
+          }
         }
-      }
-      const auto& local=m.basis.spans[local_span];
-      Cut c;c.first=5*local.ids[0];c.bound=plane.bound;
-      for(int k=0;k<4;++k) {
-        const int id=local.ids[k];const Eigen::Vector2d n=weights[k]*m.frames[id].transpose()*plane.normal;
-        c.bound-=weights[k]*m.reference[id].dot(plane.normal);
-        c.normals[k]=n;
-      }
-      // Skip constraints which are identically constant (e.g. a straight end cap).
-      if(!c.compact()){if(c.bound < -1e-9)throw std::runtime_error("inconsistent constant support plane");continue;}
-      size_t group_id;bool create=false;
-      if(cached&&cached->groups[j]>=0){group_id=cached->groups[j];++group_lookup_reuses;}
-      else {
-        const auto inserted=group_ids.emplace(group_key,groups.size());group_id=inserted.first->second;create=inserted.second;
-        if(cached)cached->groups[j]=int(group_id);
-      }
-      if(create) {
-        Group group;group.first=5*local.ids[0];group.count=4;
-        group.reference.setZero();
+        const auto& local=m.basis.spans[local_span];
+        Cut c;c.first=5*local.ids[0];c.bound=plane.bound;
         for(int k=0;k<4;++k) {
-          group.reference.head<3>()+=weights[k]*m.reference[local.ids[k]];
-          group.maps[k]=weights[k]*m.frames[local.ids[k]];
+          const int id=local.ids[k];const Eigen::Vector2d n=weights[k]*m.frames[id].transpose()*plane.normal;
+          c.bound-=weights[k]*m.reference[id].dot(plane.normal);
+          c.normals[k]=n;
         }
-        while(group.count && weights[group.count-1]==0)--group.count;
-        int start=0;while(start<group.count && weights[start]==0)++start;
-        group.first+=5*start;group.count-=start;
-        for(int k=0;k<group.count;++k)group.maps[k]=group.maps[k+start];
-        groups.push_back(std::move(group));
+        // Skip constraints which are identically constant (e.g. a straight end cap).
+        if(!c.compact()){if(c.bound < -1e-9)throw std::runtime_error("inconsistent constant support plane");continue;}
+        size_t group_id;bool create=false;
+        if(cached.groups[j]>=0){group_id=cached.groups[j];++group_lookup_reuses;}
+        else {
+          const auto inserted=group_ids.emplace(group_key,groups.size());group_id=inserted.first->second;create=inserted.second;
+          cached.groups[j]=int(group_id);
+        }
+        if(create) {
+          Group group;group.first=5*local.ids[0];group.count=4;
+          group.reference.setZero();
+          for(int k=0;k<4;++k) {
+            group.reference.head<3>()+=weights[k]*m.reference[local.ids[k]];
+            group.maps[k]=weights[k]*m.frames[local.ids[k]];
+          }
+          while(group.count && weights[group.count-1]==0)--group.count;
+          int start=0;while(start<group.count && weights[start]==0)++start;
+          group.first+=5*start;group.count-=start;
+          for(int k=0;k<group.count;++k)group.maps[k]=group.maps[k+start];
+          groups.push_back(std::move(group));
+        }
+        groups[group_id].supports.push_back({plane.normal,plane.bound});
       }
-      groups[group_id].supports.push_back({plane.normal,plane.bound,!settings.working_set});
     }
-  };
-  const auto cubic=std::integral_constant<int,3>{};
-  const auto quintic=std::integral_constant<int,5>{};
-  if(planes.empty())for(const auto& entry:unique)add_plane(entry.second,cubic);
-  else for(size_t i=0;i<planes.size();++i) {
-    const bool selected=!refinement.selected.empty()&&refinement.selected[i];
-    if(selected&&settings.certificate_refinement==2) {
-      auto left=planes[i],right=planes[i];
-      left.end=right.begin=.5*(left.begin+left.end);
-      add_plane(left,cubic);add_plane(right,cubic);
-    }else if(selected)add_plane(planes[i],quintic);
-    else add_plane(planes[i],cubic);
-  }
-  for(auto& group:groups) {
-    if(settings.merge_shared_supports) {
-      auto key=[](const Support& p){return std::make_tuple(p.normal[0],p.normal[1],p.normal[2]);};
-      auto& supports=group.supports;
-      std::sort(supports.begin(),supports.end(),[&](const Support& a,const Support& b){return key(a)<key(b);});
-      size_t count=0;
-      for(const auto& p:supports) {
-        if(count&&key(p)==key(supports[count-1]))supports[count-1].bound=std::min(supports[count-1].bound,p.bound);
-        else supports[count++]=p;
+    for(auto& group:groups) {
+      {
+        auto key=[](const Support& p){return std::make_tuple(p.normal[0],p.normal[1],p.normal[2]);};
+        auto& supports=group.supports;
+        std::sort(supports.begin(),supports.end(),[&](const Support& a,const Support& b){return key(a)<key(b);});
+        size_t count=0;
+        for(const auto& p:supports) {
+          if(count&&key(p)==key(supports[count-1]))supports[count-1].bound=std::min(supports[count-1].bound,p.bound);
+          else supports[count++]=p;
+        }
+        data->merged+=supports.size()-count;supports.resize(count);
       }
-      merged_supports+=supports.size()-count;supports.resize(count);
+      for(size_t j=0;j<group.supports.size();++j) {
+        auto& p=group.supports[j];p.original_id=int(j);
+        for(int axis=0;axis<3;++axis)
+          if(p.normal[axis]!=0&&p.normal[(axis+1)%3]==0&&p.normal[(axis+2)%3]==0)p.axis=axis;
+      }
     }
-    for(size_t j=0;j<group.supports.size();++j) {
-      auto& p=group.supports[j];p.original_id=int(j);
-      if(settings.axis_kernels)for(int axis=0;axis<3;++axis)
-        if(p.normal[axis]!=0&&p.normal[(axis+1)%3]==0&&p.normal[(axis+2)%3]==0)p.axis=axis;
-    }
-  }
-  // Projected candidates need an implication proof in the full variable domain.
-  // The older spatial hull alternative is independent of ellipse shape.
-  // Original planes remain available to the final continuous certificate;
-  // projected_pruning=2 uses the proved subset in step scans as well.
-  const auto pruning_start=Clock::now();
-  if(settings.projected_pruning)for(auto& group:groups)
-    pruneProjectedSupports(group,m.x,o.max_offset,o.min_radius,o.max_radius,settings.reach_bound);
-  else if(settings.polar_pruning)for(auto& group:groups) {
-    const int count=group.supports.size();if(count<5)continue;
-    const V9 y=group.geometry(m.x);
-    Eigen::Matrix<double,3,Eigen::Dynamic> points(3,count+1);points.col(count).setZero();
-    bool interior=true;
-    for(int j=0;j<count;++j) {
-      const auto& p=group.supports[j];const double gap=p.bound-p.normal.dot(y.head<3>());
-      if(gap<=1e-12){interior=false;break;}
-      points.col(j)=p.normal/gap;
-    }
-    if(!interior)continue;
-    const Vec3 mean=points.rowwise().mean();
-    const Eigen::Matrix3d covariance=points*points.transpose();
-    Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> eig(covariance);
-    if(eig.eigenvalues()[0]<1e-20*eig.eigenvalues()[2])continue;
-    quickhull::QuickHull<double> hull;
-    const auto result=hull.getConvexHull(points.data(),points.cols(),true,true,1e-12);
-    const auto& indices=result.getIndexBuffer();
-    std::vector<std::pair<Vec3,double>> faces;
-    for(size_t f=0;f+2<indices.size();f+=3) {
-      if(indices[f]>=size_t(count+1)||indices[f+1]>=size_t(count+1)||indices[f+2]>=size_t(count+1)){faces.clear();break;}
-      const Vec3 a=points.col(indices[f]),b=points.col(indices[f+1]),c=points.col(indices[f+2]);
-      Vec3 normal=(b-a).cross(c-a);const double norm=normal.norm();if(norm<1e-15)continue;
-      normal/=norm;if(normal.dot(mean-a)>0)normal=-normal;
-      faces.emplace_back(normal,normal.dot(a));
-    }
-    if(faces.size()<4)continue;
-    for(int j=0;j<count;++j) {
-      bool inside=true;const double guard=1e-10*(1+points.col(j).norm());
-      for(const auto& face:faces)if(face.second-face.first.dot(points.col(j))<=guard){inside=false;break;}
-      if(inside){group.supports[j].active=false;group.supports[j].redundant=true;}
-    }
-  }
-  if(settings.projected_pruning||settings.polar_pruning)pruning_ms=ms(pruning_start);
-  for(auto& group:groups) {
-    if(settings.projected_pruning||settings.polar_pruning) {
+    StageTimer pruning(settings.profile);
+    if(settings.prune_supports)for(auto& group:groups)
+      pruneProjectedSupports(group,m.x,o.max_offset,o.max_radius);
+    pruning_ms=pruning.elapsed();
+    for(auto& group:groups) {
       const auto last=std::stable_partition(group.supports.begin(),group.supports.end(),
-                                          [](const Support& p){return !p.redundant;});
+                                            [](const Support& p){return !p.redundant;});
       group.retained=last-group.supports.begin();
-    } else group.retained=group.supports.size();
-    group.boundary_count=settings.projected_pruning==2?group.retained:group.supports.size();
-    for(const auto& p:group.supports) {
-      Cut c;c.first=group.first;c.count=group.count;c.bound=p.bound-p.normal.dot(group.reference.head<3>());
-      c.redundant=p.redundant;
-      for(int k=0;k<c.count;++k)c.normals[k]=group.maps[k].transpose()*p.normal;
-      c.compact();cuts.push_back(c);
+      data->count+=group.supports.size();data->retained+=group.retained;
+      for(size_t i=0;i<group.retained;++i)data->axes+=group.supports[i].axis>=0;
     }
+    geometry=std::move(data);
   }
-  if(settings.tensor_assembly)for(auto& group:groups) {
-    group.normal_products.reserve(group.supports.size());
-    for(const auto& support:group.supports) {
-      const auto& n=support.normal;Eigen::Matrix<double,6,1> product;
-      product<<n[0]*n[0],n[1]*n[0],n[1]*n[1],n[2]*n[0],n[2]*n[1],n[2]*n[2];
-      group.normal_products.push_back(product);
-    }
-  }
-  }
-  geometric_cuts=cuts.size();
-  if(settings.working_set)activateSupports(m.x);
   // Local convex progress cones anticipate turning spans or repair a failure.
   // They use fixed normals and a degree-two derivative hull. The nonlinear
   // full-disk certificate remains the acceptance test after every repair.
+  if(progress.spans.empty())return;
   const auto initial=m.geometry();
-  for(int span:settings.progress_spans) {
-    const bool strict=std::binary_search(settings.strict_progress_spans.begin(),settings.strict_progress_spans.end(),span);
-    const int samples=strict?3:settings.progress_samples,depth=strict?1:settings.progress_depth;
+  for(int span:progress.spans) {
+    const bool strict=std::binary_search(progress.strict_spans.begin(),progress.strict_spans.end(),span);
+    const int samples=3,depth=strict?1:0;
     for(int sample=0;sample<samples;++sample) {
-    const double t=samples==1?.5:.5*sample;
+    const double t=.5*sample;
     const double u=m.basis.breaks[span]+t*(m.basis.breaks[span+1]-m.basis.breaks[span]);
     const auto section=initial.section(u);
     const Vec3 normal=section.shape.col(0).cross(section.shape.col(1)).normalized();
@@ -461,35 +335,18 @@ CubicProblem::CubicProblem(const CubicModel& m,const std::vector<detail::Support
       const auto halves=split<2>(derivative);emit(halves.first);
       // Both halves share the same middle derivative control. Its SOC is
       // identical, including the fixed normal and progress margin.
-      emit(halves.second,settings.merge_shared_supports);
+      emit(halves.second,true);
     }
     }
-  }
-  if(settings.natural_endpoints) {
-    Eigen::MatrixXd a=Eigen::MatrixXd::Zero(18,5*m.basis.count);
-    for(int end=0;end<2;++end) {
-      const int span=end?int(m.basis.spans.size())-1:0;
-      const auto b=m.basis.jet(span,end?1.:0.);
-      for(int k=0;k<4;++k)a.block<9,5>(9*end,5*(span+k))=b(2,k)*m.jacobian(span+k)/(length*length);
-    }
-    for(int id:{0,1,5*(m.basis.count-1),5*(m.basis.count-1)+1})a.col(id).setZero();
-    for(int i=0;i<a.rows();++i){const double n=a.row(i).norm();if(n>0)a.row(i)/=n;}
-    Eigen::ColPivHouseholderQR<Eigen::MatrixXd> qr(a.transpose());qr.setThreshold(1e-9);
-    equalities.resize(qr.rank(),a.cols());
-    for(int i=0;i<qr.rank();++i)equalities.row(i)=a.row(qr.colsPermutation().indices()[i]);
   }
 }
 template<bool WithValue>
 static bool exactSupportJets(const CubicProblem::Group& group,const V9& y,double mu,
-                             V9& gradient,Eigen::Matrix<double,9,9>& hessian,double& cost,
-                             CubicProblem::Evaluation* cache,size_t offset) {
-  const size_t count=cache?group.boundary_count:group.retained;
+                             V9& gradient,Eigen::Matrix<double,9,9>& hessian,double& cost) {
+  const size_t count=group.retained;
   for(size_t id=0;id<count;++id) {
     const auto& p=group.supports[id];
-    if(!p.active&&!cache)continue;
     const Vec3 v=p.project(y);
-    if(cache)cache->cones[offset+id]=v;
-    if(!p.active)continue;
     const double slack=v[0]*v[0]-v.tail<2>().squaredNorm();
     if(v[0]<=0||slack<=0)return false;
     if constexpr(WithValue)cost-=mu*std::log(slack);
@@ -508,14 +365,11 @@ static bool exactSupportJets(const CubicProblem::Group& group,const V9& y,double
   for(int a=0;a<3;++a)for(int b=0;b<a;++b)hessian.block<3,3>(3*b,3*a)=hessian.block<3,3>(3*a,3*b).transpose();
   return true;
 }
-double CubicProblem::objective(const Eigen::VectorXd& x,double mu,Eigen::VectorXd* g,BandedSPD* h,Evaluation* cache,
-                               double weak_ratio,std::uint64_t* weak_rows,bool evaluate_cost)const {
+double CubicProblem::objective(const Eigen::VectorXd& x,double mu,Eigen::VectorXd* g,
+                               BandedSPD* h,bool evaluate_cost)const {
   const bool derivatives=g,curvature=h;
-  std::uint64_t weak_count=0;
   const auto qx=quadratic.multiply(x);
   double cost=evaluate_cost?.5*x.dot(qx)+linear.dot(x):0;
-  if(cache){cache->energy_gradient=qx+linear;cache->cones.resize(cuts.size());}
-  size_t cached_id=0;
   if(derivatives)*g=qx+linear;
   if(curvature){
     // Preserve allocated factor/scale buffers across Newton steps.
@@ -550,206 +404,42 @@ double CubicProblem::objective(const Eigen::VectorXd& x,double mu,Eigen::VectorX
       }
     }
   }
-  if(settings.grouped_assembly && !settings.reference_assembly)for(const auto& group:groups) {
+  for(const auto& group:geometry->groups) {
     const V9 y=group.geometry(x);
-    V9 gy;Eigen::Matrix<double,9,9> hy;Eigen::Matrix<double,6,6> tensor;
-    Eigen::Matrix3d weak_center=Eigen::Matrix3d::Zero();bool full_curvature=false;
+    V9 gy;Eigen::Matrix<double,9,9> hy;
     if(derivatives)gy.setZero();
-    if(curvature){if(settings.tensor_assembly&&!settings.distance_barrier)tensor.setZero();else hy.setZero();}
-    // Dispatch experimental curvature/barrier variants once per group. The
-    // common exact Newton kernel has no per-plane mode or value-only branches.
-    if(curvature&&!settings.tensor_assembly&&!settings.distance_barrier&&weak_ratio==0) {
-      const bool feasible=evaluate_cost?exactSupportJets<true>(group,y,mu,gy,hy,cost,cache,cached_id):
-                                        exactSupportJets<false>(group,y,mu,gy,hy,cost,cache,cached_id);
+    if(curvature) {
+      hy.setZero();
+      const bool feasible=evaluate_cost?exactSupportJets<true>(group,y,mu,gy,hy,cost):
+                                        exactSupportJets<false>(group,y,mu,gy,hy,cost);
       if(!feasible)return INFINITY;
-      group.accumulate(gy,hy,*g,*h);cached_id+=group.supports.size();continue;
+      group.accumulate(gy,hy,*g,*h);continue;
     }
-    const size_t evaluate_count=cache?group.boundary_count:group.retained;
-    for(size_t id=0;id<evaluate_count;++id) {
-      const auto& support=group.supports[id];
-      if(!support.active&&!cache)continue;
-      const auto& normal=support.normal;
-      const Vec3 v=support.project(y);
-      if(cache)cache->cones[cached_id+id]=v;
-      if(!support.active)continue;
-      if(settings.distance_barrier) {
-        const double radius=supportRadius(v),gap=v[0]-radius;
-        if(gap<=0)return INFINITY;
-        if(evaluate_cost)cost-=mu*std::log(gap);
-        if(derivatives) {
-          Vec3 local_gradient;Eigen::Matrix3d local_hessian;
-          if(curvature)distanceBarrierJet(v,mu,radius,gap,local_gradient,local_hessian);
-          else {local_gradient<<1,v[1]/radius,v[2]/radius;local_gradient*=mu/gap;}
-          support.addGradient(local_gradient,gy);
-          if(curvature) {
-            if(support.axis>=0) {
-              const int axis=support.axis;const double n2=normal[axis]*normal[axis];
-              for(int a=0;a<3;++a)for(int b=0;b<=a;++b)hy(3*a+axis,3*b+axis)+=local_hessian(a,b)*n2;
-            } else {
-              const Eigen::Matrix3d nn=normal*normal.transpose();
-              for(int a=0;a<3;++a)for(int b=0;b<=a;++b)hy.block<3,3>(3*a,3*b).noalias()+=local_hessian(a,b)*nn;
-            }
-          }
-        }
-        continue;
-      }
+    for(size_t id=0;id<group.retained;++id) {
+      const auto& support=group.supports[id];const Vec3 v=support.project(y);
       const double slack=v[0]*v[0]-v.tail<2>().squaredNorm();
-      if(v[0]<=0 || slack<=0)return INFINITY;
+      if(v[0]<=0||slack<=0)return INFINITY;
       if(evaluate_cost)cost-=mu*std::log(slack);
-      if(derivatives) {
-        const double f=2*mu/slack;
-        support.addGradient(f*v,gy);
-        if(!curvature)continue;
-        if(weak_ratio>0&&v.tail<2>().squaredNorm()<weak_ratio*weak_ratio*v[0]*v[0]) {
-          const double coefficient=(2*f/slack)*v[0]*v[0]-f;
-          if(support.axis>=0)weak_center(support.axis,support.axis)+=coefficient*normal[support.axis]*normal[support.axis];
-          else weak_center.noalias()+=coefficient*(normal*normal.transpose());
-          ++weak_count;continue;
-        }
-        full_curvature=true;
-        if(settings.tensor_assembly) {
-          const double scale=2*f/slack;Eigen::Matrix<double,6,1> hc;
-          hc<<scale*v[0]*v[0]-f,scale*v[1]*v[0],scale*v[1]*v[1]+f,
-              scale*v[2]*v[0],scale*v[2]*v[1],scale*v[2]*v[2]+f;
-          if(support.axis>=0)tensor.row(support.axis==0?0:support.axis==1?2:5)+=
-              (normal[support.axis]*normal[support.axis])*hc.transpose();
-          else tensor.noalias()+=group.normal_products[id]*hc.transpose();
-        } else {
-          Eigen::Matrix3d hc=(2*f/slack)*v*v.transpose();
-          hc(0,0)-=f;hc(1,1)+=f;hc(2,2)+=f;
-          if(support.axis>=0) {
-            const int axis=support.axis;const double n2=normal[axis]*normal[axis];
-            for(int a=0;a<3;++a)for(int b=0;b<=a;++b)hy(3*a+axis,3*b+axis)+=hc(a,b)*n2;
-          } else {
-            const Eigen::Matrix3d nn=normal*normal.transpose();
-            for(int a=0;a<3;++a)for(int b=0;b<=a;++b)hy.block<3,3>(3*a,3*b).noalias()+=hc(a,b)*nn;
-          }
-        }
-      }
+      if(derivatives)support.addGradient((2*mu/slack)*v,gy);
     }
-    cached_id+=group.supports.size();
-    if(curvature&&(full_curvature||settings.distance_barrier||weak_ratio==0)) {
-      if(settings.tensor_assembly&&!settings.distance_barrier) {
-        // Symmetry in both the three world channels and n*n^T leaves only
-        // 6x6 independent entries. Expand once per group, not once per plane.
-        int column=0;
-        for(int a=0;a<3;++a)for(int b=0;b<=a;++b,++column) {
-          const auto t=tensor.col(column);
-          hy.block<3,3>(3*a,3*b)<<t[0],t[1],t[3],t[1],t[2],t[4],t[3],t[4],t[5];
-        }
-      }
-      for(int a=0;a<3;++a)for(int b=0;b<a;++b)hy.block<3,3>(3*b,3*a)=hy.block<3,3>(3*a,3*b).transpose();
-      if(weak_ratio>0)hy.topLeftCorner<3,3>()+=weak_center;
-      group.accumulate(gy,hy,*g,*h);
-    } else if(derivatives) {
-      group.accumulateGradient(gy,*g);
-      if(curvature)group.accumulateCenter(weak_center,*h);
-    }
+    if(derivatives)group.accumulateGradient(gy,*g);
   }
-  const size_t begin=settings.grouped_assembly && !settings.reference_assembly?geometric_cuts:0;
-  for(size_t id=begin;id<cuts.size();++id) {
-    const auto& c=cuts[id];Eigen::Vector3d v=c.apply(x);v[0]=c.bound-v[0];
-    if(cache)cache->cones[id]=v;
-    if(c.redundant)continue;
-    if(settings.distance_barrier&&id<geometric_cuts) {
-      const double radius=supportRadius(v),gap=v[0]-radius;
-      if(gap<=0)return INFINITY;
-      if(evaluate_cost)cost-=mu*std::log(gap);
-      if(derivatives) {
-        Vec3 local_gradient;Eigen::Matrix3d local_hessian;
-        distanceBarrierJet(v,mu,radius,gap,local_gradient,local_hessian);
-        const auto map=c.dense();const int n=5*c.count;
-        g->segment(c.first,n).noalias()+=map.leftCols(n).transpose()*local_gradient;
-        if(curvature) {
-          const Eigen::Matrix<double,20,20> local=map.transpose()*local_hessian*map;
-          for(int j=0;j<n;++j)for(int k=0;k<=j;++k)h->add(c.first+j,c.first+k,local(j,k));
-        }
-      }
-      continue;
-    }
+  for(const auto& c:cuts) {
+    Vec3 v=c.apply(x);v[0]=c.bound-v[0];
     const double slack=v[0]*v[0]-v.tail<2>().squaredNorm();
-    if(v[0]<=0 || slack<=0)return INFINITY;
+    if(v[0]<=0||slack<=0)return INFINITY;
     if(evaluate_cost)cost-=mu*std::log(slack);
-    const bool weak=curvature&&id<geometric_cuts&&weak_ratio>0&&
-                    v.tail<2>().squaredNorm()<weak_ratio*weak_ratio*v[0]*v[0];
-    if(curvature && !weak && !settings.reference_assembly) c.accumulate(v,mu,slack,*g,*h);
-    else if(curvature&&!weak) {
-      const auto map=c.dense();
-      const int n=5*c.count;
-      const Eigen::Matrix<double,20,1> ds=-2*map.transpose()*v;
-      g->segment(c.first,n)-=mu/slack*ds.head(n);
-      const double first=mu/slack,second=first/slack;
-      Eigen::Matrix<double,20,20> local=second*ds*ds.transpose();
-      local.noalias()+=2*first*map.bottomRows<2>().transpose()*map.bottomRows<2>();
-      local.noalias()-=2*first*map.row(0).transpose()*map.row(0);
-      for(int j=0;j<n;++j)for(int k=0;k<=j;++k)h->add(c.first+j,c.first+k,local(j,k));
-    } else if(derivatives) {
+    if(curvature)c.accumulate(v,mu,slack,*g,*h);
+    else if(derivatives) {
       const double f=2*mu/slack;
       for(int k=0;k<c.count;++k) {
         const auto& n=c.normals[k];const int offset=c.first+5*k;
         g->segment<2>(offset)+=(f*c.center_sign*v[0])*n;
         g->segment<3>(offset+2)+=f*Vec3(v[1]*n[0],v[1]*n[1]+v[2]*n[0],v[2]*n[1]);
       }
-      if(weak) {
-        ++weak_count;const double coefficient=(2*f/slack)*v[0]*v[0]-f;
-        for(int a=0;a<c.count;++a)for(int b=0;b<=a;++b)
-          for(int j=0;j<2;++j)for(int k=0;k<(a==b?j+1:2);++k)
-            h->add(c.first+5*a+j,c.first+5*b+k,coefficient*c.normals[a][j]*c.normals[b][k]);
-      }
     }
   }
-  if(weak_rows)*weak_rows=weak_count;
   return cost;
-}
-void CubicProblem::checkDerivatives(const Eigen::VectorXd& x,OptimizerMetrics& metrics)const {
-  const double mu=.003/model.basis.count;
-  Eigen::VectorXd g;BandedSPD h;const double f=objective(x,mu,&g,&h);(void)f;
-  CubicProblem reference=*this;reference.settings.reference_assembly=true;
-  Eigen::VectorXd reference_gradient;BandedSPD reference_hessian;
-  const bool compare_reference=!settings.working_set;
-  if(compare_reference) {
-    reference.objective(x,mu,&reference_gradient,&reference_hessian);
-    metrics.gradient_reference_error=std::max(metrics.gradient_reference_error,
-        (g-reference_gradient).norm()/std::max({1.,g.norm(),reference_gradient.norm()}));
-  }
-  for(int trial=0;trial<8;++trial) {
-    Eigen::VectorXd v(x.size());for(int j=0;j<v.size();++j)v[j]=std::sin((j+1)*(trial+1)*.381);
-    v.normalize();
-    // Later inflation passes start close to active cones. Scale the diagnostic
-    // stencil to their two-sided margin and cancel its O(step^2) error.
-    // This checker only runs on untimed benchmark warmups / explicit tests.
-    const double step=std::min(1e-6,.01*std::min(feasibleStep(x,v),feasibleStep(x,-v)));
-    metrics.derivative_min_step=std::min(metrics.derivative_min_step,step);
-    const double wide=(objective(x+step*v,mu)-objective(x-step*v,mu))/(2*step);
-    const double narrow=(objective(x+.5*step*v,mu)-objective(x-.5*step*v,mu))/step;
-    const double fd=(4*narrow-wide)/3;
-    metrics.gradient_error=std::max(metrics.gradient_error,std::abs(fd-g.dot(v))/std::max({1.,std::abs(fd),std::abs(g.dot(v))}));
-    Eigen::VectorXd gp,gm,hp,hm;BandedSPD scratch;
-    objective(x+step*v,mu,&gp,&scratch);objective(x-step*v,mu,&gm,&scratch);
-    objective(x+.5*step*v,mu,&hp,&scratch);objective(x-.5*step*v,mu,&hm,&scratch);
-    const Eigen::VectorXd hv=h.multiply(v),num=(4*(hp-hm)/step-(gp-gm)/(2*step))/3;
-    metrics.hessian_error=std::max(metrics.hessian_error,(num-hv).norm()/std::max({1.,num.norm(),hv.norm()}));
-    if(compare_reference) {
-      const auto expected=reference_hessian.multiply(v);
-      metrics.hessian_reference_error=std::max(metrics.hessian_reference_error,
-          (expected-hv).norm()/std::max({1.,expected.norm(),hv.norm()}));
-    }
-  }
-}
-int CubicProblem::activateSupports(const Eigen::VectorXd& x)const {
-  int active=0;
-  for(const auto& group:groups) {
-    const V9 y=group.geometry(x);
-    for(size_t j=0;j<group.boundary_count;++j) {
-      const auto& support=group.supports[j];
-      if(!support.active && !support.redundant) {
-        const Vec3 v=support.project(y);const double radius=std::hypot(v[1],v[2]);
-        support.active=v[0]<2*radius+1e-6;
-      }
-      active+=support.active;
-    }
-  }
-  return active+cuts.size()-geometric_cuts;
 }
 double CubicProblem::feasibleStep(const Eigen::VectorXd& x,const Eigen::VectorXd& step)const {
   double limit=INFINITY;
@@ -762,12 +452,11 @@ double CubicProblem::feasibleStep(const Eigen::VectorXd& x,const Eigen::VectorXd
     if(r0>0)limit=std::min(limit,r0);
     if(r1>0)limit=std::min(limit,r1);
   };
-  auto cone=[&](const Vec3& v,const Vec3& d,bool smooth=false) {
-    const double regularization=smooth?support_epsilon*support_epsilon:0;
+  auto cone=[&](const Vec3& v,const Vec3& d) {
     const Vec3 trial=v+std::min(1.,limit)*d;
-    if(trial[0]>0 && trial[0]*trial[0]>trial.tail<2>().squaredNorm()+regularization)return;
+    if(trial[0]>0 && trial[0]*trial[0]>trial.tail<2>().squaredNorm())return;
     if(d[0]<0)limit=std::min(limit,-v[0]/d[0]);
-    quadraticLimit(d[0]*d[0]-d.tail<2>().squaredNorm(),2*(v[0]*d[0]-v.tail<2>().dot(d.tail<2>())),v[0]*v[0]-v.tail<2>().squaredNorm()-regularization);
+    quadraticLimit(d[0]*d[0]-d.tail<2>().squaredNorm(),2*(v[0]*d[0]-v.tail<2>().dot(d.tail<2>())),v[0]*v[0]-v.tail<2>().squaredNorm());
   };
   auto spd=[&](const Eigen::Matrix2d& a,const Eigen::Matrix2d& d) {
     const Eigen::Matrix2d trial=a+std::min(1.,limit)*d;
@@ -783,55 +472,37 @@ double CubicProblem::feasibleStep(const Eigen::VectorXd& x,const Eigen::VectorXd
     if((c+std::min(1.,limit)*v).squaredNorm()>=options.max_offset*options.max_offset)
       quadraticLimit(-v.squaredNorm(),-2*c.dot(v),options.max_offset*options.max_offset-c.squaredNorm());
   }
-  for(const auto& group:groups) {
+  for(const auto& group:geometry->groups) {
     const V9 y=group.geometry(x);
     const V9 d=group.direction(step);
-    for(size_t j=0;j<group.boundary_count;++j) {
+    for(size_t j=0;j<group.retained;++j) {
       const auto& support=group.supports[j];
-      cone(support.project(y),support.projectDirection(d),settings.distance_barrier&&!support.redundant);
+      cone(support.project(y),support.projectDirection(d));
     }
   }
-  for(size_t j=geometric_cuts;j<cuts.size();++j){const auto& c=cuts[j];auto v=c.apply(x),d=c.apply(step);v[0]=c.bound-v[0];d[0]=-d[0];cone(v,d);}
-  return std::min(1.,(settings.fraction_boundary>0?settings.fraction_boundary:.99)*limit);
+  for(const auto& c:cuts){auto v=c.apply(x),d=c.apply(step);v[0]=c.bound-v[0];d[0]=-d[0];cone(v,d);}
+  return std::min(1.,settings.fraction_boundary*limit);
 }
-void CubicProblem::optimize(Eigen::VectorXd& x,OptimizerMetrics& metrics,const std::function<void()>& stop)const {
+void CubicProblem::optimize(Eigen::VectorXd& x,OptimizerMetrics& metrics,const Deadline& deadline)const {
   metrics.construction_reuses+=reused_construction;
   metrics.basis_cache_hits+=basis_cache_hits;metrics.basis_cache_misses+=basis_cache_misses;
   metrics.group_lookup_reuses+=group_lookup_reuses;
-  metrics.controls=model.basis.count;metrics.variables=x.size()-4;metrics.constraints=cuts.size();metrics.equality_rank=equalities.rows();
-  metrics.merged_supports=merged_supports;metrics.support_groups=groups.size();metrics.pruned_supports=0;
-  metrics.axis_supports=0;
-  int fixed_active=0;
-  for(const auto& group:groups)for(const auto& p:group.supports){
-    metrics.pruned_supports+=p.redundant;metrics.axis_supports+=!p.redundant&&p.axis>=0;fixed_active+=p.active;
-  }
+  metrics.controls=model.basis.count;metrics.variables=x.size()-4;metrics.constraints=geometry->count+cuts.size();
+  metrics.merged_supports=geometry->merged;metrics.support_groups=geometry->groups.size();
+  metrics.pruned_supports=geometry->count-geometry->retained;metrics.axis_supports=geometry->axes;
   metrics.pruning_ms+=pruning_ms;
-  metrics.support_selection_ms+=support_selection_ms;metrics.support_gap_sum+=support_gap_sum;
-  metrics.support_intervals+=support_intervals;metrics.refined_intervals+=refined_intervals;
-  metrics.refined_planes+=refined_planes;metrics.refinement_extra_rows+=refinement_extra_rows;
-  int retained=0,boundary=0;
-  for(const auto& group:groups){
-    retained+=group.retained;boundary+=group.boundary_count;
-    metrics.reach_candidates+=group.reach_candidates;
-    metrics.exact_reach_evaluations+=group.exact_reach_evaluations;
-    metrics.exact_reach_additional+=group.exact_reach_additional;
-  }
-  const int progress=cuts.size()-geometric_cuts;
-  fixed_active+=progress;
-  metrics.passes.push_back({int(geometric_cuts),retained,boundary,progress,0,pruning_ms});
+  const int progress=cuts.size(),boundary=geometry->retained;
+  metrics.active_constraints=geometry->retained+progress;
+  metrics.passes.push_back({geometry->count,geometry->retained,boundary,progress,0,pruning_ms});
   metrics.hessian_nonzero=x.size()*20-190;
   if(settings.check_gradients)checkDerivatives(x,metrics);
-  const std::vector<double> barriers=settings.barrier_stages==1?std::vector<double>{.00001}:
-      settings.barrier_stages==2?std::vector<double>{.003,.00001}:std::vector<double>{.003,.0001,.00001};
-  Eigen::VectorXd g,step,next,barrier_gradient;BandedSPD h;Evaluation evaluation;
+  constexpr std::array<double,3> barriers{{.003,.0001,.00001}};
+  Eigen::VectorXd g,step,next,barrier_gradient;BandedSPD h;
   double previous_mu=0;
-  for(int stage=settings.barrier_begin;stage<int(barriers.size());++stage) {
-    const double barrier=barriers[stage];
-    const double mu=barrier/model.basis.count;
-    if(settings.path_predictor>0&&previous_mu>0&&!equalities.rows()&&!settings.working_set) {
-      stop();const auto timer=Clock::now();
-      // First-order continuation of grad(f)+mu*grad(phi)=0. Reuse the
-      // preceding Newton factor; the ordinary corrector refreshes it below.
+  for(int stage=0;stage<3;++stage) {
+    const double mu=barriers[stage]/model.basis.count;
+    if(settings.path_predictor>0&&previous_mu>0) {
+      deadline.check();StageTimer timer(settings.profile);
       h.solveInto(barrier_gradient,step,settings.path_predictor*(previous_mu-mu));
       const auto line=prepareLine(x,step,mu);double alpha=line.step;
       bool accepted=false;
@@ -839,97 +510,54 @@ void CubicProblem::optimize(Eigen::VectorXd& x,OptimizerMetrics& metrics,const s
         x+=alpha*step;++metrics.predictor_steps;accepted=true;break;
       }
       if(!accepted)++metrics.predictor_rejections;
-      metrics.predictor_ms+=ms(timer);
+      metrics.predictor_ms+=timer.elapsed();
     }
-    bool converged=false,refresh_next=true,exact_next=false;
-    const int limit=stage>0 && settings.corrector_iterations>0?settings.corrector_iterations:settings.iterations;
+    bool converged=false;
+    const int limit=stage>0&&settings.corrector_iterations>0?settings.corrector_iterations:settings.iterations;
     for(int it=0;it<limit;++it) {
-      stop();auto timer=Clock::now();
-      const bool refresh=refresh_next||it%settings.hessian_interval==0||settings.working_set;
-      const double weak_ratio=exact_next?0:settings.weak_curvature_ratio;
-      refresh_next=false;
-      exact_next=false;
-      metrics.active_constraints=settings.working_set?activateSupports(x):fixed_active;
-      std::uint64_t weak_rows=0;
-      // Cached Armijo evaluates the exact cost difference. Its Newton pass
-      // needs derivatives and domain checks, but no absolute logarithm sum.
-      const double f=objective(x,mu,&g,refresh?&h:nullptr,settings.cache_values?&evaluation:nullptr,
-                               weak_ratio,&weak_rows,!settings.cached_line||!settings.skip_unused_values);
-      metrics.assembly_ms+=ms(timer);
-      metrics.weak_curvature_rows+=weak_rows;
+      deadline.check();StageTimer timer(settings.profile);
+      const double f=objective(x,mu,&g,&h,false);
+      metrics.assembly_ms+=timer.elapsed();
       metrics.gradient_support_rows+=metrics.active_constraints;
-      if(refresh){metrics.hessian_support_rows+=metrics.active_constraints;++metrics.hessian_refreshes;}
-      if(!std::isfinite(f))throw std::runtime_error("cubic optimizer initial point is infeasible");
-      for(int id:{0,1,int(x.size())-5,int(x.size())-4}){g[id]=0;if(refresh)h.fix(id);}
-      timer=Clock::now();double damping=0;
-      if(refresh)while(!h.factor(damping)){damping=damping==0?1e-8:damping*10;++metrics.damping_retries;if(damping>1e6)throw std::runtime_error("cubic band factorization failed");}
+      metrics.hessian_support_rows+=metrics.active_constraints;
+      if(!std::isfinite(f))throw std::runtime_error("cubic optimizer point is infeasible");
+      for(int id:{0,1,int(x.size())-5,int(x.size())-4}){g[id]=0;h.fix(id);}
+      timer.restart();double damping=0;
+      while(!h.factor(damping)){damping=damping==0?1e-8:damping*10;++metrics.damping_retries;if(damping>1e6)throw std::runtime_error("cubic band factorization failed");}
       h.solveInto(g,step,-1);
-      if(settings.path_predictor>0&&!equalities.rows()&&!settings.working_set) {
+      const double decrement=-g.dot(step);metrics.final_decrement=decrement;
+      // Continuation only consumes the final corrector's gradient/factor.
+      if(settings.path_predictor>0&&stage<2&&(it+1==limit||decrement<settings.gradient_tolerance)) {
         Eigen::VectorXd primary=quadratic.multiply(x)+linear;
         for(int node=0;node<model.basis.count;++node) {
-          const auto s=matrix(x,node);const double w=model.basis.weight(node)/s.determinant();
-          primary.segment<3>(5*node+2)-=w*Vec3(s(1,1),-2*s(0,1),s(0,0));
+          const auto shape=matrix(x,node);const double w=model.basis.weight(node)/shape.determinant();
+          primary.segment<3>(5*node+2)-=w*Vec3(shape(1,1),-2*shape(0,1),shape(0,0));
         }
         barrier_gradient=(g-primary)/mu;
         for(int id:{0,1,int(x.size())-5,int(x.size())-4})barrier_gradient[id]=0;
         previous_mu=mu;
       }
-      if(equalities.rows()) {
-        Eigen::MatrixXd solve(x.size(),equalities.rows());
-        for(int j=0;j<equalities.rows();++j)solve.col(j)=h.solve(equalities.row(j).transpose());
-        const Eigen::MatrixXd schur=equalities*solve;
-        step-=solve*schur.ldlt().solve(equalities*step);
-      }
-      metrics.solve_ms+=ms(timer);
-      const double decrement=-g.dot(step);metrics.final_decrement=decrement;
-      if(decrement<settings.gradient_tolerance){
-        if(!refresh||weak_ratio>0){refresh_next=true;exact_next=true;continue;}
-        converged=true;break;
-      }
-      timer=Clock::now();double alpha=1;
-      LineModel line;
-      if(settings.cached_line) {
-        line=prepareLine(x,step,mu,settings.cache_values?&evaluation:nullptr);alpha=line.step;++metrics.feasible_scans;
-        metrics.boundary_support_rows+=boundary+progress;
-      } else if(settings.trial_first&&!settings.working_set) {
-        next=x+step;
-        if(objective(next,mu)<=f-1e-4*decrement) {
-          x.swap(next);++metrics.steps;++metrics.full_step_accepts;metrics.step_sum+=1;
-          metrics.line_search_ms+=ms(timer);continue;
-        }
-      }
-      if(!settings.cached_line&&(settings.fraction_boundary>0||settings.working_set)){
-        alpha=feasibleStep(x,step);++metrics.feasible_scans;metrics.boundary_support_rows+=boundary+progress;
-      }
-      bool accepted=true;
+      metrics.solve_ms+=timer.elapsed();
+      if(decrement<settings.gradient_tolerance){converged=true;break;}
+      timer.restart();
+      const auto line=prepareLine(x,step,mu);double alpha=line.step;++metrics.feasible_scans;
+      metrics.boundary_support_rows+=boundary+progress;
       for(;;) {
         next=x+alpha*step;
         const double decrease=-1e-4*alpha*decrement;
-        if(settings.cached_line) {
-          if(settings.bounded_line) {
-            ++metrics.bound_line_evaluations;metrics.line_support_rows+=metrics.active_constraints;
-            if(line.upperBound(alpha)<=decrease){++metrics.bound_line_accepts;break;}
-          }
-          ++metrics.exact_line_evaluations;metrics.line_support_rows+=metrics.active_constraints;
-          if(line.delta(alpha)<=decrease)break;
-        } else {
-          metrics.line_support_rows+=metrics.active_constraints;
-          if(objective(next,mu)<=f+decrease)break;
-        }
+        ++metrics.bound_line_evaluations;metrics.line_support_rows+=metrics.active_constraints;
+        if(line.upperBound(alpha)<=decrease){++metrics.bound_line_accepts;break;}
+        ++metrics.exact_line_evaluations;metrics.line_support_rows+=metrics.active_constraints;
+        if(line.delta(alpha)<=decrease)break;
         alpha*=.5;++metrics.backtracks;
-        if(alpha<1e-12){
-          if(!refresh){refresh_next=true;accepted=false;break;}
-          metrics.termination="line_search_stalled";return;
-        }
+        if(alpha<1e-12){metrics.termination="line_search_stalled";return;}
       }
-      metrics.line_search_ms+=ms(timer);
-      if(!accepted)continue;
+      metrics.line_search_ms+=timer.elapsed();
       x.swap(next);++metrics.steps;if(alpha==1)++metrics.full_step_accepts;
       ++metrics.passes.back().steps;
       metrics.minimum_step=std::min(metrics.minimum_step,alpha);metrics.step_sum+=alpha;
-      refresh_next=alpha<.01;
     }
     metrics.termination=converged?"newton_decrement":"iteration_limit";
   }
 }
-}
+} // namespace gcopter::direct::native

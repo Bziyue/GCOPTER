@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 import pathlib
+import resource
 import subprocess
 import time
 
@@ -19,23 +20,21 @@ def main():
     parser.add_argument("--timeout", type=int, default=1200)
     parser.add_argument("--native", action="store_true")
     parser.add_argument("--energy", type=float)
-    parser.add_argument("--preset", choices=["fast", "balanced", "volume"])
+    parser.add_argument("--preset", choices=["fast", "balanced", "volume"], default="balanced")
     parser.add_argument("--binary", default=".scratch/native_splines/build/native_spline_benchmark")
     parser.add_argument("--initial-radius-fraction", type=float)
     parser.add_argument("--initial-iterations", type=int)
     parser.add_argument("--iterations", type=int)
     parser.add_argument("--inflations", type=int)
     parser.add_argument("--spacing", type=float)
-    parser.add_argument("--barrier-stages", type=int)
     parser.add_argument("--corrector-iterations", type=int)
     parser.add_argument("--progress-threshold", type=float)
-    parser.add_argument("--polar-pruning", action="store_true")
-    parser.add_argument("--working-set", action="store_true")
     parser.add_argument("--fraction-boundary", type=float)
-    parser.add_argument("--recenter", action="store_true")
     parser.add_argument("--generation-only", action="store_true")
-    parser.add_argument("--method-count", type=int, default=3)
+    parser.add_argument("--method-count", type=int, default=2)
+    parser.add_argument("--profile", action="store_true")
     args = parser.parse_args()
+    resource.setrlimit(resource.RLIMIT_AS, (4*1024**3, 4*1024**3))
     frozen = json.loads((ROOT / "docs/validation/native_splines/frozen_manifest.json").read_text())
     out = ROOT / args.output
     out.mkdir(parents=True, exist_ok=True)
@@ -63,13 +62,11 @@ def main():
         manifest["energy_weights"] = args.energy
     for attribute, name in [("initial_radius_fraction", "RADIUS_FRACTION"), ("initial_iterations", "INITIAL_ITERATIONS"),
                             ("iterations", "ITERATIONS"), ("inflations", "INFLATIONS"), ("spacing", "SPACING"),
-                            ("corrector_iterations", "CORRECTOR_ITERATIONS"), ("progress_threshold", "PROGRESS_THRESHOLD"), ("fraction_boundary", "FRACTION_BOUNDARY"), ("barrier_stages", "BARRIER_STAGES"), ("method_count", "METHOD_COUNT")]:
+                            ("corrector_iterations", "CORRECTOR_ITERATIONS"), ("progress_threshold", "PROGRESS_THRESHOLD"), ("fraction_boundary", "FRACTION_BOUNDARY"), ("method_count", "METHOD_COUNT")]:
         value = getattr(args, attribute)
         if value is not None:
             env["NATIVE_" + name] = str(value)
-    if args.polar_pruning: env["NATIVE_POLAR_PRUNING"] = "1"
-    if args.working_set: env["NATIVE_WORKING_SET"] = "1"
-    if args.recenter: env["NATIVE_RECENTER"] = "1"
+    if args.profile: env["NATIVE_PROFILE"] = "1"
     if args.generation_only: env["NATIVE_GENERATION_ONLY"] = "1"
     manifest["native_environment"] = {k: v for k, v in env.items() if k.startswith("NATIVE_")}
     for i in map(int, args.cases.split(",")):

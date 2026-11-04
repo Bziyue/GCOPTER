@@ -6,27 +6,13 @@ namespace gcopter::direct::native {
 enum class NativePreset { Fast, Balanced, Volume };
 inline void applyNativePreset(NativePreset preset,Options& options,OptimizerSettings& solver) {
   solver=OptimizerSettings{};
-  solver.reuse_construction=true;
-  solver.fast_construction=true;
-  solver.cache_coverage=true;
-  solver.initial_radius_fraction=.65;
-  solver.fraction_boundary=.99;
-  solver.progress_threshold=.03;
-  solver.tensor_assembly=false;
-  solver.cached_line=true;
-  solver.axis_kernels=true;
-  solver.skip_unused_values=true;
-  solver.bounded_line=true;
-  solver.progress_depth=0;
   solver.center_energy=solver.shape_energy=preset==NativePreset::Volume?1e-6:1e-5;
   solver.iterations=preset==NativePreset::Balanced?8:6;
   solver.corrector_iterations=preset==NativePreset::Volume?0:4;
-  if(preset==NativePreset::Balanced) {
-    solver.projected_pruning=2;
-    solver.path_predictor=1;
-    solver.corrector_iterations=3;
-    solver.volume_refinements=1;
-  }
+  solver.prune_supports=preset==NativePreset::Balanced;
+  solver.path_predictor=preset==NativePreset::Balanced?1:0;
+  solver.volume_refinements=preset==NativePreset::Balanced?1:0;
+  if(preset==NativePreset::Balanced)solver.corrector_iterations=3;
   options.initial_iterations=solver.iterations;
   options.inflation_iterations=2;
 }

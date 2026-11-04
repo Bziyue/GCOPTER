@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Serial E3 construction/coverage ablations with exact geometry and plane hashes."""
+"""Serial C3 cleanup comparisons with exact geometry and plane hashes."""
 import argparse
 import hashlib
 import json
@@ -17,7 +17,7 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output",required=True)
     parser.add_argument("--cases",default="all")
-    parser.add_argument("--configurations",default="frozen,legacy,construction,coverage,cached,topology,all")
+    parser.add_argument("--configurations",default="frozen,clean")
     parser.add_argument("--repeats",type=int,default=7)
     parser.add_argument("--cpu",type=int,default=2)
     parser.add_argument("--blocks",type=int,default=1)
@@ -30,19 +30,12 @@ def main():
         selected=set(map(int,args.cases.split(",")));inputs=[r for r in inputs if r["case"] in selected]
     out=ROOT/args.output;out.mkdir(parents=True,exist_ok=True)
     names=args.configurations.split(",")
-    disabled={"NATIVE_REUSE_CONSTRUCTION":"0","NATIVE_CACHE_COVERAGE":"0","NATIVE_FAST_CONSTRUCTION":"0"}
-    configurations={"frozen":{},"default":{},"legacy":disabled,
-        "construction":disabled|{"NATIVE_REUSE_CONSTRUCTION":"1"},
-        "coverage":disabled|{"NATIVE_CACHE_COVERAGE":"1"},
-        "cached":disabled|{"NATIVE_REUSE_CONSTRUCTION":"1","NATIVE_CACHE_COVERAGE":"1"},
-        "topology":disabled|{"NATIVE_FAST_CONSTRUCTION":"1"},
-        "all":{k:"1" for k in disabled}}
-    for name,mode in (("elevate",1),("split",2)):
-        settings={"NATIVE_CERTIFICATE_REFINEMENT":str(mode),"NATIVE_CERTIFICATE_FRACTION":".05"}
-        configurations["frozen_"+name]=settings
-        configurations[name+"_cached"]=configurations["all"]|settings
+    configurations={"frozen":{},"clean":{},"profiled":{"NATIVE_PROFILE":"1"}}
+    for preset in ("fast","volume"):
+        configurations["frozen_"+preset]={"NATIVE_PRESET":preset}
+        configurations[preset]={"NATIVE_PRESET":preset}
     assert all(name in configurations for name in names)
-    binaries={name:ROOT/(".scratch/native_splines/e3_baseline/native_spline_benchmark" if name.startswith("frozen")
+    binaries={name:ROOT/(".scratch/native_splines/cleanup_baseline/native_spline_benchmark" if name.startswith("frozen")
                         else ".scratch/native_splines/build/native_spline_benchmark") for name in names}
     manifest=dict(source_commit=subprocess.check_output(["git","rev-parse","HEAD"],cwd=ROOT,text=True).strip(),
                   configurations=configurations,repeats=args.repeats,blocks=args.blocks,cpu=args.cpu,address_space_limit_bytes=4*1024**3,
@@ -63,7 +56,7 @@ def main():
                 target.mkdir(parents=True,exist_ok=True)
                 env={k:v for k,v in os.environ.items() if not k.startswith("NATIVE_")}
                 env.update(NATIVE_CANDIDATES="1",NATIVE_PRESET="balanced",NATIVE_GENERATION_ONLY="1",NATIVE_METHOD_COUNT="1")
-                env.update(NATIVE_SKIP_H5="1",NATIVE_REACH_BOUND="0")
+                env.update(NATIVE_SKIP_H5="1")
                 env.update(configurations[name])
                 command=[str(binaries[name]),str(ROOT/row["seed"]),str(ROOT/row["map"]),str(target),
                          *map(str,row["bounds_lower"]+row["bounds_upper"]),str(args.repeats),"0"]

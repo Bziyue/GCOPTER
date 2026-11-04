@@ -1,175 +1,117 @@
-# Native spline experiments
+# Native C3 corridor generation
 
-Research branch based on `ros2@15c70cd`. The RViz2 interactive demo now defaults
-to native C3; see [interactive commands](../../../docs/C3交互可视化.md).
-The production `generate()` library entry remains H5-S. The report, figures, full measurement sequences and compressed
-geometry/trajectory coefficients are in
-[`原生三次走廊冗余约束与Newton内核优化.md`](../../../docs/原生三次走廊冗余约束与Newton内核优化.md).
-This fifth round selects configurations by corridor generation time, union
-volume, geometric regularity and continuous safety. Trajectory optimization
-is retained as historical data and is not a selection criterion.
-The [next-stage improvement plan](../../../docs/原生三次走廊下一阶段改进方案.md)
-reconciles the independent review with the current implementation. It prioritizes
-tighter redundancy bounds, selective certificate replacement, incremental setup
-and smoothness control, with staged cubic generation as a separate experiment.
-The [E1 exact-reach experiment](../../../docs/原生三次走廊E1精确可达域实验.md)
-implements and compares the tighter domain bound on 67 cases across 16 maps.
-Use `OptimizerSettings::reach_bound=1` for the exact bound or `2` to try it only
-after the original triangle bound fails (`NATIVE_REACH_BOUND` in the benchmark).
-Both remain opt-in: extra pruning did not consistently improve generation time,
-union volume and boundary smoothness together. The default remains `0`.
+This module generates a continuously certified C² corridor directly from a seed
+path. The RViz2 demo uses `generateNative()` with `NativePreset::Balanced`; see
+[interactive commands](../../../docs/C3交互可视化.md). H5 remains available through
+its separate `generate()` entry and as a projection quality reference.
 
-The [E2 certificate-replacement experiment](../../../docs/原生三次走廊E2选择性证书替换实验.md)
-uses `OptimizerSettings::certificate_refinement=1` for exact degree-five
-certificate elevation, or `2` for one de Casteljau bisection. Geometry and queries
-remain cubic. `certificate_fraction` selects a fraction of interval groups using
-barrier pressure times the support-bound gap, divided by added row count. Only
-planes with a tighter bound are replaced. Selection starts in the second
-inflation pass and does not add Newton iterations. The benchmark equivalents are
-`NATIVE_CERTIFICATE_REFINEMENT` and `NATIVE_CERTIFICATE_FRACTION`.
+Each cubic span represents `F(u,z) = c(u) + M(u)z`, with `||z|| <= 1`. Nonuniform
+B-spline control variables are extracted exactly into cubic Bézier coefficients.
+The output contains degree-three geometry and its original support planes.
+Every accepted update satisfies continuous support and full-section Jacobian
+certificates. Each volume-refinement update follows the same acceptance rule.
 
-Both E2 modes default to off. The solver rebuilds implication proofs for the
-replacement rows, while the final certificate still covers every original
-plane and the full-section Jacobian. `run_e2.py --blocks 3 --repeats 7` rotates
-configuration order across three serial blocks and retains all 21 timings,
-CPU time, coefficient hashes and certificate audits. It reuses the E1 input
-manifest and enforces a 4 GiB address-space limit and one numerical thread.
+## Implementation
 
-The [E3 construction/coverage experiment](../../../docs/原生三次走廊E3构造缓存与覆盖复用实验.md)
-keeps cubic coefficients, original support planes and Newton decisions exactly
-unchanged. Across 67 frozen inputs, the sum of per-case generation medians falls
-by 6.75% (6.83% for the 65 successful cases). All three native presets now enable
-`reuse_construction`, `fast_construction` and `cache_coverage`. These reuse the
-initial feasible problem and geometric rows during progress repairs, cache
-interval extraction/group lookups, and retain the static local-box layout.
-Dynamic obstacle separation still runs for the current geometry each pass.
-The benchmark switches are `NATIVE_REUSE_CONSTRUCTION`,
-`NATIVE_FAST_CONSTRUCTION` and `NATIVE_CACHE_COVERAGE`; setting all three to `0`
-selects the instrumented legacy implementation. `run_e3.py` compares it with the
-frozen `3a34a75` binary, individual ablations and the combined implementation,
-serially under the same 4 GiB limit. `setup_ms` now includes initialization's
-feasibility-problem construction; `initial_problem_ms` exposes that component.
+| File | Responsibility |
+| --- | --- |
+| `cubic_basis.hpp`, `geometry.*` | Exact extraction, geometry, degree-aware import/export |
+| `cubic_generator.*` | Input validation, initialization, inflation and certified acceptance |
+| `obstacle_cover.hpp`, `lazy_obstacles.hpp` | Cached local-box layout, BVH queries and dynamic separation |
+| `cubic_optimizer.*` | Shared immutable geometric constraints, progress cones, grouped Newton kernel |
+| `support_pruning.cpp` | Projected candidate selection with a sufficient 3D implication proof |
+| `cubic_refinement.cpp` | Cached exact line model and certified swept-volume refinement |
+| `cubic_diagnostics.cpp` | Independent dense derivatives and finite-difference checks |
+| `runtime.hpp` | Optional stage profiling and generation deadline |
+| `cubic_query.hpp` | Native cubic evaluation and section inversion |
 
-The fourth-round report is
-[`原生三次走廊连续约束与自适应优化实验.md`](../../../docs/原生三次走廊连续约束与自适应优化实验.md).
-The [third-round report](../../../docs/原生三次走廊约束与求解加速.md) covers
-shared supports, block assembly and scalar line searches.
-The [second-round report](../../../docs/原生三次走廊性能优化实验.md) records
-initialization, volume recovery and the native query implementation.
-The [first-round report](../../../docs/原生三次与最小jerk走廊实验.md) retains the
-original comparison and the broader research plan.
+A fixed knot/model layout owns one coverage layout and one bending-energy
+matrix. Initialization, the first solve and progress repairs share immutable
+geometric groups. Progress cones remain local to each problem. New separation
+planes in a later inflation create new groups; knot refinement creates a new
+layout. Obstacle separation always uses the current geometry.
 
-Implemented: exact nonuniform cubic extraction, degree-aware affine-disc
-geometry, natural cubic and free-endpoint minimum-jerk diagnostics, continuous
-sphere/support and full-disk Jacobian certificates, native and H5-projected
-cubic initialization, five-variable control-point optimization, band Cholesky,
-natural-endpoint projection ablation, and common-backend trajectory replay.
+Geometric constraints are stored once as groups. `Cut` only stores progress
+cones. There is no second expanded copy of every geometric row. Projected
+pruning witnesses are materialized only by explicit proof tests.
 
-The current native path uses clearance-based initialization, grouped 9D
-support Hessians, shared-support merging, occupied 5×5 band blocks, cached
-quadratic line searches, shared fixed energy matrices,
-cached construction and coverage layouts, lazy obstacle metric priorities, and
-quadratic-derivative progress cones. It calls
-neither H5 nor FIRI. `generateNative(seed, index,
-bounds, options)` selects `NativePreset::Balanced`; `Fast` and `Volume` select
-the measured alternatives. `generateCubic()` exposes individual research
-settings and the optional H5 projection reference.
+The solver uses exact grouped 9D Hessians, axis-aligned kernels, banded Cholesky,
+and a scalar quadratic line model. The sufficient Armijo bound falls back to
+an exact logarithmic cost difference. `Balanced` also uses proved support
+pruning, barrier-path prediction and one certified volume refinement. `Fast`
+and `Volume` retain their own energy weights and iteration budgets.
 
-`Balanced` now also uses proved support pruning in both Hessian assembly and
-step-boundary scans, axis-aligned plane kernels, derivative-only Newton assembly,
-and a rational sufficient Armijo test with an exact logarithm fallback. It takes
-8/3/3 Newton steps per inflation, uses the preceding factor for barrier-path
-predictions, and finishes with one certified swept-volume refinement.
-The other presets retain their previous solver budgets. Their exact kernels
-also omit unused values and use the sufficient line-search test.
+## Inputs, certificates and timing
 
-`CubicQuery` consumes the returned degree-three `Geometry` directly. It uses
-cubic Horner evaluation, an analytical 2×2 Gram inverse, and exact-key caches.
-Construct it once for certified geometry and reuse it for the trajectory
-optimization. Geometry must outlive its query object.
+`generateCubic()` checks external seed/options/bounds once. Internal routines
+consume valid finite data and their established layout. Domain tests for log
+barriers, factorization pivots, nondegenerate separator metrics and continuous
+geometric acceptance belong to the numerical algorithm and remain in place.
+The final exported state has already passed the acceptance certificate; it is
+not recertified a second time merely for export.
 
-The seven frozen cases are a development experiment. Q5-C joint optimization,
-derivative elimination, native initialization with natural endpoints, full
-parameter/equal-variable scans and held-out scene evaluation are not yet
-implemented. `Q5-T` and `H5-C3-T` currently mean global jet-fraction controls;
-`H5-Z-fixed` means zeroing shape jets at the current H5-S nodal values.
+Normal generation records total time. `OptimizerSettings::profile=true`
+(`NATIVE_PROFILE=1` in the benchmark) enables detailed stage timers. With it off,
+stage fields are zero/unmeasured, not estimates of stage cost. Deadline checks
+occur at generation, span, subdivision and Newton boundaries. Inner obstacle
+loops read the clock once per 1024 selected obstacles, rather than per 32.
+
+`check_gradients` is an explicit diagnostic, enabled on untimed benchmark
+warmups. The independent dense implementation is separated from the active
+Newton kernel. `CubicQuery` is constructed once for certified geometry; that
+geometry must outlive the query object.
+
+## Build and compare
+
+Builds and measurements are serial. The comparison runner limits address space
+to 4 GiB, uses one numerical thread and pins the benchmark to CPU 2 by default.
 
 ```bash
 cd /home/zdp/ForCodex/GCOPTER
-tar -xzf docs/validation/native_splines_optimized/frozen_inputs.tar.gz
+bash -c 'ulimit -v 4194304
+export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1
 cmake -S direct_corridor/experiments/native_splines \
   -B .scratch/native_splines/build -DCMAKE_BUILD_TYPE=Release
 cmake --build .scratch/native_splines/build -j1
-ctest --test-dir .scratch/native_splines/build --output-on-failure -j1
-python3 direct_corridor/experiments/native_splines/run.py --native \
-  --generation-only --method-count 1 --preset balanced --repeats 7 \
-  --output .scratch/native_splines/round3/reproduce
+ctest --test-dir .scratch/native_splines/build --output-on-failure -j1'
 ```
 
-For trajectory replay, reconfigure with `-DNATIVE_SPLINE_TRAJECTORY=ON` and the
-installed OMPL prefix if needed, build `native_trajectory_comparison` serially,
-then run `trajectory.py`. It verifies frozen geometry against the map and
-uses the existing optimizer and identical initialization. Cubics use the
-native query by default; `--quintic-replay` selects the original evaluator for
-the same geometry. Exact elevation remains an independent audit adapter.
-Primary timing has profiling off; `--profile` enables a separate diagnostic run.
-The replay's `corridor_ms` is reading/audit/adaptation time, not generation time.
-
-`-DNATIVE_SPLINE_NATIVE_ARCH=ON` enables the local CPU instruction set for all
-benchmark arms, including H5. It does not enable fast-math; compare its timings
-separately from portable builds.
-
-`compare.py` archives measurements and draws figures using NumPy/Matplotlib.
-`independent_audit.py` uses NumPy and SciPy for an additional nearest-sphere
-sampling audit. The continuous certificates remain the output acceptance test.
-`native_volume_refine` increases QMC samples without regenerating a corridor.
-`analyze_optimized.py` archives the second-round measurements, exploratory
-settings, and shared-domain QMC results, and renders the report figures.
-`explore.py` runs explicit serial third-round ablations; `analyze_round3.py`
-archives their outputs and the matched final measurements.
-`explore_round4.py` screens continuation, adaptive knots and exact swept-volume
-gradients under a 4 GiB address-space limit. `analyze_round4.py` archives the
-fourth-round measurements and all rejected alternatives. These alternatives
-remain opt-in: `NATIVE_SEPARATOR_REUSE_GAP`, `NATIVE_SUPPORT_EXCHANGE`,
-`NATIVE_ADAPTIVE_KNOTS`, `NATIVE_PATH_PREDICTOR`, `NATIVE_VOLUME_REFINEMENTS`.
-`NATIVE_CACHE_VALUES=1` enables the tested same-point cone cache; it is disabled
-by default because the measured implementation was slower than recomputing the dot products.
-The continuous oracle supports degree-six support slacks and degree-four fixed
-normal progress slacks; only support-point exchange is connected to generation.
-Exact knot insertion is tested independently; the current adaptive experiment
-selects an initial nonuniform knot vector rather than performing online insertion.
-
-Fifth-round generation experiments use `explore_round5.py`. It explicitly
-freezes the old solver settings before applying each configuration, alternates
-configuration order by case, uses CPU 2 and a 4 GiB address-space limit, and
-records binary/source/input hashes. The `frozen` arm expects a separately built
-`f72f3fe` benchmark at `.scratch/native_splines/round5_baseline/native_spline_benchmark`.
-`pruned_predict3_volume1` is the new Balanced configuration; `projected_axis_bounded`
-isolates pruning plus exact kernels at the old Newton budget.
+`run.py` compares native C3, the H5 projection reference and optional H5
+representation diagnostics. `run_cleanup.py` compares the current native path
+against the frozen E3 binary at
+`.scratch/native_splines/cleanup_baseline/native_spline_benchmark`:
 
 ```bash
-OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 \
-python3 direct_corridor/experiments/native_splines/explore_round5.py \
-  --configurations frozen,projected_axis_bounded,pruned_predict3_volume1 \
-  --repeats 21 --output .scratch/native_splines/reproduce-round5
+python3 direct_corridor/experiments/native_splines/run_cleanup.py \
+  --output .scratch/native_splines/cleanup/reproduce \
+  --cases 0,1,2,3,4,5,6 --blocks 3 --repeats 7
 ```
 
-`evaluate_corridors_round5.py` checks the archived screening geometries with a
-shared-domain QMC sequence and an independent geometry audit. It never runs a
-trajectory optimizer. `evaluate_round5.py` retains the earlier comparison and
-requires an explicit `--trajectories` to replay trajectories. `analyze_round5.py`
-archives all screening/final data, verifies that the finally timed coefficients
-match the measured geometries, and plots time, volume and curvature together.
-The selected configuration improves time and union volume on the seven frozen
-development cases; local curvature and shape bending can increase.
+The frozen baseline is commit `01c8a5b`, built in Release without
+`-march=native`. Inputs and hashes are from
+`docs/validation/native_splines_e1/inputs.tar.gz`. The runner verifies hashes at
+entry and keeps every timing, failure, coefficient export and fresh-map audit.
+Use `--configurations clean,profiled` to measure profiling overhead separately.
 
-Experimental alternatives remain explicit settings: `projected_pruning=1`
-prunes only assembly, `distance_barrier` uses the regularized support-distance
-barrier, `initial_sweeps` inflates the initial shapes, `hessian_interval` reuses
-a factor, and `weak_curvature_ratio` omits weak shape/cross curvature while
-keeping the full gradient. These alternatives do not bypass final certificates.
+The optional trajectory replay backend still consumes native geometry, but is
+not part of this generation-only comparison. Build it with
+`-DNATIVE_SPLINE_TRAJECTORY=ON` when needed.
 
-The CSV v3 header begins `degree,u0,u1` followed by nine world-space geometric
-channels. There are exactly four or six controls per interval. The legacy v2
-production interface remains unchanged; `GeometryAccess` supplies an isolated
-exact-elevation adapter for this experiment.
+## Research history
+
+The [cleanup report](../../../docs/原生三次走廊代码清理与热路径精简.md) records the active
+architecture and its regression results. The [E3 report](../../../docs/原生三次走廊E3构造缓存与覆盖复用实验.md)
+records construction/coverage reuse before cleanup.
+
+E1 exact reach, E2 selective certificate refinement, working sets, point
+exchange, stale separator reuse, adaptive-knot heuristics, frame recentering,
+coordinate inflation, alternative barriers, weak Hessians, delayed Hessian
+refresh and the older assembly/line-search variants were removed from active
+code after the experiments. Construction caches and exact kernels now have one
+implementation, without ablation toggles.
+
+Historical reports, measurements and source snapshots remain in `docs/validation`.
+The old drivers and configurations belong to those snapshots, not the current
+API. Recover them from their recorded commit (E1 `5c6f860`, E2 `3a34a75`,
+E3 `01c8a5b`) or the corresponding `source_snapshot.tar.gz`. This preserves the
+experiments without carrying inactive alternatives through the generator.

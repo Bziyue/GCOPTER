@@ -5,7 +5,6 @@
 #include <queue>
 
 namespace gcopter::direct::native {
-struct MetricCandidate {int id;double distance;};
 // The box key is a lower bound on every surviving sphere's ordering score.
 // Exact scores are computed only when a block can contain the next obstacle.
 class LazyMetricOrder {

@@ -3,6 +3,7 @@
 #include "cubic_certificates.hpp"
 #include "../../src/hermite_optimizer.hpp"
 #include "lazy_obstacles.hpp"
+#include "runtime.hpp"
 #include <memory>
 #include <chrono>
 
@@ -25,8 +26,6 @@ struct CoverMetrics {
   double query_ms=0, separation_ms=0, total_ms=0;
   double topology_ms=0;
   int topology_builds=0,reused_cover_spans=0;
-  int reused_planes=0,reused_spheres=0;
-  size_t separator_cache_bytes=0;
   size_t priority_evaluations=0;
   Metrics primitives;
 };
@@ -64,32 +63,18 @@ struct CoverLayout {
     }
   }
 };
-struct SeparatorCache {
-  struct Mask {int block;unsigned long long bits;};
-  struct Plane {Vec3 normal;double bound;std::vector<Mask> masks;};
-  static constexpr size_t byte_limit=32*1024*1024;
-  std::vector<std::vector<Plane>> spans;
-  size_t bytes=0;
-  static size_t size(const Plane& p){return sizeof(Plane)+p.masks.capacity()*sizeof(Mask);}
-  void retain(int span,Plane plane) {
-    const size_t n=size(plane);
-    if(n<=byte_limit-bytes){bytes+=n;spans[span].push_back(std::move(plane));}
-  }
-};
 // The sphere separator uses the production BVH, metricSphereNormal and spatial
 // packets. Only the polynomial control count and emission of raw planes differ.
 template<int D> struct MapCover {
   using Patch=GeometryPatch<D>;
   const ObstacleIndex& map;const Bounds& bounds;const Options& options;
   QueryCache& query_cache;CoverMetrics& timings;Metrics& metrics;
-  const std::function<void()>& stop;
-  SeparatorCache* reuse;
-  double reuse_gap;
-  bool lazy_priorities;
+  Deadline& deadline;
+  bool profile;
   std::vector<detail::SupportPlane> planes;
   MapCover(const ObstacleIndex& m,const Bounds& b,const Options& o,QueryCache& cache,
-           CoverMetrics& t,const std::function<void()>& check,SeparatorCache* reuse_cache=nullptr,double gap=0,bool lazy=false)
-    :map(m),bounds(b),options(o),query_cache(cache),timings(t),metrics(t.primitives),stop(check),reuse(reuse_cache),reuse_gap(gap),lazy_priorities(lazy){}
+           CoverMetrics& t,Deadline& budget,bool profiling)
+    :map(m),bounds(b),options(o),query_cache(cache),timings(t),metrics(t.primitives),deadline(budget),profile(profiling){}
   void add(const Patch& p,const Vec3& n,double h) {planes.push_back({p.span,p.begin,p.end,n,h});}
   void limit(const Patch& p,const Vec3& n,double h,int depth=0) {
     if(supportBound<D>(p.controls,n,h)<=1e-9){add(p,n,h);return;}
@@ -98,11 +83,11 @@ template<int D> struct MapCover {
   }
   void pairCuts(const Patch& p, const std::vector<int>& ids,
                 int depth) {
-    stop();
     if (ids.empty()) {
       ++metrics.certificate_leaves;
       return;
     }
+    if(depth)deadline.check(); // The outer span already checked depth zero.
     Curve<D,Vec3> c;
     Curve<D,Mat32> m;
     for(int j=0;j<=D;++j){c[j]=p.controls[j].template head<3>();m[j]=shape(p.controls[j]);}
@@ -138,8 +123,6 @@ template<int D> struct MapCover {
     // Bounds can discard/retain a whole group; only straddling groups need
     // per-sphere predicates. The eager path scans group minima; the lazy path
     // orders box lower bounds before computing individual metric priorities.
-    using Candidate=MetricCandidate;
-    using Block = ObstacleGroups::Block;
     constexpr int block_size = 32;
     ObstacleGroups temporary;
     const ObstacleGroups* grouped;
@@ -151,75 +134,15 @@ template<int D> struct MapCover {
     }
     auto blocks = grouped->blocks;
     const bool uniform_radius = grouped->uniform_radius;
-    const bool cache_span=reuse&&depth==0;
-    if(cache_span) {
-      // IDs, block order and query bounds stay fixed within this generation.
-      // Each mask is an obstacle-side proof; only its patch-side support can change.
-      auto previous=std::move(reuse->spans[p.span]);
-      reuse->spans[p.span].clear();
-      for(const auto& plane:previous)reuse->bytes-=SeparatorCache::size(plane);
-      for(auto& plane:previous) {
-        if(supportBound<D>(p.controls,plane.normal,plane.bound)>-reuse_gap)continue;
-        int removed=0;
-        for(const auto& mask:plane.masks) {
-          auto& block=blocks[mask.block];removed+=__builtin_popcountll(block.alive&mask.bits);
-          block.alive&=~mask.bits;
-        }
-        if(removed) {
-          add(p,plane.normal,plane.bound);++timings.reused_planes;timings.reused_spheres+=removed;
-          reuse->retain(p.span,std::move(plane));
-        }
-      }
-    }
-    std::vector<Candidate> remaining;
-    if(!lazy_priorities&&cache_span) {
-      remaining.resize(ids.size());
-      for(size_t j=0;j<ids.size();++j)remaining[j]={ids[j],INFINITY};
-      for(const auto& block:blocks)for(auto bits=block.alive;bits;bits&=bits-1) {
-        const int j=block.begin+__builtin_ctzll(bits);
-        remaining[j].distance=(metric*(map.obstacles()[ids[j]].center-cm)).squaredNorm();
-        ++timings.priority_evaluations;
-      }
-    } else if(!lazy_priorities) {
-      remaining.reserve(ids.size());
-      for(int id:ids)remaining.push_back({id,(metric*(map.obstacles()[id].center-cm)).squaredNorm()});
-      timings.priority_evaluations+=ids.size();
-    }
-    if (!uniform_radius&&!lazy_priorities) {
-      const double inverse_scale = 1 / min_scale;
-      for (auto& candidate : remaining)
-        candidate.distance = std::sqrt(candidate.distance) -
-            (map.obstacles()[candidate.id].radius + pad) * inverse_scale;
-    }
-    auto better = [&](int a, int b) {
-      return b < 0 || remaining[a].distance < remaining[b].distance ||
-          (remaining[a].distance == remaining[b].distance && remaining[a].id < remaining[b].id);
-    };
-    auto nearest = [&](Block& b) {
-      b.nearest = -1;
-      for (auto bits = b.alive; bits; bits &= bits - 1) {
-        const int j = b.begin + __builtin_ctzll(bits);
-        if (better(j, b.nearest)) b.nearest = j;
-      }
-    };
-    int next = -1;
-    std::unique_ptr<LazyMetricOrder> lazy;
-    if(lazy_priorities) {
-      lazy=std::make_unique<LazyMetricOrder>(blocks,ids,map,metric,cm,min_scale,pad,uniform_radius);
-      next=lazy->next();
-    } else for (auto& b : blocks) {
-      nearest(b);
-      if (b.nearest>=0&&better(b.nearest, next)) next = b.nearest;
-    }
+    LazyMetricOrder lazy(blocks,ids,map,metric,cm,min_scale,pad,uniform_radius);
+    int next=lazy.next();
     std::vector<int> failed;
-    unsigned processed = 0;
     while (next >= 0) {
-      if ((++processed & 31u) == 0) stop();
+      deadline.obstacle();
       const int selected_block=next/block_size;
-      const unsigned long long selected_bit=1ull<<(next-blocks[selected_block].begin);
       auto& selected = blocks[selected_block];
       selected.alive &= ~(1ull << (next - selected.begin));
-      if(lazy)lazy->changed(selected_block);else nearest(selected);
+      lazy.changed(selected_block);
       const int id = ids[next];
       const auto& sphere = map.obstacles()[id];
       const Vec3 delta = sphere.center - cm;
@@ -263,8 +186,6 @@ template<int D> struct MapCover {
       next = -1;
       if (separated) {
         add(p, n, h);
-        SeparatorCache::Plane record{n,h,{}};
-        if(cache_span)record.masks.push_back({selected_block,selected_bit});
         const Vec3 absolute = n.cwiseAbs();
         for (size_t block_id=0;block_id<blocks.size();++block_id) {
           auto& b=blocks[block_id];
@@ -278,34 +199,26 @@ template<int D> struct MapCover {
           if (projection - extent - b.max_radius - pad >= h + guard) {
             b.alive = 0;
             b.nearest = -1;
-            if(lazy)lazy->changed(int(block_id));
-            if(cache_span)record.masks.push_back({int(block_id),before});
+            lazy.changed(int(block_id));
             continue;
           }
           if (projection + extent - b.min_radius - pad >= h - guard) {
-            if(!lazy)b.nearest = -1;
             for (auto bits = b.alive; bits; bits &= bits - 1) {
               const int j = b.begin + __builtin_ctzll(bits);
               const auto& other = map.obstacles()[ids[j]];
               ++metrics.obstacle_pairs;
               if (n.dot(other.center) - other.radius - pad >= h)
                 b.alive &= ~(1ull << (j - b.begin));
-              else if (!lazy&&better(j, b.nearest)) b.nearest = j;
             }
           }
-          if(cache_span&&before!=b.alive)record.masks.push_back({int(block_id),before&~b.alive});
-          if(lazy&&before!=b.alive)lazy->changed(int(block_id));
-          if (!lazy&&b.nearest >= 0 && better(b.nearest, next)) next = b.nearest;
+          if(before!=b.alive)lazy.changed(int(block_id));
         }
-        if(cache_span)reuse->retain(p.span,std::move(record));
       } else {
         failed.push_back(id);
-        if(!lazy)for (const auto& b : blocks)
-          if (b.nearest >= 0 && better(b.nearest, next)) next = b.nearest;
       }
-      if(lazy)next=lazy->next();
+      next=lazy.next();
     }
-    if(lazy)timings.priority_evaluations+=lazy->evaluations;
+    timings.priority_evaluations+=lazy.evaluations;
     ++metrics.certificate_leaves;
     if (!failed.empty()) {
       if (depth >= options.certificate_depth)
@@ -316,53 +229,30 @@ template<int D> struct MapCover {
       pairCuts(halves.second, failed, depth + 1);
     }
   }
-  void build(const Geometry& g,const std::vector<Vec3>& seed,const CoverLayout* layout=nullptr) {
-    using Clock=std::chrono::steady_clock;
-    auto elapsed=[](auto t){return std::chrono::duration<double,std::milli>(Clock::now()-t).count();};
-    const auto start=Clock::now();
-    if(reuse)reuse->spans.resize(g.pieces());
+  void build(const Geometry& g,const CoverLayout& layout) {
+    StageTimer total(profile);
     const double pad=options.robot_radius+options.safety_margin+options.certificate_margin;
-    std::vector<detail::LocalBox> boxes;
-    double length=0;Vec3 a,b=seed.front();
-    if(!layout)for(size_t j=1;j<seed.size();) {
-      a=b;if((a-seed[j]).norm()>options.local_progress)b=a+(seed[j]-a).normalized()*options.local_progress;else b=seed[j++];
-      const double end=length+(b-a).norm();
-      boxes.push_back({length,end,{(a.cwiseMin(b)-Vec3::Constant(options.local_range)).cwiseMax(bounds.lower+Vec3::Constant(pad)),
-                                   (a.cwiseMax(b)+Vec3::Constant(options.local_range)).cwiseMin(bounds.upper-Vec3::Constant(pad))}});
-      length=end;
-    }
     for(int i=0;i<int(g.pieces());++i) {
-      stop();const Patch p{i,0,1,g.curve<D>(i)};
+      deadline.check();const Patch p{i,0,1,g.curve<D>(i)};
       for(int axis=0;axis<3;++axis){limit(p,Vec3::Unit(axis),bounds.upper[axis]-pad);limit(p,-Vec3::Unit(axis),-bounds.lower[axis]-pad);}
-      const double s=g.breaks[i]*length,e=g.breaks[i+1]*length,h=e-s;
-      Vec3 lo=Vec3::Constant(INFINITY),hi=-lo;
-      auto emit=[&](double from,double to,const Bounds& box) {
-        const Patch part{i,from,to,restrictCurve<D>(p.controls,from,to)};
-        for(int axis=0;axis<3;++axis){limit(part,Vec3::Unit(axis),box.upper[axis]);limit(part,-Vec3::Unit(axis),-box.lower[axis]);}
-      };
-      if(layout) {
-        const auto& span=layout->spans[i];
-        for(size_t j=span.begin;j<span.end;++j){const auto& part=layout->parts[j];emit(part.begin,part.end,part.bounds);}
-        lo=span.lower;hi=span.upper;++timings.reused_cover_spans;
-      }else for(const auto& box:boxes) {
-        const double from=std::clamp((box.begin-s)/h,0.,1.),to=std::clamp((box.end-s)/h,0.,1.);
-        if(to<=from)continue;
-        emit(from,to,box.bounds);
-        lo=lo.cwiseMin(box.bounds.lower);hi=hi.cwiseMax(box.bounds.upper);
+      const auto& span=layout.spans[i];
+      for(size_t j=span.begin;j<span.end;++j) {
+        const auto& box=layout.parts[j];
+        const Patch part{i,box.begin,box.end,restrictCurve<D>(p.controls,box.begin,box.end)};
+        for(int axis=0;axis<3;++axis){limit(part,Vec3::Unit(axis),box.bounds.upper[axis]);limit(part,-Vec3::Unit(axis),-box.bounds.lower[axis]);}
       }
-      auto timer=Clock::now();std::vector<int> scratch;
-      const auto& ids=query_cache.query(i,lo-Vec3::Constant(pad),hi+Vec3::Constant(pad),map,scratch);
-      timings.query_ms+=elapsed(timer);timer=Clock::now();pairCuts(p,ids,0);timings.separation_ms+=elapsed(timer);
+      ++timings.reused_cover_spans;
+      StageTimer timer(profile);std::vector<int> scratch;
+      const auto& ids=query_cache.query(i,span.lower-Vec3::Constant(pad),span.upper+Vec3::Constant(pad),map,scratch);
+      timings.query_ms+=timer.elapsed();timer.restart();pairCuts(p,ids,0);timings.separation_ms+=timer.elapsed();
     }
-    timings.total_ms+=elapsed(start);
-    if(reuse)timings.separator_cache_bytes=std::max(timings.separator_cache_bytes,reuse->bytes);
+    timings.total_ms+=total.elapsed();
   }
 };
-inline std::vector<detail::SupportPlane> mapCover(const Geometry& g,const std::vector<Vec3>& seed,
-    const ObstacleIndex& map,const Bounds& bounds,const Options& options,QueryCache& cache,
-    CoverMetrics& metrics,const std::function<void()>& stop,SeparatorCache* reuse=nullptr,double reuse_gap=0,bool lazy=false,
-    const CoverLayout* layout=nullptr) {
-  if(g.degree==3){MapCover<3> c(map,bounds,options,cache,metrics,stop,reuse,reuse_gap,lazy);c.build(g,seed,layout);return c.planes;}
-  MapCover<5> c(map,bounds,options,cache,metrics,stop,reuse,reuse_gap,lazy);c.build(g,seed,layout);return c.planes;
+inline std::vector<detail::SupportPlane> mapCover(const Geometry& g,const ObstacleIndex& map,
+    const Bounds& bounds,const Options& options,QueryCache& cache,CoverMetrics& metrics,
+    Deadline& deadline,const CoverLayout& layout,bool profile=false) {
+  if(g.degree==3){MapCover<3> c(map,bounds,options,cache,metrics,deadline,profile);c.build(g,layout);return c.planes;}
+  MapCover<5> c(map,bounds,options,cache,metrics,deadline,profile);c.build(g,layout);return c.planes;
 }
 }

@@ -40,6 +40,7 @@ set(NATIVE_CORRIDOR_DIR ../direct_corridor/experiments/native_splines)
 add_library(direct_corridor_demo_cubic STATIC
   ${NATIVE_CORRIDOR_DIR}/geometry.cpp
   ${NATIVE_CORRIDOR_DIR}/cubic_optimizer.cpp
+  ${NATIVE_CORRIDOR_DIR}/cubic_diagnostics.cpp
   ${NATIVE_CORRIDOR_DIR}/cubic_refinement.cpp
   ${NATIVE_CORRIDOR_DIR}/support_pruning.cpp
   ${NATIVE_CORRIDOR_DIR}/cubic_generator.cpp)

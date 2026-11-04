@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
 #include "cubic_certificates.hpp"
-#include "continuous_oracle.hpp"
 #include <cassert>
 #include <iostream>
 #include <random>
@@ -62,19 +61,15 @@ int main() {
   Certificate report;assert(!jacobianCertificate<3>(fold,report));
   Curve<3,Vec3> support;
   for(int j=0;j<4;++j)support[j]=Vec3(1,j==0||j==3?0:1.2,0);
-  assert(coneOracle<3>(support).safe); // Convex control hull is outside, curve is inside.
+  Certificate safe;assert(coneCertificate<3>(support,1e-12,2,safe));
   support[1][1]=support[2][1]=1.6;
-  auto witness=coneOracle<3>(support);assert(!witness.safe&&witness.witnessed);
-  assert(value<3>(support,witness.parameter).tail<2>().norm()>value<3>(support,witness.parameter)[0]);
-  // A narrow interior violation missed by endpoints and the midpoint.
+  Certificate outside;assert(!coneCertificate<3>(support,1e-12,2,outside));
+  // Narrow interior violation and the wrong cone branch must be rejected.
   const double peak=.371234,epsilon=1e-8;
   for(int j=0;j<4;++j)support[j]=Vec3(1,1+epsilon-peak*peak+2*peak*j/3.-j*(j-1)/6.,0);
-  witness=coneOracle<3>(support,0);assert(!witness.safe&&witness.witnessed);
-  assert(std::abs(witness.parameter-peak)<std::sqrt(epsilon));
+  Certificate narrow;assert(!coneCertificate<3>(support,1e-12,2,narrow));
   for(auto& v:support)v=Vec3(-1,0,0);
-  assert(!coneOracle<3>(support).safe); // Squared slack is positive on the wrong cone branch.
-  Curve<2,Vec3> progress{Vec3(1,0,0),Vec3(1,1.5,0),Vec3(1,0,0)};
-  assert(coneOracle<2>(progress).safe);
+  Certificate negative;assert(!coneCertificate<3>(support,1e-12,2,negative));
   // Analytic cone polynomial versus direct derivatives at independent points.
   const auto curve=g.curve<3>(2);const auto cone=jacobianCoefficients<3>(curve);
   for(double t:{.013,.31,.779,.99}) {

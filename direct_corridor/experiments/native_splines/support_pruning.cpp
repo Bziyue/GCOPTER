@@ -1,31 +1,22 @@
 // SPDX-License-Identifier: MIT
 #include "cubic_optimizer.hpp"
-#include "support_reach.hpp"
 #include <Eigen/Eigenvalues>
 #include <algorithm>
 
 namespace gcopter::direct::native {
 void pruneProjectedSupports(CubicProblem::Group& group,const Eigen::VectorXd& x,
-                            double max_offset,double min_radius,double max_radius,int reach_bound) {
+                            double max_offset,double max_radius,std::vector<CubicProblem::Group::Proof>* proofs) {
   struct Point {Eigen::Vector2d projected;Vec3 world;int id;};
   if(group.supports.size()<4)return;
   Eigen::Matrix3d gram=Eigen::Matrix3d::Zero();
   for(int k=0;k<group.count;++k)gram.noalias()+=group.maps[k]*group.maps[k].transpose();
   const Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> eigen(gram);
   const Eigen::Matrix<double,3,2> basis=eigen.eigenvectors().rightCols<2>();
-  group.proof_center=group.geometry(x).head<3>();
-  group.proof_fixed_center=group.reference.head<3>();
-  for(int k=0;k<group.count;++k) {
-    const int first=group.first+5*k;
-    const bool fixed=first==0||first==x.size()-5;
-    group.proof_offsets[k]=fixed?0:max_offset;
-    if(fixed)group.proof_fixed_center.noalias()+=group.maps[k]*x.segment<2>(first);
-  }
-  const Vec3 shift=group.reference.head<3>()-group.proof_center;
-  const Vec3 exact_shift=group.proof_fixed_center-group.proof_center;
+  const Vec3 proof_center=group.geometry(x).head<3>();
+  const Vec3 shift=group.reference.head<3>()-proof_center;
   std::vector<Point> points;points.reserve(group.supports.size()+1);
   for(const auto& p:group.supports) {
-    const double gap=p.bound-p.normal.dot(group.proof_center);
+    const double gap=p.bound-p.normal.dot(proof_center);
     // A separating origin is required for the polar representation. This is
     // established once per group, never inside a Newton iteration.
     if(gap<=0)return;
@@ -65,36 +56,21 @@ void pruneProjectedSupports(CubicProblem::Group& group,const Eigen::VectorXd& x,
       const double left=cross(p.projected,b.projected)/determinant;
       const double right=cross(a.projected,p.projected)/determinant;
       if(!(left>=0&&right>=0&&left+right<=1))continue;
-      ++group.reach_candidates;
       const Vec3 residual=p.world-left*a.world-right*b.world;
-      double reach=0,norm_sum=0,offset_reach=0;
-      Eigen::Vector2d sum=Eigen::Vector2d::Zero();
+      double reach=0;
       for(int k=0;k<group.count;++k) {
         const Eigen::Vector2d v=group.maps[k].transpose()*residual;
         const double norm=v.norm();
         reach+=(max_offset+max_radius)*norm;
-        if(reach_bound){norm_sum+=norm;offset_reach+=group.proof_offsets[k]*norm;sum+=v;}
       }
       double upper=left+right+residual.dot(shift)+reach;
       double guard=1e-10*(1+left+right+residual.cwiseAbs().dot(shift.cwiseAbs())+reach);
-      const bool triangle_pass=upper<1-guard;
-      const bool exact=reach_bound==1||(reach_bound==2&&!triangle_pass);
-      if(exact) {
-        ++group.exact_reach_evaluations;
-        const double triangle_scale=reach;
-        reach=offset_reach+exactShapeReach(norm_sum,sum,min_radius,max_radius);
-        upper=left+right+residual.dot(exact_shift)+reach;
-        // Cancellation can make the exact bound tiny. Roundoff still scales
-        // with the unsummed input terms, not with that cancelled result.
-        guard=1e-10*(1+left+right+residual.cwiseAbs().dot(exact_shift.cwiseAbs())+triangle_scale);
-      }
       // This is a sufficient implication in the original 3-D variable domain.
       // Only hull vertices are witnesses, so simultaneous deletions cannot
       // depend on one another. A poor projection simply keeps more rows.
       if(upper<1-guard) {
-        auto& support=group.supports[p.id];support.redundant=true;support.active=false;
-        group.proofs.push_back({p.id,a.id,b.id,left,right,upper,exact});
-        group.exact_reach_additional+=!triangle_pass;
+        auto& support=group.supports[p.id];support.redundant=true;
+        if(proofs)proofs->push_back({p.id,a.id,b.id,left,right,upper});
         break;
       }
     }

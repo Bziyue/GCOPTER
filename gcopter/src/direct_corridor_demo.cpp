@@ -646,11 +646,7 @@ class DirectDemo final : public rclcpp::Node {
            << ",\"height_span\":" << (seed.empty() ? 0 : highz - lowz)
            << ",\"representation\":\"" << (shape_mode_=="c3"?"native_cubic_v3":"quintic_hermite_v2") << '"'
            << ",\"visualization_adapter_ms\":" << adapter_ms
-           << ",\"trajectory_optimization\":false"
-           << ",\"c3_assembly_ms\":" << cubic.optimizer.assembly_ms
-           << ",\"c3_solve_ms\":" << cubic.optimizer.solve_ms
-           << ",\"c3_line_search_ms\":" << cubic.optimizer.line_search_ms
-           << ",\"c3_cover_ms\":" << cubic.cover_metrics.total_ms
+           << ",\"trajectory_optimization\":false,\"c3_stage_profiled\":false"
            << ",\"nodes\":" << result.metrics.nodes
            << ",\"max_center_shift\":" << result.metrics.max_center_shift
            << ",\"optimization_ms\":" << result.metrics.optimization_ms

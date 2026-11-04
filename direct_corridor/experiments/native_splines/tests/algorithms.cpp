@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: MIT
-#include "cubic_adaptation.hpp"
 #include "lazy_obstacles.hpp"
 #include <cassert>
 #include <numeric>
@@ -31,17 +30,5 @@ int main() {
     }
     assert(order.evaluations<=spheres.size());
   }
-  auto model=CubicModel::fromSeed({Vec3(-3,0,0),Vec3(0,.2,.3),Vec3(3,1,.7)},.7,.4,1.5);
-  const auto original=model.geometry();
-  for(double u:{.031,.21,.743})model=insertKnot(model,u);
-  const auto refined=model.geometry();
-  for(int i=0;i<=200;++i) {
-    const auto a=original.section(i/200.),b=refined.section(i/200.);
-    assert((pack(a.center,a.shape)-pack(b.center,b.shape)).norm()<2e-13);
-    assert((pack(a.first,a.shape_first)-pack(b.first,b.shape_first)).norm()<2e-11);
-    assert((pack(a.second,a.shape_second)-pack(b.second,b.shape_second)).norm()<2e-9);
-  }
-  auto straight=CubicModel::fromSeed({Vec3(-5,0,0),Vec3(5,0,0)},.4,1,1.5);
-  assert(adaptiveBreaks(straight,1).size()<straight.basis.breaks.size());
-  std::cout<<"lazy order matches exhaustive search; world-space knot insertion preserves geometry and C2\n";
+  std::cout<<"lazy metric order matches exhaustive search\n";
 }

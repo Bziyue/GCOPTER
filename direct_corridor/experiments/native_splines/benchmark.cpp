@@ -143,9 +143,9 @@ int main(int argc,char** argv) {
       if(rep==0){quality(log,ns::quality(g,length));g.write((dir/(names[model]+".csv")).string());}
       log<<"}\n";log.flush();variants[model]=std::move(g);
     }
-    if(std::getenv("NATIVE_CANDIDATES"))for(int method=0;method<(std::getenv("NATIVE_METHOD_COUNT")?std::stoi(std::getenv("NATIVE_METHOD_COUNT")):3);++method) {
-      const std::string name=method==0?"C3-OPT-native":method==1?"C3-OPT-project":"C3-NBC-project";
-      ns::OptimizerSettings solver;solver.natural_endpoints=method==2;
+    if(std::getenv("NATIVE_CANDIDATES"))for(int method=0;method<(std::getenv("NATIVE_METHOD_COUNT")?std::min(2,std::stoi(std::getenv("NATIVE_METHOD_COUNT"))):2);++method) {
+      const std::string name=method==0?"C3-OPT-native":"C3-OPT-project";
+      ns::OptimizerSettings solver;
       if(method==0)if(const char* preset=std::getenv("NATIVE_PRESET")) {
         const std::string value=preset;
         if(value!="balanced"&&value!="fast"&&value!="volume")throw std::runtime_error("unknown native preset");
@@ -155,82 +155,24 @@ int main(int argc,char** argv) {
       if(const char* v=std::getenv("NATIVE_CENTER_ENERGY"))solver.center_energy=std::stod(v);
       if(const char* v=std::getenv("NATIVE_SHAPE_ENERGY"))solver.shape_energy=std::stod(v);
       if(const char* v=std::getenv("NATIVE_RADIUS_FRACTION"))solver.initial_radius_fraction=std::stod(v);
-      if(const char* v=std::getenv("NATIVE_BARRIER_STAGES"))solver.barrier_stages=std::stoi(v);
       if(const char* v=std::getenv("NATIVE_CORRECTOR_ITERATIONS"))solver.corrector_iterations=std::stoi(v);
       if(const char* v=std::getenv("NATIVE_PROGRESS_THRESHOLD"))solver.progress_threshold=std::stod(v);
-      if(const char* v=std::getenv("NATIVE_PROGRESS_SAMPLES"))solver.progress_samples=std::stoi(v);
-      if(const char* v=std::getenv("NATIVE_PROGRESS_DEPTH"))solver.progress_depth=std::stoi(v);
-      if(const char* v=std::getenv("NATIVE_POLAR_PRUNING"))solver.polar_pruning=std::stoi(v)!=0;
-      if(const char* v=std::getenv("NATIVE_PROJECTED_PRUNING"))solver.projected_pruning=std::stoi(v);
-      if(const char* v=std::getenv("NATIVE_REACH_BOUND"))solver.reach_bound=std::stoi(v);
-      if(const char* v=std::getenv("NATIVE_CERTIFICATE_REFINEMENT"))solver.certificate_refinement=std::stoi(v);
-      if(const char* v=std::getenv("NATIVE_CERTIFICATE_FRACTION"))solver.certificate_fraction=std::stod(v);
-      if(const char* v=std::getenv("NATIVE_DISTANCE_BARRIER"))solver.distance_barrier=std::stoi(v)!=0;
-      if(const char* v=std::getenv("NATIVE_INITIAL_SWEEPS"))solver.initial_sweeps=std::stoi(v);
-      if(const char* v=std::getenv("NATIVE_INITIAL_FRACTION"))solver.initial_fraction=std::stod(v);
-      if(const char* v=std::getenv("NATIVE_HESSIAN_INTERVAL"))solver.hessian_interval=std::stoi(v);
-      if(const char* v=std::getenv("NATIVE_WEAK_CURVATURE_RATIO"))solver.weak_curvature_ratio=std::stod(v);
-      if(const char* v=std::getenv("NATIVE_MERGE_SUPPORTS"))solver.merge_shared_supports=std::stoi(v)!=0;
-      if(const char* v=std::getenv("NATIVE_TENSOR_ASSEMBLY"))solver.tensor_assembly=std::stoi(v)!=0;
-      if(const char* v=std::getenv("NATIVE_GROUPED_ASSEMBLY"))solver.grouped_assembly=std::stoi(v)!=0;
-      if(const char* v=std::getenv("NATIVE_AXIS_KERNELS"))solver.axis_kernels=std::stoi(v)!=0;
-      if(const char* v=std::getenv("NATIVE_TRIAL_FIRST"))solver.trial_first=std::stoi(v)!=0;
-      if(const char* v=std::getenv("NATIVE_WARM_STAGE"))solver.warm_start_stage=std::stoi(v);
-      if(const char* v=std::getenv("NATIVE_WARM_RESERVE"))solver.warm_reserve=std::stod(v);
-      if(const char* v=std::getenv("NATIVE_CACHED_LINE"))solver.cached_line=std::stoi(v)!=0;
-      if(const char* v=std::getenv("NATIVE_SKIP_UNUSED_VALUES"))solver.skip_unused_values=std::stoi(v)!=0;
-      if(const char* v=std::getenv("NATIVE_BOUNDED_LINE"))solver.bounded_line=std::stoi(v)!=0;
-      if(const char* v=std::getenv("NATIVE_REUSE_ENERGY"))solver.reuse_energy=std::stoi(v)!=0;
-      if(const char* v=std::getenv("NATIVE_REUSE_CONSTRUCTION"))solver.reuse_construction=std::stoi(v)!=0;
-      if(const char* v=std::getenv("NATIVE_FAST_CONSTRUCTION"))solver.fast_construction=std::stoi(v)!=0;
-      if(const char* v=std::getenv("NATIVE_CACHE_COVERAGE"))solver.cache_coverage=std::stoi(v)!=0;
-      if(const char* v=std::getenv("NATIVE_CACHE_VALUES"))solver.cache_values=std::stoi(v)!=0;
-      if(const char* v=std::getenv("NATIVE_SEPARATOR_REUSE_GAP"))solver.separator_reuse_gap=std::stod(v);
-      if(const char* v=std::getenv("NATIVE_SUPPORT_EXCHANGE"))solver.support_exchange=std::stoi(v);
-      if(const char* v=std::getenv("NATIVE_EXCHANGE_ROUNDS"))solver.exchange_rounds=std::stoi(v);
-      if(const char* v=std::getenv("NATIVE_EXCHANGE_ITERATIONS"))solver.exchange_iterations=std::stoi(v);
-      if(const char* v=std::getenv("NATIVE_LAZY_PRIORITIES"))solver.lazy_priorities=std::stoi(v)!=0;
-      if(const char* v=std::getenv("NATIVE_ADAPTIVE_KNOTS"))solver.adaptive_knots=std::stoi(v);
       if(const char* v=std::getenv("NATIVE_PATH_PREDICTOR"))solver.path_predictor=std::stod(v);
       if(const char* v=std::getenv("NATIVE_VOLUME_REFINEMENTS"))solver.volume_refinements=std::stoi(v);
       if(const char* v=std::getenv("NATIVE_VOLUME_TRUST"))solver.volume_trust=std::stod(v);
-      if(const char* v=std::getenv("NATIVE_COORDINATE_SWEEPS"))solver.coordinate_sweeps=std::stoi(v);
-      if(const char* v=std::getenv("NATIVE_WORKING_SET"))solver.working_set=std::stoi(v)!=0;
       if(const char* v=std::getenv("NATIVE_FRACTION_BOUNDARY"))solver.fraction_boundary=std::stod(v);
-      if(const char* v=std::getenv("NATIVE_RECENTER"))solver.recenter_frames=std::stoi(v)!=0;
       if(const char* v=std::getenv("NATIVE_ITERATIONS"))solver.iterations=std::stoi(v);
       if(const char* v=std::getenv("NATIVE_INITIAL_ITERATIONS"))o.initial_iterations=std::stoi(v);
       if(const char* v=std::getenv("NATIVE_INFLATIONS"))o.inflation_iterations=std::stoi(v);
       if(const char* v=std::getenv("NATIVE_SPACING"))o.control_spacing=std::stod(v);
+      if(const char* v=std::getenv("NATIVE_PROFILE"))solver.profile=std::stoi(v)!=0;
       bool success=false;ns::Geometry last;
       log<<"{\"kind\":\"configuration\",\"model\":\""<<name<<"\",\"control_spacing\":"<<o.control_spacing
          <<",\"initial_iterations\":"<<o.initial_iterations<<",\"iterations\":"<<solver.iterations
          <<",\"corrector_iterations\":"<<solver.corrector_iterations<<",\"inflations\":"<<o.inflation_iterations
          <<",\"center_energy\":"<<solver.center_energy<<",\"shape_energy\":"<<solver.shape_energy
-         <<",\"progress_samples\":"<<solver.progress_samples<<",\"progress_depth\":"<<solver.progress_depth
-         <<",\"merge_shared_supports\":"<<solver.merge_shared_supports<<",\"tensor_assembly\":"<<solver.tensor_assembly
-         <<",\"grouped_assembly\":"<<solver.grouped_assembly
-         <<",\"axis_kernels\":"<<solver.axis_kernels
-         <<",\"skip_unused_values\":"<<solver.skip_unused_values
-         <<",\"bounded_line\":"<<solver.bounded_line
-         <<",\"cached_line\":"<<solver.cached_line<<",\"trial_first\":"<<solver.trial_first
-         <<",\"reuse_energy\":"<<solver.reuse_energy<<",\"cache_values\":"<<solver.cache_values
-         <<",\"reuse_construction\":"<<solver.reuse_construction<<",\"cache_coverage\":"<<solver.cache_coverage
-         <<",\"fast_construction\":"<<solver.fast_construction
-         <<",\"separator_reuse_gap\":"<<solver.separator_reuse_gap
-         <<",\"support_exchange\":"<<solver.support_exchange<<",\"exchange_rounds\":"<<solver.exchange_rounds<<",\"exchange_iterations\":"<<solver.exchange_iterations
-         <<",\"lazy_priorities\":"<<solver.lazy_priorities
-         <<",\"adaptive_knots\":"<<solver.adaptive_knots
-         <<",\"path_predictor\":"<<solver.path_predictor<<",\"volume_refinements\":"<<solver.volume_refinements<<",\"volume_trust\":"<<solver.volume_trust
-         <<",\"warm_start_stage\":"<<solver.warm_start_stage<<",\"warm_reserve\":"<<solver.warm_reserve
-         <<",\"coordinate_sweeps\":"<<solver.coordinate_sweeps<<",\"polar_pruning\":"<<solver.polar_pruning
-         <<",\"projected_pruning\":"<<solver.projected_pruning
-         <<",\"reach_bound\":"<<solver.reach_bound
-         <<",\"certificate_refinement\":"<<solver.certificate_refinement<<",\"certificate_fraction\":"<<solver.certificate_fraction
-         <<",\"distance_barrier\":"<<solver.distance_barrier<<",\"initial_sweeps\":"<<solver.initial_sweeps<<",\"initial_fraction\":"<<solver.initial_fraction
-         <<",\"hessian_interval\":"<<solver.hessian_interval
-         <<",\"weak_curvature_ratio\":"<<solver.weak_curvature_ratio
-         <<",\"working_set\":"<<solver.working_set<<"}\n";
+         <<",\"prune_supports\":"<<solver.prune_supports<<",\"profile\":"<<solver.profile
+         <<",\"path_predictor\":"<<solver.path_predictor<<",\"volume_refinements\":"<<solver.volume_refinements<<"}\n";
       for(int rep=-1;rep<repeats;++rep) {
         solver.check_gradients=rep==-1;
         const auto cpu_start=std::clock();
@@ -247,7 +189,6 @@ int main(int argc,char** argv) {
            <<",\"query_ms\":"<<c.query_ms<<",\"separation_ms\":"<<c.separation_ms
            <<",\"cover_topology_ms\":"<<c.topology_ms<<",\"cover_topology_builds\":"<<c.topology_builds
            <<",\"reused_cover_spans\":"<<c.reused_cover_spans
-           <<",\"reused_planes\":"<<c.reused_planes<<",\"reused_spheres\":"<<c.reused_spheres<<",\"separator_cache_bytes\":"<<c.separator_cache_bytes
            <<",\"priority_evaluations\":"<<c.priority_evaluations
            <<",\"setup_ms\":"<<m.setup_ms<<",\"assembly_ms\":"<<m.assembly_ms<<",\"solve_ms\":"<<m.solve_ms
            <<",\"initial_problem_ms\":"<<m.initial_problem_ms<<",\"initial_pruning_ms\":"<<m.initial_pruning_ms
@@ -259,32 +200,19 @@ int main(int argc,char** argv) {
            <<",\"active_constraints\":"<<m.active_constraints<<",\"final_decrement\":"<<m.final_decrement
            <<",\"merged_supports\":"<<m.merged_supports<<",\"support_groups\":"<<m.support_groups<<",\"pruned_supports\":"<<m.pruned_supports
            <<",\"pruning_ms\":"<<m.pruning_ms
-           <<",\"support_selection_ms\":"<<m.support_selection_ms<<",\"support_gap_sum\":"<<m.support_gap_sum
-           <<",\"support_intervals\":"<<m.support_intervals<<",\"refined_intervals\":"<<m.refined_intervals
-           <<",\"refined_planes\":"<<m.refined_planes<<",\"refinement_extra_rows\":"<<m.refinement_extra_rows
-           <<",\"reach_candidates\":"<<m.reach_candidates
-           <<",\"exact_reach_evaluations\":"<<m.exact_reach_evaluations
-           <<",\"exact_reach_additional\":"<<m.exact_reach_additional
-           <<",\"initial_inflation_ms\":"<<m.initial_inflation_ms
-           <<",\"hessian_refreshes\":"<<m.hessian_refreshes
            <<",\"bound_line_evaluations\":"<<m.bound_line_evaluations
            <<",\"bound_line_accepts\":"<<m.bound_line_accepts
            <<",\"exact_line_evaluations\":"<<m.exact_line_evaluations
-           <<",\"weak_curvature_rows\":"<<m.weak_curvature_rows
            <<",\"axis_supports\":"<<m.axis_supports
            <<",\"gradient_support_rows\":"<<m.gradient_support_rows<<",\"hessian_support_rows\":"<<m.hessian_support_rows
            <<",\"boundary_support_rows\":"<<m.boundary_support_rows<<",\"line_support_rows\":"<<m.line_support_rows
            <<",\"full_step_accepts\":"<<m.full_step_accepts<<",\"feasible_scans\":"<<m.feasible_scans
-           <<",\"warm_reserves\":"<<m.warm_reserves
            <<",\"energy_builds\":"<<m.energy_builds<<",\"minimum_step\":"<<m.minimum_step<<",\"mean_step\":"<<(m.steps?m.step_sum/m.steps:0)
            <<",\"predictor_steps\":"<<m.predictor_steps<<",\"predictor_rejections\":"<<m.predictor_rejections<<",\"predictor_ms\":"<<m.predictor_ms
            <<",\"volume_steps\":"<<m.volume_steps<<",\"volume_ms\":"<<m.volume_ms<<",\"volume_gain\":"<<m.volume_gain
-           <<",\"exchange_steps\":"<<m.exchange_steps<<",\"exchange_witnesses\":"<<m.exchange_witnesses<<",\"oracle_nodes\":"<<m.oracle_nodes<<",\"oracle_unresolved\":"<<m.oracle_unresolved<<",\"oracle_ms\":"<<m.oracle_ms
-           <<",\"coordinate_ms\":"<<m.coordinate_ms<<",\"coordinate_updates\":"<<m.coordinate_updates<<",\"coordinate_rejections\":"<<m.coordinate_rejections
            <<",\"constraints\":"<<m.constraints<<",\"newton_steps\":"<<m.steps<<",\"termination\":\""<<m.termination<<"\""
            <<",\"backtracks\":"<<m.backtracks<<",\"regularity_backtracks\":"<<m.regularity_backtracks
            <<",\"regularity_repairs\":"<<m.regularity_repairs
-           <<",\"damping_retries\":"<<m.damping_retries<<",\"equality_rank\":"<<m.equality_rank
            <<",\"initial_scale\":"<<m.initial_scale<<",\"gradient_error\":"<<m.gradient_error<<",\"hessian_error\":"<<m.hessian_error
            <<",\"gradient_reference_error\":"<<m.gradient_reference_error<<",\"hessian_reference_error\":"<<m.hessian_reference_error
            <<",\"derivative_min_step\":"<<m.derivative_min_step;
@@ -312,13 +240,15 @@ int main(int argc,char** argv) {
     }
     for(int i=0;i<int(names.size());++i) {
       ns::QueryCache cache;ns::CoverMetrics timing;start=Clock::now();
-      const std::function<void()> stop=[&]{if(ms(start)>10000)throw detail::Failure{Status::Timeout,"map audit timeout"};};
+      ns::Deadline deadline(10000);
+      const ns::CoverLayout layout(variants[i].breaks,seed,bounds,o);
       log<<"{\"kind\":\"fresh_map_certificate\",\"model\":\""<<names[i]<<"\"";
       try {
-        const auto fresh=ns::mapCover(variants[i],seed,index,bounds,o,cache,timing,stop);
+        const auto fresh=ns::mapCover(variants[i],index,bounds,o,cache,timing,deadline,layout,true);
         const auto c=ns::certify(variants[i],fresh);
         log<<",\"status\":\""<<(c.safe()?"SUCCESS":"CERTIFICATE_FAILED")<<"\"";certificate(log,c);
-      }catch(const detail::Failure& error){log<<",\"status\":\""<<statusName(error.status)<<"\",\"message\":\""<<error.message<<"\"";}
+      }catch(const ns::DeadlineExceeded&){log<<",\"status\":\"TIMEOUT\"";}
+       catch(const detail::Failure& error){log<<",\"status\":\""<<statusName(error.status)<<"\",\"message\":\""<<error.message<<"\"";}
       log<<",\"wall_ms\":"<<ms(start)<<",\"query_ms\":"<<timing.query_ms<<",\"separation_ms\":"<<timing.separation_ms;
       log<<",\"sampled_penetration_m\":"<<sampledPenetration(variants[i],index,bounds)<<"}\n";log.flush();
     }
