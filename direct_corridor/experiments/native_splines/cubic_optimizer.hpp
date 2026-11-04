@@ -29,6 +29,7 @@ struct OptimizerMetrics {
   int controls=0,variables=0,constraints=0,hessian_nonzero=0,equality_rank=0;
   int merged_supports=0,support_groups=0,pruned_supports=0;
   double pruning_ms=0;
+  std::uint64_t reach_candidates=0,exact_reach_evaluations=0,exact_reach_additional=0;
   double initial_inflation_ms=0;
   int hessian_refreshes=0;
   int bound_line_evaluations=0,bound_line_accepts=0,exact_line_evaluations=0;
@@ -78,6 +79,7 @@ struct OptimizerSettings {
   bool working_set=false;
   bool polar_pruning=false;
   int projected_pruning=0; // 0: off, 1: barrier only, 2: barrier and step boundary.
+  int reach_bound=0; // 0: original triangle, 1: exact domain, 2: triangle then exact.
   bool distance_barrier=false;
   int initial_sweeps=0;
   double initial_fraction=.85;
@@ -131,9 +133,12 @@ struct CubicProblem {
     // Retained rows form a contiguous prefix. Original IDs stay stable after
     // partitioning so each deletion can be checked against retained witnesses.
     size_t retained=0,boundary_count=0;
-    struct Proof {int removed,left,right;double left_weight,right_weight,upper;};
+    struct Proof {int removed,left,right;double left_weight,right_weight,upper;bool exact=false;};
     std::vector<Proof> proofs;
     Vec3 proof_center=Vec3::Zero();
+    Vec3 proof_fixed_center=Vec3::Zero();
+    std::array<double,4> proof_offsets{};
+    std::uint64_t reach_candidates=0,exact_reach_evaluations=0,exact_reach_additional=0;
     // Kept out of Support so value/step scans do not load Hessian-only data.
     std::vector<Eigen::Matrix<double,6,1>> normal_products;
     V9 direction(const Eigen::VectorXd& x)const;
@@ -181,5 +186,5 @@ struct CubicProblem {
   void optimize(Eigen::VectorXd& x,OptimizerMetrics& metrics,const std::function<void()>& stop)const;
 };
 void pruneProjectedSupports(CubicProblem::Group& group,const Eigen::VectorXd& x,
-                            double max_offset,double max_radius);
+                            double max_offset,double min_radius,double max_radius,int reach_bound);
 }

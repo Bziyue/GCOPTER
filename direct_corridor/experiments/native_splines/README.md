@@ -12,6 +12,12 @@ The [next-stage improvement plan](../../../docs/原生三次走廊下一阶段�
 reconciles the independent review with the current implementation. It prioritizes
 tighter redundancy bounds, selective certificate replacement, incremental setup
 and smoothness control, with staged cubic generation as a separate experiment.
+The [E1 exact-reach experiment](../../../docs/原生三次走廊E1精确可达域实验.md)
+implements and compares the tighter domain bound on 67 cases across 16 maps.
+Use `OptimizerSettings::reach_bound=1` for the exact bound or `2` to try it only
+after the original triangle bound fails (`NATIVE_REACH_BOUND` in the benchmark).
+Both remain opt-in: extra pruning did not consistently improve generation time,
+union volume and boundary smoothness together. The default remains `0`.
 The fourth-round report is
 [`原生三次走廊连续约束与自适应优化实验.md`](../../../docs/原生三次走廊连续约束与自适应优化实验.md).
 The [third-round report](../../../docs/原生三次走廊约束与求解加速.md) covers

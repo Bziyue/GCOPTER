@@ -294,13 +294,13 @@ CubicProblem::CubicProblem(const CubicModel& m,const std::vector<detail::Support
         if(p.normal[axis]!=0&&p.normal[(axis+1)%3]==0&&p.normal[(axis+2)%3]==0)p.axis=axis;
     }
   }
-  // Polar hull pruning is independent of ellipse shape: a strictly interior
-  // dual point is implied by the remaining spatial halfspaces. Keep boundary
-  // and degenerate cases. All original cuts still bound the line search and
-  // remain in the final continuous certificate.
+  // Projected candidates need an implication proof in the full variable domain.
+  // The older spatial hull alternative is independent of ellipse shape.
+  // Original planes remain available to the final continuous certificate;
+  // projected_pruning=2 uses the proved subset in step scans as well.
   const auto pruning_start=Clock::now();
   if(settings.projected_pruning)for(auto& group:groups)
-    pruneProjectedSupports(group,m.x,o.max_offset,o.max_radius);
+    pruneProjectedSupports(group,m.x,o.max_offset,o.min_radius,o.max_radius,settings.reach_bound);
   else if(settings.polar_pruning)for(auto& group:groups) {
     const int count=group.supports.size();if(count<5)continue;
     const V9 y=group.geometry(m.x);
@@ -714,7 +714,12 @@ void CubicProblem::optimize(Eigen::VectorXd& x,OptimizerMetrics& metrics,const s
   }
   metrics.pruning_ms+=pruning_ms;
   int retained=0,boundary=0;
-  for(const auto& group:groups){retained+=group.retained;boundary+=group.boundary_count;}
+  for(const auto& group:groups){
+    retained+=group.retained;boundary+=group.boundary_count;
+    metrics.reach_candidates+=group.reach_candidates;
+    metrics.exact_reach_evaluations+=group.exact_reach_evaluations;
+    metrics.exact_reach_additional+=group.exact_reach_additional;
+  }
   const int progress=cuts.size()-geometric_cuts;
   fixed_active+=progress;
   metrics.passes.push_back({int(geometric_cuts),retained,boundary,progress,0,pruning_ms});

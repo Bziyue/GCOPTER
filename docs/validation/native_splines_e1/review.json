@@ -1,0 +1,932 @@
+{
+  "guard_update_checks": [
+    {
+      "case": 0,
+      "configuration": "frozen",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 1,
+      "configuration": "frozen",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 2,
+      "configuration": "frozen",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 3,
+      "configuration": "frozen",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 4,
+      "configuration": "frozen",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 5,
+      "configuration": "frozen",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 6,
+      "configuration": "frozen",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 0,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 1,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 2,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 3,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 4,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 5,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 6,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 0,
+      "configuration": "exact",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 1,
+      "configuration": "exact",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 2,
+      "configuration": "exact",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 3,
+      "configuration": "exact",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 4,
+      "configuration": "exact",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 5,
+      "configuration": "exact",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 6,
+      "configuration": "exact",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 0,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 1,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 2,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 3,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 4,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 5,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 6,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 7,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 8,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 9,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 10,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 11,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 12,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 13,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 14,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 15,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 16,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 17,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 18,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 19,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 20,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 21,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 22,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 23,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 24,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 25,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 26,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 27,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 28,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 29,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 30,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 31,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 32,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 33,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 34,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 35,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 36,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 37,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 38,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 39,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 40,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 41,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 42,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 43,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 44,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 45,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 46,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 47,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 48,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 49,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 50,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 51,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 52,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 53,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 54,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 55,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 56,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 57,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 58,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 59,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 60,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 61,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 62,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 63,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 64,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 65,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 66,
+      "configuration": "triangle",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 7,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 8,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 9,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 10,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 11,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 12,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 13,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 14,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 15,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 16,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 17,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 18,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 19,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 20,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 21,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 22,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 23,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 24,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 25,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 26,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 27,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 28,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 29,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 30,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 31,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 32,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 33,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 34,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 35,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 36,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 37,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 38,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 39,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 40,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 41,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 42,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 43,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 44,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 45,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 46,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 47,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 48,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 49,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 50,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 51,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 52,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 53,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 54,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 55,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 56,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 57,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 58,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 59,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 60,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 61,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 62,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 63,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 64,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 65,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    },
+    {
+      "case": 66,
+      "configuration": "hybrid",
+      "status_equal": true,
+      "geometry_equal": true
+    }
+  ],
+  "development_checks": [
+    {
+      "case": 0,
+      "triangle_equals_frozen": true,
+      "exact_equals_hybrid": true
+    },
+    {
+      "case": 1,
+      "triangle_equals_frozen": true,
+      "exact_equals_hybrid": true
+    },
+    {
+      "case": 2,
+      "triangle_equals_frozen": true,
+      "exact_equals_hybrid": true
+    },
+    {
+      "case": 3,
+      "triangle_equals_frozen": true,
+      "exact_equals_hybrid": true
+    },
+    {
+      "case": 4,
+      "triangle_equals_frozen": true,
+      "exact_equals_hybrid": true
+    },
+    {
+      "case": 5,
+      "triangle_equals_frozen": true,
+      "exact_equals_hybrid": true
+    },
+    {
+      "case": 6,
+      "triangle_equals_frozen": true,
+      "exact_equals_hybrid": true
+    }
+  ],
+  "source_worktree_status": " M direct_corridor/experiments/native_splines/README.md\n M direct_corridor/experiments/native_splines/benchmark.cpp\n M direct_corridor/experiments/native_splines/cubic_generator.cpp\n M direct_corridor/experiments/native_splines/cubic_optimizer.cpp\n M direct_corridor/experiments/native_splines/cubic_optimizer.hpp\n M direct_corridor/experiments/native_splines/support_pruning.cpp\n M direct_corridor/experiments/native_splines/tests/pruning.cpp\n M direct_corridor/experiments/native_splines/tests/scenes.cpp\n M \"docs/\\345\\216\\237\\347\\224\\237\\344\\270\\211\\346\\254\\241\\350\\265\\260\\345\\273\\212\\344\\270\\213\\344\\270\\200\\351\\230\\266\\346\\256\\265\\346\\224\\271\\350\\277\\233\\346\\226\\271\\346\\241\\210.md\"\n?? direct_corridor/experiments/native_splines/analyze_e1.py\n?? direct_corridor/experiments/native_splines/evaluate_e1.py\n?? direct_corridor/experiments/native_splines/prepare_e1_inputs.py\n?? direct_corridor/experiments/native_splines/run_e1.py\n?? direct_corridor/experiments/native_splines/support_reach.hpp\n?? docs/validation/native_splines_e1/\n?? \"docs/\\345\\216\\237\\347\\224\\237\\344\\270\\211\\346\\254\\241\\350\\265\\260\\345\\273\\212E1\\347\\262\\276\\347\\241\\256\\345\\217\\257\\350\\276\\276\\345\\237\\237\\345\\256\\236\\351\\252\\214.md\"\n",
+  "input_map_count": 16,
+  "comment": "All generations remained deterministic across guard update and reversed configuration order."
+}

@@ -60,6 +60,7 @@ CubicResult generateCubic(const std::vector<Vec3>& input_seed,const ObstacleInde
      (solver.progress_samples!=1&&solver.progress_samples!=3)||solver.progress_depth<0||solver.progress_depth>1||
      solver.coordinate_sweeps<0||solver.coordinate_sweeps>10||
      solver.projected_pruning<0||solver.projected_pruning>2||
+     solver.reach_bound<0||solver.reach_bound>2||
      solver.initial_sweeps<0||solver.initial_sweeps>10||!(solver.initial_fraction>0&&solver.initial_fraction<1)||
      solver.hessian_interval<1||solver.hessian_interval>8||
      !(solver.weak_curvature_ratio>=0&&solver.weak_curvature_ratio<1)||

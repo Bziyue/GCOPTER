@@ -89,7 +89,12 @@ int main(int argc,char** argv) {
     std::vector<detail::SupportPlane> cover;
     std::vector<double> baseline_times;
     Result baseline;
-    for(int rep=-1;rep<repeats;++rep) {
+    const bool generation_only=std::getenv("NATIVE_GENERATION_ONLY");
+    const bool skip_h5=std::getenv("NATIVE_SKIP_H5");
+    if(skip_h5&&(!generation_only||!std::getenv("NATIVE_CANDIDATES")||
+       !std::getenv("NATIVE_METHOD_COUNT")||std::stoi(std::getenv("NATIVE_METHOD_COUNT"))!=1))
+      throw std::runtime_error("skip H5 requires native-only generation");
+    if(!skip_h5)for(int rep=-1;rep<repeats;++rep) {
       start=Clock::now();
       auto r=rep==-1?detail::generateWithShapeStage(seed,index,bounds,o,
         [&](Corridor&,const auto& p,double,const auto&){cover=p;},8,true):generate(seed,index,bounds,o);
@@ -104,16 +109,16 @@ int main(int argc,char** argv) {
       baseline_times.push_back(r.metrics.total_ms);
       baseline=std::move(r);
     }
-    ns::Geometry base=ns::Geometry::fromCorridor(baseline.corridor);
+    ns::Geometry base;if(!skip_h5)base=ns::Geometry::fromCorridor(baseline.corridor);
     // The cover is generated from the same deterministic accepted inflation
     // iterate before smoothing; final baseline must satisfy it independently.
-    if(!ns::certify(base,cover).safe())throw std::runtime_error("captured H5-S cover audit failed");
+    if(!skip_h5&&!ns::certify(base,cover).safe())throw std::runtime_error("captured H5-S cover audit failed");
     std::ofstream planes(dir/"support_planes.csv");planes<<std::setprecision(17)<<"span,begin,end,nx,ny,nz,bound\n";
     for(const auto& p:cover)planes<<p.span<<','<<p.begin<<','<<p.end<<','<<p.normal[0]<<','<<p.normal[1]<<','<<p.normal[2]<<','<<p.bound<<'\n';
-    const bool generation_only=std::getenv("NATIVE_GENERATION_ONLY");
     std::vector<std::string> names={"H5-S","C3-I","Q5-U","H5-C3-T","Q5-T","H5-Z-fixed"};
     if(generation_only)names={"H5-S"};
-    std::vector<ns::Geometry> variants(names.size());variants[0]=base;
+    if(skip_h5)names.clear();
+    std::vector<ns::Geometry> variants(names.size());if(!skip_h5)variants[0]=base;
     for(int model=0;model<int(names.size());++model)for(int rep=-1;rep<repeats;++rep) {
       double fraction=1;start=Clock::now();ns::Geometry g;
       if(model==0)g=base;
@@ -156,6 +161,7 @@ int main(int argc,char** argv) {
       if(const char* v=std::getenv("NATIVE_PROGRESS_DEPTH"))solver.progress_depth=std::stoi(v);
       if(const char* v=std::getenv("NATIVE_POLAR_PRUNING"))solver.polar_pruning=std::stoi(v)!=0;
       if(const char* v=std::getenv("NATIVE_PROJECTED_PRUNING"))solver.projected_pruning=std::stoi(v);
+      if(const char* v=std::getenv("NATIVE_REACH_BOUND"))solver.reach_bound=std::stoi(v);
       if(const char* v=std::getenv("NATIVE_DISTANCE_BARRIER"))solver.distance_barrier=std::stoi(v)!=0;
       if(const char* v=std::getenv("NATIVE_INITIAL_SWEEPS"))solver.initial_sweeps=std::stoi(v);
       if(const char* v=std::getenv("NATIVE_INITIAL_FRACTION"))solver.initial_fraction=std::stod(v);
@@ -211,6 +217,7 @@ int main(int argc,char** argv) {
          <<",\"warm_start_stage\":"<<solver.warm_start_stage<<",\"warm_reserve\":"<<solver.warm_reserve
          <<",\"coordinate_sweeps\":"<<solver.coordinate_sweeps<<",\"polar_pruning\":"<<solver.polar_pruning
          <<",\"projected_pruning\":"<<solver.projected_pruning
+         <<",\"reach_bound\":"<<solver.reach_bound
          <<",\"distance_barrier\":"<<solver.distance_barrier<<",\"initial_sweeps\":"<<solver.initial_sweeps<<",\"initial_fraction\":"<<solver.initial_fraction
          <<",\"hessian_interval\":"<<solver.hessian_interval
          <<",\"weak_curvature_ratio\":"<<solver.weak_curvature_ratio
@@ -234,6 +241,9 @@ int main(int argc,char** argv) {
            <<",\"active_constraints\":"<<m.active_constraints<<",\"final_decrement\":"<<m.final_decrement
            <<",\"merged_supports\":"<<m.merged_supports<<",\"support_groups\":"<<m.support_groups<<",\"pruned_supports\":"<<m.pruned_supports
            <<",\"pruning_ms\":"<<m.pruning_ms
+           <<",\"reach_candidates\":"<<m.reach_candidates
+           <<",\"exact_reach_evaluations\":"<<m.exact_reach_evaluations
+           <<",\"exact_reach_additional\":"<<m.exact_reach_additional
            <<",\"initial_inflation_ms\":"<<m.initial_inflation_ms
            <<",\"hessian_refreshes\":"<<m.hessian_refreshes
            <<",\"bound_line_evaluations\":"<<m.bound_line_evaluations
