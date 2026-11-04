@@ -27,17 +27,9 @@ CubicResult generateCubic(const std::vector<Vec3>& input_seed,const ObstacleInde
      !(o.max_radius>o.min_radius)||!std::isfinite(o.max_offset)||!(o.max_offset>0)||
      !std::isfinite(o.local_range)||!(o.local_range>0)||!std::isfinite(o.local_progress)||!(o.local_progress>0)||
      !std::isfinite(o.budget_ms)||!(o.budget_ms>0)||o.max_refinements<0||o.max_refinements>20||
-     o.certificate_depth<0||o.certificate_depth>20||o.inflation_iterations<1||o.initial_iterations<1||
+     o.certificate_depth<0||o.certificate_depth>20||
      !std::isfinite(o.robot_radius)||!(o.robot_radius>=0)||!std::isfinite(o.safety_margin)||!(o.safety_margin>=0)||
-     !std::isfinite(o.certificate_margin)||!(o.certificate_margin>=0)||!std::isfinite(o.frame_smoothing)||!(o.frame_smoothing>=0)||
-     !std::isfinite(solver.center_energy)||!(solver.center_energy>=0)||!std::isfinite(solver.shape_energy)||!(solver.shape_energy>=0)||
-     !std::isfinite(solver.offset_weight)||!(solver.offset_weight>=0)||
-     !std::isfinite(solver.gradient_tolerance)||!(solver.gradient_tolerance>0)||
-     !(solver.initial_radius_fraction>0&&solver.initial_radius_fraction<1)||
-     !(solver.fraction_boundary>0&&solver.fraction_boundary<1)||!std::isfinite(solver.progress_threshold)||
-     !(solver.path_predictor>=0&&solver.path_predictor<=2)||
-     solver.volume_refinements<0||solver.volume_refinements>8||!std::isfinite(solver.volume_trust)||!(solver.volume_trust>0)||
-     solver.iterations<1||solver.corrector_iterations<0) {
+     !std::isfinite(o.certificate_margin)||!(o.certificate_margin>=0)||!std::isfinite(o.frame_smoothing)||!(o.frame_smoothing>=0)) {
     result.status="INVALID_INPUT";result.message="invalid cubic generator options/bounds";return result;
   }
   std::vector<Vec3> seed;
@@ -65,7 +57,7 @@ CubicResult generateCubic(const std::vector<Vec3>& input_seed,const ObstacleInde
         throw Failure{Status::Capacity,"cubic control capacity"};
       CubicModel model=projected_reference?CubicModel::project(naturalCubic(*projected_reference)):
         CubicModel::fromSeed(seed,std::ldexp(o.control_spacing,-refinement),o.min_radius*1.1,o.frame_smoothing);
-      if(!projected_reference && solver.initial_radius_fraction>0)clearanceInitialization(model,index,bounds,o,solver.initial_radius_fraction);
+      if(!projected_reference)clearanceInitialization(model,index,bounds,o,solver.initial_radius_fraction);
       result.initialization_ms+=timer.elapsed();
       QueryCache cache;std::vector<detail::SupportPlane> cover;bool initialized=false;
       timer.restart();const CoverLayout layout(model.basis.breaks,seed,bounds,o);
@@ -110,11 +102,11 @@ CubicResult generateCubic(const std::vector<Vec3>& input_seed,const ObstacleInde
           if((nb-na).norm()>solver.progress_threshold)progress.spans.push_back(i);
         }
       }
-      for(int iteration=0;iteration<o.inflation_iterations;++iteration) {
+      for(int iteration=0;iteration<OptimizerSettings::inflation_iterations;++iteration) {
         deadline.check();
         if(iteration)cover=mapCover(model.geometry(),index,bounds,o,cache,result.cover_metrics,deadline,layout,solver.profile);
         timer.restart();
-        auto current=solver;if(!iteration)current.iterations=o.initial_iterations;
+        auto current=solver;
         current.check_gradients=solver.check_gradients&&!iteration;
         CubicProblem problem(model,cover,length,o,current,energy,initial_problem.get(),progress);
         initial_problem.reset();result.optimizer.setup_ms+=timer.elapsed();
@@ -159,7 +151,7 @@ CubicResult generateCubic(const std::vector<Vec3>& input_seed,const ObstacleInde
           if(backtrack==32){model.x=initial;break;}
         }
         result.optimizer.certificate_ms+=timer.elapsed();
-        if(iteration+1==o.inflation_iterations&&solver.volume_refinements)
+        if(iteration+1==OptimizerSettings::inflation_iterations)
           problem.refineVolume(model.x,result.optimizer,[&](const Eigen::VectorXd& x){deadline.check();return certify(model.geometry(x),cover).safe();});
       }
       // Every accepted iterate (including volume refinement) is certified.

@@ -3,19 +3,6 @@
 #include "cubic_optimizer.hpp"
 #include "obstacle_cover.hpp"
 namespace gcopter::direct::native {
-enum class NativePreset { Fast, Balanced, Volume };
-inline void applyNativePreset(NativePreset preset,Options& options,OptimizerSettings& solver) {
-  solver=OptimizerSettings{};
-  solver.center_energy=solver.shape_energy=preset==NativePreset::Volume?1e-6:1e-5;
-  solver.iterations=preset==NativePreset::Balanced?8:6;
-  solver.corrector_iterations=preset==NativePreset::Volume?0:4;
-  solver.prune_supports=preset==NativePreset::Balanced;
-  solver.path_predictor=preset==NativePreset::Balanced?1:0;
-  solver.volume_refinements=preset==NativePreset::Balanced?1:0;
-  if(preset==NativePreset::Balanced)solver.corrector_iterations=3;
-  options.initial_iterations=solver.iterations;
-  options.inflation_iterations=2;
-}
 struct CubicResult {
   Geometry corridor;
   std::vector<detail::SupportPlane> cover;
@@ -29,8 +16,8 @@ CubicResult generateCubic(const std::vector<Vec3>& seed,const ObstacleIndex& ind
                           const Bounds& bounds,const Options& options,const OptimizerSettings& solver,
                           const Geometry* projected_reference=nullptr);
 inline CubicResult generateNative(const std::vector<Vec3>& seed,const ObstacleIndex& index,
-    const Bounds& bounds,Options options,NativePreset preset=NativePreset::Balanced) {
-  OptimizerSettings solver;applyNativePreset(preset,options,solver);
+    const Bounds& bounds,Options options) {
+  OptimizerSettings solver;
   return generateCubic(seed,index,bounds,options,solver);
 }
 }

@@ -146,33 +146,14 @@ int main(int argc,char** argv) {
     if(std::getenv("NATIVE_CANDIDATES"))for(int method=0;method<(std::getenv("NATIVE_METHOD_COUNT")?std::min(2,std::stoi(std::getenv("NATIVE_METHOD_COUNT"))):2);++method) {
       const std::string name=method==0?"C3-OPT-native":"C3-OPT-project";
       ns::OptimizerSettings solver;
-      if(method==0)if(const char* preset=std::getenv("NATIVE_PRESET")) {
-        const std::string value=preset;
-        if(value!="balanced"&&value!="fast"&&value!="volume")throw std::runtime_error("unknown native preset");
-        ns::applyNativePreset(value=="balanced"?ns::NativePreset::Balanced:value=="fast"?ns::NativePreset::Fast:ns::NativePreset::Volume,o,solver);
-      }
-      if(const char* v=std::getenv("NATIVE_ENERGY"))solver.center_energy=solver.shape_energy=std::stod(v);
-      if(const char* v=std::getenv("NATIVE_CENTER_ENERGY"))solver.center_energy=std::stod(v);
-      if(const char* v=std::getenv("NATIVE_SHAPE_ENERGY"))solver.shape_energy=std::stod(v);
-      if(const char* v=std::getenv("NATIVE_RADIUS_FRACTION"))solver.initial_radius_fraction=std::stod(v);
-      if(const char* v=std::getenv("NATIVE_CORRECTOR_ITERATIONS"))solver.corrector_iterations=std::stoi(v);
-      if(const char* v=std::getenv("NATIVE_PROGRESS_THRESHOLD"))solver.progress_threshold=std::stod(v);
-      if(const char* v=std::getenv("NATIVE_PATH_PREDICTOR"))solver.path_predictor=std::stod(v);
-      if(const char* v=std::getenv("NATIVE_VOLUME_REFINEMENTS"))solver.volume_refinements=std::stoi(v);
-      if(const char* v=std::getenv("NATIVE_VOLUME_TRUST"))solver.volume_trust=std::stod(v);
-      if(const char* v=std::getenv("NATIVE_FRACTION_BOUNDARY"))solver.fraction_boundary=std::stod(v);
-      if(const char* v=std::getenv("NATIVE_ITERATIONS"))solver.iterations=std::stoi(v);
-      if(const char* v=std::getenv("NATIVE_INITIAL_ITERATIONS"))o.initial_iterations=std::stoi(v);
-      if(const char* v=std::getenv("NATIVE_INFLATIONS"))o.inflation_iterations=std::stoi(v);
-      if(const char* v=std::getenv("NATIVE_SPACING"))o.control_spacing=std::stod(v);
       if(const char* v=std::getenv("NATIVE_PROFILE"))solver.profile=std::stoi(v)!=0;
       bool success=false;ns::Geometry last;
       log<<"{\"kind\":\"configuration\",\"model\":\""<<name<<"\",\"control_spacing\":"<<o.control_spacing
-         <<",\"initial_iterations\":"<<o.initial_iterations<<",\"iterations\":"<<solver.iterations
-         <<",\"corrector_iterations\":"<<solver.corrector_iterations<<",\"inflations\":"<<o.inflation_iterations
+         <<",\"initial_iterations\":"<<solver.iterations<<",\"iterations\":"<<solver.iterations
+         <<",\"corrector_iterations\":"<<solver.corrector_iterations<<",\"inflations\":"<<solver.inflation_iterations
          <<",\"center_energy\":"<<solver.center_energy<<",\"shape_energy\":"<<solver.shape_energy
-         <<",\"prune_supports\":"<<solver.prune_supports<<",\"profile\":"<<solver.profile
-         <<",\"path_predictor\":"<<solver.path_predictor<<",\"volume_refinements\":"<<solver.volume_refinements<<"}\n";
+         <<",\"profile\":"<<solver.profile
+         <<"}\n";
       for(int rep=-1;rep<repeats;++rep) {
         solver.check_gradients=rep==-1;
         const auto cpu_start=std::clock();

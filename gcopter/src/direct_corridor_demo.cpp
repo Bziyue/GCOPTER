@@ -80,8 +80,8 @@ class DirectDemo final : public rclcpp::Node {
       options_.certify_jacobian=true;
       options_.initial_iterations=8;
     }
-    options_.inflation_iterations =
-        declare_parameter<int>("inflation_iterations", 2);
+    if (shape_mode_ != "c3")
+      options_.inflation_iterations = declare_parameter<int>("inflation_iterations", 2);
     options_.certificate_depth = declare_parameter<int>("certificate_depth", 9);
     options_.budget_ms = declare_parameter<double>("corridor_budget_ms", 1000.);
     reference_clearance_ = declare_parameter<double>("reference_clearance", .2);

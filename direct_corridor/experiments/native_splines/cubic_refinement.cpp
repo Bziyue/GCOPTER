@@ -101,21 +101,21 @@ CubicProblem::LineModel CubicProblem::prepareLine(const Eigen::VectorXd& x,
 void CubicProblem::refineVolume(Eigen::VectorXd& x,OptimizerMetrics& metrics,
     const std::function<bool(const Eigen::VectorXd&)>& certificate)const {
   StageTimer timer(settings.profile);
-  for(int iteration=0;iteration<settings.volume_refinements;++iteration) {
+  const auto refine=[&] {
     Eigen::VectorXd gradient,unused,direction;BandedSPD hessian;
     const double before=sweptVolume(model,x,&gradient);
     objective(x,.00001/model.basis.count,&unused,&hessian,false);
     for(int id:{0,1,int(x.size())-5,int(x.size())-4}){gradient[id]=0;hessian.fix(id);}
     double damping=0;
     while(!hessian.factor(damping)){damping=damping==0?1e-8:damping*10;if(damping>1e6)break;}
-    if(damping>1e6)break;
+    if(damping>1e6)return;
     hessian.solveInto(gradient,direction);
     double movement=0;
     for(int i=0;i<model.basis.count;++i) {
       const auto p=direction.segment<5>(5*i);
       movement=std::max(movement,p.head<2>().norm()+std::sqrt(p[2]*p[2]+2*p[3]*p[3]+p[4]*p[4]));
     }
-    if(movement<=1e-12)break;
+    if(movement<=1e-12)return;
     direction*=std::min(1.,settings.volume_trust/movement);
     const double first=gradient.dot(direction),plus=sweptVolume(model,x+direction)-before,
                  minus=sweptVolume(model,x-direction)-before;
@@ -127,17 +127,16 @@ void CubicProblem::refineVolume(Eigen::VectorXd& x,OptimizerMetrics& metrics,
       const double q=-.5*(b+std::copysign(std::sqrt(discriminant),b));
       for(double root:{q/a,q!=0?c/q:INFINITY})if(root>0&&root<upper&&gain(root)>gain(alpha))alpha=root;
     }else if(a==0&&b<0){const double root=-c/b;if(root>0&&root<alpha)alpha=root;}
-    bool accepted=false;
     for(int trial=0;trial<10&&gain(alpha)>1e-10;++trial,alpha*=.5) {
       const Eigen::VectorXd candidate=x+alpha*direction;
       if(certificate(candidate)) {
         const double after=sweptVolume(model,candidate);
-        if(after>before){x=candidate;metrics.volume_gain+=after-before;++metrics.volume_steps;accepted=true;}
+        if(after>before){x=candidate;metrics.volume_gain+=after-before;++metrics.volume_steps;}
         break;
       }
     }
-    if(!accepted)break;
-  }
+  };
+  refine();
   metrics.volume_ms+=timer.elapsed();
 }
 } // namespace gcopter::direct::native

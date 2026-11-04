@@ -290,7 +290,7 @@ CubicProblem::CubicProblem(const CubicModel& m,const std::vector<detail::Support
       }
     }
     StageTimer pruning(settings.profile);
-    if(settings.prune_supports)for(auto& group:groups)
+    for(auto& group:groups)
       pruneProjectedSupports(group,m.x,o.max_offset,o.max_radius);
     pruning_ms=pruning.elapsed();
     for(auto& group:groups) {
@@ -501,9 +501,9 @@ void CubicProblem::optimize(Eigen::VectorXd& x,OptimizerMetrics& metrics,const D
   double previous_mu=0;
   for(int stage=0;stage<3;++stage) {
     const double mu=barriers[stage]/model.basis.count;
-    if(settings.path_predictor>0&&previous_mu>0) {
+    if(previous_mu>0) {
       deadline.check();StageTimer timer(settings.profile);
-      h.solveInto(barrier_gradient,step,settings.path_predictor*(previous_mu-mu));
+      h.solveInto(barrier_gradient,step,previous_mu-mu);
       const auto line=prepareLine(x,step,mu);double alpha=line.step;
       bool accepted=false;
       for(int trial=0;trial<12;++trial,alpha*=.5)if(line.delta(alpha)<0) {
@@ -513,7 +513,7 @@ void CubicProblem::optimize(Eigen::VectorXd& x,OptimizerMetrics& metrics,const D
       metrics.predictor_ms+=timer.elapsed();
     }
     bool converged=false;
-    const int limit=stage>0&&settings.corrector_iterations>0?settings.corrector_iterations:settings.iterations;
+    const int limit=stage>0?settings.corrector_iterations:settings.iterations;
     for(int it=0;it<limit;++it) {
       deadline.check();StageTimer timer(settings.profile);
       const double f=objective(x,mu,&g,&h,false);
@@ -527,7 +527,7 @@ void CubicProblem::optimize(Eigen::VectorXd& x,OptimizerMetrics& metrics,const D
       h.solveInto(g,step,-1);
       const double decrement=-g.dot(step);metrics.final_decrement=decrement;
       // Continuation only consumes the final corrector's gradient/factor.
-      if(settings.path_predictor>0&&stage<2&&(it+1==limit||decrement<settings.gradient_tolerance)) {
+      if(stage<2&&(it+1==limit||decrement<settings.gradient_tolerance)) {
         Eigen::VectorXd primary=quadratic.multiply(x)+linear;
         for(int node=0;node<model.basis.count;++node) {
           const auto shape=matrix(x,node);const double w=model.basis.weight(node)/shape.determinant();

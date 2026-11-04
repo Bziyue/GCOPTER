@@ -31,11 +31,8 @@ def main():
     out=ROOT/args.output;out.mkdir(parents=True,exist_ok=True)
     names=args.configurations.split(",")
     configurations={"frozen":{},"clean":{},"profiled":{"NATIVE_PROFILE":"1"}}
-    for preset in ("fast","volume"):
-        configurations["frozen_"+preset]={"NATIVE_PRESET":preset}
-        configurations[preset]={"NATIVE_PRESET":preset}
     assert all(name in configurations for name in names)
-    binaries={name:ROOT/(".scratch/native_splines/cleanup_baseline/native_spline_benchmark" if name.startswith("frozen")
+    binaries={name:ROOT/(".scratch/native_splines/default_baseline/native_spline_benchmark" if name.startswith("frozen")
                         else ".scratch/native_splines/build/native_spline_benchmark") for name in names}
     manifest=dict(source_commit=subprocess.check_output(["git","rev-parse","HEAD"],cwd=ROOT,text=True).strip(),
                   configurations=configurations,repeats=args.repeats,blocks=args.blocks,cpu=args.cpu,address_space_limit_bytes=4*1024**3,
@@ -55,7 +52,7 @@ def main():
                 if args.blocks>1:target=target/f"block_{block:02d}"
                 target.mkdir(parents=True,exist_ok=True)
                 env={k:v for k,v in os.environ.items() if not k.startswith("NATIVE_")}
-                env.update(NATIVE_CANDIDATES="1",NATIVE_PRESET="balanced",NATIVE_GENERATION_ONLY="1",NATIVE_METHOD_COUNT="1")
+                env.update(NATIVE_CANDIDATES="1",NATIVE_GENERATION_ONLY="1",NATIVE_METHOD_COUNT="1")
                 env.update(NATIVE_SKIP_H5="1")
                 env.update(configurations[name])
                 command=[str(binaries[name]),str(ROOT/row["seed"]),str(ROOT/row["map"]),str(target),

@@ -1,0 +1,19 @@
+[  5%] Built target gcopter_direct_corridor
+[ 25%] Built target native_splines
+[ 31%] Built target native_spline_tests
+[ 34%] Building CXX object CMakeFiles/native_optimizer_tests.dir/tests/optimizer.cpp.o
+[ 37%] Linking CXX executable native_optimizer_tests
+[ 37%] Built target native_optimizer_tests
+[ 42%] Built target native_reference_test
+[ 45%] Building CXX object CMakeFiles/native_scene_tests.dir/tests/scenes.cpp.o
+[ 48%] Linking CXX executable native_scene_tests
+[ 48%] Built target native_scene_tests
+[ 54%] Built target native_query_tests
+[ 60%] Built target native_algorithm_tests
+[ 65%] Built target native_pruning_tests
+[ 71%] Built target native_construction_tests
+[ 77%] Built target native_spline_benchmark
+[ 82%] Built target native_volume_refine
+[ 88%] Built target native_trajectory_comparison
+[ 94%] Built target direct_corridor_benchmark
+[100%] Built target direct_corridor_cli

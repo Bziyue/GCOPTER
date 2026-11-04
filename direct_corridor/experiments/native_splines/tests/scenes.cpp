@@ -22,9 +22,9 @@ int main() {
   for(const auto& scene:scenes) {
     Options o;o.control_spacing=.4;o.min_radius=.03;o.max_radius=3;o.max_offset=3;
     o.robot_radius=.2;o.safety_margin=.05;
-    o.local_range=3;o.frame_smoothing=1.5;o.budget_ms=3000;o.max_refinements=3;o.initial_iterations=8;
+    o.local_range=3;o.frame_smoothing=1.5;o.budget_ms=3000;o.max_refinements=3;
     ObstacleIndex index(scene.spheres);Bounds bounds{Vec3::Constant(-10),Vec3::Constant(10)};
-    OptimizerSettings solver;applyNativePreset(NativePreset::Balanced,o,solver);
+    OptimizerSettings solver;
     auto r=generateCubic(scene.seed,index,bounds,o,solver);
     std::cout<<scene.name<<": "<<r.status<<", "<<r.total_ms<<" ms, refinements="<<r.refinements<<"\n";
     if(scene.require_success)assert(r.status=="SUCCESS");

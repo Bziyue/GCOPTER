@@ -1,7 +1,7 @@
 # Native C3 corridor generation
 
 This module generates a continuously certified C² corridor directly from a seed
-path. The RViz2 demo uses `generateNative()` with `NativePreset::Balanced`; see
+path. The RViz2 demo uses `generateNative()` with one fixed default algorithm; see
 [interactive commands](../../../docs/C3交互可视化.md). H5 remains available through
 its separate `generate()` entry and as a projection quality reference.
 
@@ -37,9 +37,11 @@ pruning witnesses are materialized only by explicit proof tests.
 
 The solver uses exact grouped 9D Hessians, axis-aligned kernels, banded Cholesky,
 and a scalar quadratic line model. The sufficient Armijo bound falls back to
-an exact logarithmic cost difference. `Balanced` also uses proved support
-pruning, barrier-path prediction and one certified volume refinement. `Fast`
-and `Volume` retain their own energy weights and iteration budgets.
+an exact logarithmic cost difference. The default algorithm uses proved support
+pruning, barrier-path prediction and one certified volume refinement. Algorithm
+constants live in `OptimizerSettings`; alternative presets and tuning environment
+variables have been removed. Physical map/robot inputs and explicit diagnostics
+remain configurable.
 
 ## Inputs, certificates and timing
 
@@ -78,16 +80,17 @@ ctest --test-dir .scratch/native_splines/build --output-on-failure -j1'
 
 `run.py` compares native C3, the H5 projection reference and optional H5
 representation diagnostics. `run_cleanup.py` compares the current native path
-against the frozen E3 binary at
-`.scratch/native_splines/cleanup_baseline/native_spline_benchmark`:
+against the pre-cleanup default binary at
+`.scratch/native_splines/default_baseline/native_spline_benchmark`:
 
 ```bash
 python3 direct_corridor/experiments/native_splines/run_cleanup.py \
-  --output .scratch/native_splines/cleanup/reproduce \
+  --output .scratch/native_splines/default_only/reproduce \
   --cases 0,1,2,3,4,5,6 --blocks 3 --repeats 7
 ```
 
-The frozen baseline is commit `01c8a5b`, built in Release without
+The frozen binary is the C3 implementation from `884f9cd` (unchanged by the
+H5 cleanup in `4377eab`), built in Release without
 `-march=native`. Inputs and hashes are from
 `docs/validation/native_splines_e1/inputs.tar.gz`. The runner verifies hashes at
 entry and keeps every timing, failure, coefficient export and fresh-map audit.

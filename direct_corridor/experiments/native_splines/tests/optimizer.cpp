@@ -61,19 +61,17 @@ int main() {
   problem.checkDerivatives(model.x,metrics);
   std::cout<<"gradient "<<metrics.gradient_error<<", Hv "<<metrics.hessian_error<<'\n';
   assert(metrics.gradient_error<1e-7);assert(metrics.hessian_error<1e-7);
-  auto feasible_settings=settings;feasible_settings.fraction_boundary=.99;
-  CubicProblem feasible_problem(model,planes,6.2,o,feasible_settings);
   for(int trial=0;trial<32;++trial) {
     Eigen::VectorXd direction(model.x.size());
     for(int k=0;k<direction.size();++k)direction[k]=3*std::sin((k+1)*(trial+1)*.197);
-    const double alpha=feasible_problem.feasibleStep(model.x,direction);
+    const double alpha=problem.feasibleStep(model.x,direction);
     assert(alpha>0&&alpha<=1);
     assert(std::isfinite(problem.referenceObjective(model.x+alpha*direction,.003,nullptr,nullptr)));
-    const auto line=feasible_problem.prepareLine(model.x,direction,.003);
+    const auto line=problem.prepareLine(model.x,direction,.003);
     assert(std::abs(line.step-alpha)<1e-10);
     for(double fraction:{.1,.5,1.}) {
       const double t=fraction*line.step;
-      const double actual=feasible_problem.objective(model.x+t*direction,.003)-feasible_problem.objective(model.x,.003);
+      const double actual=problem.objective(model.x+t*direction,.003)-problem.objective(model.x,.003);
       assert(std::abs(line.delta(t)-actual)<1e-10*std::max(1.,std::abs(actual)));
     }
   }
@@ -88,10 +86,8 @@ int main() {
     volume_error=std::max(volume_error,std::abs(fd-volume_gradient.dot(direction))/std::max(1.,std::abs(fd)));
   }
   std::cout<<"swept-volume gradient "<<volume_error<<'\n';assert(volume_error<1e-8);
-  auto volume_settings=settings;volume_settings.volume_refinements=2;
-  CubicProblem volume_problem(model,planes,6.2,o,volume_settings);
   auto enlarged=model.x;OptimizerMetrics volume_metrics;
-  volume_problem.refineVolume(enlarged,volume_metrics,[&](const Eigen::VectorXd& x){return certify(model.geometry(x),planes).safe();});
+  problem.refineVolume(enlarged,volume_metrics,[&](const Eigen::VectorXd& x){return certify(model.geometry(x),planes).safe();});
   assert(volume_metrics.volume_steps>0);assert(sweptVolume(model,enlarged)>sweptVolume(model,model.x));
   assert(certify(model.geometry(enlarged),planes).safe());
   auto natural=naturalCubic(model.geometry());const auto projected=CubicModel::project(natural).geometry();

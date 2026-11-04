@@ -19,17 +19,7 @@ def main():
     parser.add_argument("--output", default=".scratch/native_splines/representation")
     parser.add_argument("--timeout", type=int, default=1200)
     parser.add_argument("--native", action="store_true")
-    parser.add_argument("--energy", type=float)
-    parser.add_argument("--preset", choices=["fast", "balanced", "volume"], default="balanced")
     parser.add_argument("--binary", default=".scratch/native_splines/build/native_spline_benchmark")
-    parser.add_argument("--initial-radius-fraction", type=float)
-    parser.add_argument("--initial-iterations", type=int)
-    parser.add_argument("--iterations", type=int)
-    parser.add_argument("--inflations", type=int)
-    parser.add_argument("--spacing", type=float)
-    parser.add_argument("--corrector-iterations", type=int)
-    parser.add_argument("--progress-threshold", type=float)
-    parser.add_argument("--fraction-boundary", type=float)
     parser.add_argument("--generation-only", action="store_true")
     parser.add_argument("--method-count", type=int, default=2)
     parser.add_argument("--profile", action="store_true")
@@ -56,16 +46,8 @@ def main():
     env = os.environ | {k: "1" for k in ["OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"]}
     if args.native:
         env["NATIVE_CANDIDATES"] = "1"
-        if args.energy is not None: env["NATIVE_ENERGY"] = str(args.energy)
-        if args.preset: env["NATIVE_PRESET"] = args.preset
         manifest["phase"] = "A-and-B-native-plus-projection"
-        manifest["energy_weights"] = args.energy
-    for attribute, name in [("initial_radius_fraction", "RADIUS_FRACTION"), ("initial_iterations", "INITIAL_ITERATIONS"),
-                            ("iterations", "ITERATIONS"), ("inflations", "INFLATIONS"), ("spacing", "SPACING"),
-                            ("corrector_iterations", "CORRECTOR_ITERATIONS"), ("progress_threshold", "PROGRESS_THRESHOLD"), ("fraction_boundary", "FRACTION_BOUNDARY"), ("method_count", "METHOD_COUNT")]:
-        value = getattr(args, attribute)
-        if value is not None:
-            env["NATIVE_" + name] = str(value)
+    env["NATIVE_METHOD_COUNT"] = str(args.method_count)
     if args.profile: env["NATIVE_PROFILE"] = "1"
     if args.generation_only: env["NATIVE_GENERATION_ONLY"] = "1"
     manifest["native_environment"] = {k: v for k, v in env.items() if k.startswith("NATIVE_")}
