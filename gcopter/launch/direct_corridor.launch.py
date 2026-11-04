@@ -29,7 +29,6 @@ def setup(context):
                    search_range=2.0, search_seed=7, robot_radius=0.2, safety_margin=0.05,
                    reference_clearance=0.2, control_spacing=0.4, min_radius=0.03,
                    max_radius=1.5, corridor_budget_ms=1000.,
-                   shape_mode=LaunchConfiguration('shape_mode').perform(context),
                    local_range=float(LaunchConfiguration('local_range').perform(context)),
                    local_progress=7.0,
                    output_dir=LaunchConfiguration('output_dir').perform(context))
@@ -51,7 +50,6 @@ def generate_launch_description():
         DeclareLaunchArgument('height', default_value='2.5'),
         DeclareLaunchArgument('height_mode', default_value='fixed'),
         DeclareLaunchArgument('search_timeout', default_value='0.5'),
-        DeclareLaunchArgument('shape_mode', default_value='c3'),
         DeclareLaunchArgument('local_range', default_value='3.0'),
         DeclareLaunchArgument('rviz', default_value='true'),
         DeclareLaunchArgument('output_dir', default_value='/tmp/gcopter_direct_demo'),

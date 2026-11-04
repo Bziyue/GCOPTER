@@ -1,8 +1,8 @@
 #include <SweepCorridor/InverseQuery.hpp>
 #include <cassert>
 namespace sc=SweepCorridor;
-template<int D> void check(const sc::Corridor<D>& c){
- sc::Query<D> query(c); sc::InverseQuery<D> inverse(c);
+void check(const sc::Corridor& c){
+ sc::Query query(c); sc::InverseQuery inverse(c);
  for(int j=1;j<39;++j){const double u=j/40.;const auto s=c.section(u),q=query.section(u);
   assert((s.center-q.center).norm()<1e-10);assert((s.first-q.first).norm()<1e-8);assert((s.second-q.second).norm()<1e-6);
   assert((s.shape-q.shape).norm()<1e-10);assert((s.shape_first-q.shape_first).norm()<1e-8);assert((s.shape_second-q.shape_second).norm()<1e-6);
@@ -51,4 +51,4 @@ template<int D> void check(const sc::Corridor<D>& c){
    auto b=inverse(p,u);assert(a.plane==b.plane&&a.u==b.u);
  }
 }
-void queries(const sc::Corridor<3>& a,const sc::Corridor<5>& b){check(a);check(b);}
+void queries(const sc::Corridor& a){check(a);}

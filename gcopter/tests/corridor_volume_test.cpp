@@ -19,8 +19,8 @@ Poly cube(double lo, double hi) {
 int main() {
   try {
     Patch cylinder;
-    for (int j = 0; j < 6; ++j) {
-      cylinder.c[j] = Vec3(4. * j / 5, 0, 0);
+    for (int j = 0; j < 4; ++j) {
+      cylinder.c[j] = Vec3(4. * j / 3, 0, 0);
       cylinder.m[j] << 0, 0, .5, 0, 0, .5;
     }
     cylinder.prepare();
@@ -42,8 +42,8 @@ int main() {
     // Two roots per section-plane equation: naive signed Jacobian integration
     // gives zero, whereas the geometric union is a cylinder of length one.
     Patch folded;
-    for (int j = 0; j < 6; ++j) {
-      folded.c[j] = Vec3(4. * j / 5 - 4. * j * (j - 1) / 20, 0, 0);
+    for (int j = 0; j < 4; ++j) {
+      folded.c[j] = Vec3(4. * j / 3 - 4. * j * (j - 1) / 6, 0, 0);
       folded.m[j] = cylinder.m[j];
     }
     folded.prepare();

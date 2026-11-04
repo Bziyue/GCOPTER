@@ -13,7 +13,7 @@ source=Path(sys.argv[1]);target=Path(sys.argv[2])
 data=json.loads(source.read_text())
 names=['Perlin A1','Perlin B1','Maze 1','Perlin A2','Perlin B2','Maze 2']
 fig,axes=plt.subplots(2,1,figsize=(10,6.4),sharex=True,layout='constrained')
-for method,color,offset,label in [('firi','#3b73b9',-.19,'FIRI union'),('hermite','#d57929',.19,'Hermite tube')]:
+for method,color,offset,label in [('firi','#3b73b9',-.19,'FIRI union'),('C3','#d57929',.19,'Cubic tube')]:
     times=[];violations=[];failed=[];low=[];high=[]
     for case in data['cases']:
         runs=[r for r in case['runs'] if r['method']==method and r['repeat']>=0]

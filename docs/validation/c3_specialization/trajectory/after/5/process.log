@@ -1,0 +1,28 @@
+C3 gradient relative error 3.27605e-09
+C3 rep -1 143.597ms feasible=0 plane=0 corridor=0.0060789 collision=0
+C3 rep 0 143.44ms feasible=0 plane=0 corridor=0.0060789 collision=0
+C3 rep 1 143.654ms feasible=0 plane=0 corridor=0.0060789 collision=0
+C3 rep 2 143.53ms feasible=0 plane=0 corridor=0.0060789 collision=0
+	Command being timed: ".scratch/c3_specialize/trajectory/sweep_trajectory_comparison .scratch/native_splines/e1/inputs/seed_019b73adaac1c31fd85a1244699770d45e18c319cfc976548bc8791b4ef621ff.xyz .scratch/native_splines/e1/inputs/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz docs/validation/c3_specialization/trajectory/after/5 -15 -15 0 15 15 5 .25 3 1 100000 16 1 800 bezier 2"
+	User time (seconds): 0.71
+	System time (seconds): 0.00
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:00.72
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 26384
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 7977
+	Voluntary context switches: 1
+	Involuntary context switches: 6
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 800
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

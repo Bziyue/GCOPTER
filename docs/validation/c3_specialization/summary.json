@@ -1,0 +1,44 @@
+{
+  "all": {
+    "cases": 67,
+    "before_ms": 1763.142877,
+    "after_ms": 1768.992709,
+    "change_percent": 0.331784342398489
+  },
+  "success": {
+    "cases": 65,
+    "before_ms": 1743.720072,
+    "after_ms": 1750.014906,
+    "change_percent": 0.36100026036747224
+  },
+  "geometry_exact": true,
+  "queries": {
+    "full_hessian": {
+      "before_ms": 5.95732,
+      "after_ms": 5.86416,
+      "change_percent": -1.56379042925342
+    },
+    "first_gradient": {
+      "before_ms": 4.893307,
+      "after_ms": 4.434096,
+      "change_percent": -9.384471483191225
+    },
+    "inverse_unique": {
+      "before_ms": 23.763332,
+      "after_ms": 21.08481,
+      "change_percent": -11.271660051713273
+    },
+    "inverse_repeated": {
+      "before_ms": 0.8653339999999999,
+      "after_ms": 0.795493,
+      "change_percent": -8.070987618653602
+    }
+  },
+  "trajectory": {
+    "before_ms": 2710.4996539999997,
+    "after_ms": 2662.878744,
+    "change_percent": -1.7569052233496252,
+    "exact": true,
+    "feasible": 6
+  }
+}

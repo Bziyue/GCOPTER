@@ -1,0 +1,107 @@
+[
+  {
+    "case": 0,
+    "before": {
+      "full_hessian": 0.846683,
+      "first_gradient": 0.699502,
+      "inverse_unique": 3.338682,
+      "inverse_repeated": 0.1422
+    },
+    "after": {
+      "full_hessian": 0.831543,
+      "first_gradient": 0.630282,
+      "inverse_unique": 2.951709,
+      "inverse_repeated": 0.124911
+    }
+  },
+  {
+    "case": 1,
+    "after": {
+      "full_hessian": 0.826543,
+      "first_gradient": 0.634713,
+      "inverse_unique": 3.299001,
+      "inverse_repeated": 0.10447
+    },
+    "before": {
+      "full_hessian": 0.847663,
+      "first_gradient": 0.702992,
+      "inverse_unique": 3.726933,
+      "inverse_repeated": 0.109011
+    }
+  },
+  {
+    "case": 2,
+    "before": {
+      "full_hessian": 0.855893,
+      "first_gradient": 0.694423,
+      "inverse_unique": 3.246051,
+      "inverse_repeated": 0.146081
+    },
+    "after": {
+      "full_hessian": 0.820673,
+      "first_gradient": 0.633592,
+      "inverse_unique": 2.87618,
+      "inverse_repeated": 0.1288
+    }
+  },
+  {
+    "case": 3,
+    "after": {
+      "full_hessian": 0.913853,
+      "first_gradient": 0.633502,
+      "inverse_unique": 3.177841,
+      "inverse_repeated": 0.104841
+    },
+    "before": {
+      "full_hessian": 0.856302,
+      "first_gradient": 0.695642,
+      "inverse_unique": 3.537172,
+      "inverse_repeated": 0.10979
+    }
+  },
+  {
+    "case": 4,
+    "before": {
+      "full_hessian": 0.847053,
+      "first_gradient": 0.702103,
+      "inverse_unique": 3.355392,
+      "inverse_repeated": 0.107651
+    },
+    "after": {
+      "full_hessian": 0.820683,
+      "first_gradient": 0.633852,
+      "inverse_unique": 2.97335,
+      "inverse_repeated": 0.10369
+    }
+  },
+  {
+    "case": 5,
+    "after": {
+      "full_hessian": 0.830623,
+      "first_gradient": 0.634362,
+      "inverse_unique": 2.892499,
+      "inverse_repeated": 0.125151
+    },
+    "before": {
+      "full_hessian": 0.847903,
+      "first_gradient": 0.700882,
+      "inverse_unique": 3.285801,
+      "inverse_repeated": 0.14239
+    }
+  },
+  {
+    "case": 6,
+    "before": {
+      "full_hessian": 0.855823,
+      "first_gradient": 0.697763,
+      "inverse_unique": 3.273301,
+      "inverse_repeated": 0.108211
+    },
+    "after": {
+      "full_hessian": 0.820242,
+      "first_gradient": 0.633793,
+      "inverse_unique": 2.91423,
+      "inverse_repeated": 0.10363
+    }
+  }
+]

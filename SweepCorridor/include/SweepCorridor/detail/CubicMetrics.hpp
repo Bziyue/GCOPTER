@@ -42,6 +42,6 @@ struct CoverMetrics {
   double topology_ms=0;
   int topology_builds=0,reused_cover_spans=0;
   size_t priority_evaluations=0;
-  Metrics primitives;
+  struct Primitives {std::size_t certificate_leaves=0,obstacle_pairs=0;} primitives;
 };
 }

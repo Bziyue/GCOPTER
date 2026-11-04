@@ -23,16 +23,7 @@ target_compile_features(tube_query_test PRIVATE cxx_std_17)
 target_include_directories(tube_query_test PRIVATE ../../include)
 target_link_libraries(tube_query_test PRIVATE gcopter_direct_corridor)
 add_test(NAME tube_query_test COMMAND tube_query_test)
-add_executable(uz_test ../uz/test.cpp)
-target_include_directories(uz_test PRIVATE ../../include)
-target_link_libraries(uz_test PRIVATE gcopter_direct_corridor)
-add_test(NAME uz_test COMMAND uz_test)
-add_executable(uz_experiment ../uz/benchmark.cpp)
-target_include_directories(uz_experiment PRIVATE ../../include ../../tools ${OMPL_INCLUDE_DIRS})
-target_link_directories(uz_experiment PRIVATE ${OMPL_LIBRARY_DIRS})
-target_link_libraries(uz_experiment PRIVATE gcopter_direct_corridor ${OMPL_LIBRARIES})
-
-# Same trajectory objective and initialization; only corridor degree differs.
+# C3-only replay for paired before/after performance measurements.
 add_executable(sweep_trajectory_comparison benchmark.cpp)
 target_compile_definitions(sweep_trajectory_comparison PRIVATE SWEEP_COMPARISON)
 target_compile_features(sweep_trajectory_comparison PRIVATE cxx_std_17)

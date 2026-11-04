@@ -5,9 +5,10 @@ sweep corridors:
 
 `F(u,z) = c(u) + M(u) z`, with `||z||₂ <= 1`.
 
-`Generator<3>` uses a native cubic C² B-spline kernel. `Generator<5>` uses the
-quintic Hermite smooth kernel. Both return `Corridor<Degree>` with identical
-section and differential interfaces. Only degrees 3 and 5 are supported.
+`Generator` directly builds native cubic C² B-spline corridors. The public
+`Corridor`, `Query` and `InverseQuery` types are specialized for cubic geometry.
+The former H5 implementation and comparisons are preserved on branch
+`archive/h5-sweep-corridor` at commit `bd6d81f`.
 
 ## Use
 
@@ -16,20 +17,19 @@ section and differential interfaces. Only degrees 3 and 5 are supported.
 namespace sc = SweepCorridor;
 sc::Options options;
 sc::ObstacleIndex map(obstacles); // Owned immutable sphere BVH; reusable.
-auto result = sc::Generator<3>(options).generate(seed, map, bounds);
+auto result = sc::Generator(options).generate(seed, map, bounds);
 if (result) {
-    sc::Query<3> query(result.corridor);
+    sc::Query query(result.corridor);
     auto section = query.section(0.5);
     auto first = query.evaluateFirst(0.5, position); // Value and gradient only.
     auto differential = query.evaluate(0.5, position); // Includes Hessian.
 }
 ```
 
-Change the template argument to `5` for H5. There are no runtime algorithm
-presets. Geometry, safety margins, resource limits and optional stage profiling
+There are no degree switches or runtime algorithm presets. Geometry, safety margins, resource limits and optional stage profiling
 are configurable; optimizer constants and continuous safety checks are fixed.
 
-`Corridor` owns knots and degree-specific Bézier controls. Each control is nine
+`Corridor` owns knots and four Bézier controls per span. Each control is nine
 scalars: center followed by the column-major 3x2 shape matrix. `section()` returns
 center and shape plus their first and second derivatives in normalized u.
 `Query` precomputes power coefficients and uses Horner evaluation with a span
@@ -46,13 +46,13 @@ nonempty; generation and map construction validate external data once.
 For trajectory optimization, include `<SweepCorridor/InverseQuery.hpp>`:
 
 ```cpp
-sc::InverseQuery<3> inverse(result.corridor);
+sc::InverseQuery inverse(result.corridor);
 auto residual = inverse(position, progress_hint);
 // residual.radial, residual.plane: residuals in metres
 // residual.grad_radial, residual.grad_plane: world-position gradients
 ```
 
-`InverseQuery<Degree>` uses the same first-order implementation for both degrees.
+`InverseQuery` uses cubic first-order evaluation.
 It solves the section-plane equation from the supplied hint and differentiates
 through the root. Outside the ellipse it returns a radial violation; inside it
 returns zero. At endpoint extensions it retains the signed cap-plane residual.
@@ -98,14 +98,13 @@ ctest --test-dir build/sweep --output-on-failure -j1
 cmake --install build/sweep --prefix /your/prefix
 ```
 
-Tests cover both generators, continuous certificates, identical query interfaces,
+Tests cover generation, continuous certificates, identical query interfaces,
 Horner derivatives, constraint gradients/Hessians and multiple translation units.
 The `tests/consumer` project tests consumption of an installed package. Frozen
 input benchmarks are opt-in via `SWEEP_BUILD_BENCHMARKS=ON`; their file and report
 I/O lives outside the library headers.
 
-The implementation separates shared geometry/certificates from the C3 banded
-solver and H5 node solver. `detail/` is private implementation, not a supported
+The implementation separates geometry/certificates from the C3 banded solver. `detail/` is private implementation, not a supported
 configuration or extension API. Historical projection, Minkowski, jet-fitting
 and tuning experiments remain available in GCOPTER commit `92da988` and archived
 reports, not in this portable package.

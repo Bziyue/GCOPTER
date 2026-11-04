@@ -1,0 +1,63 @@
+from pathlib import Path
+import json,statistics as st
+root=Path('docs/validation/c3_specialization')
+g=json.loads((root/'generation/summary.json').read_text());q=json.loads((root/'query_summary.json').read_text());t=json.loads((root/'trajectory_summary.json').read_text())
+summary={}
+for group,rs in [('all',g),('success',[x for x in g if x['before']['status'][0]=='SUCCESS'])]:
+ a=sum(x['before']['median_ms'] for x in rs);b=sum(x['after']['median_ms'] for x in rs);summary[group]=dict(cases=len(rs),before_ms=a,after_ms=b,change_percent=100*(b/a-1))
+summary['geometry_exact']=all(x['exact'] for x in g)
+summary['queries']={m:dict(before_ms=sum(x['before'][m] for x in q),after_ms=sum(x['after'][m] for x in q),change_percent=100*(sum(x['after'][m] for x in q)/sum(x['before'][m] for x in q)-1)) for m in q[0]['before']}
+a=sum(x['before']['median_ms'] for x in t);b=sum(x['after']['median_ms'] for x in t)
+summary['trajectory']=dict(before_ms=a,after_ms=b,change_percent=100*(b/a-1),exact=all(x['exact'] for x in t),feasible=sum(x['after']['runs'][1]['sampled_feasible'] for x in t))
+(root/'summary.json').write_text(json.dumps(summary,indent=2)+'\n');print(json.dumps(summary,indent=2))
+lines=['# H5 归档与 C3 专用化第一轮','',
+'上一轮统一查询和 C3/H5 对照已提交为 `bd6d81f`，完整代码与结果保存在 `archive/h5-sweep-corridor` 分支。当前分支只保留 C3 走廊；五次最小 jerk 轨迹表示及其优化器继续保留，它们与 H5 走廊生成器是不同模块。','',
+'## 接口与代码范围','',
+'头文件库版本更新为 0.2.0。公开类型收敛为 `Generator`、`Corridor`、`Query`、`InverseQuery`、`Result`，不再需要 `<3>` 或运行时次数选择。走廊仍以每段四行的原生三次 Bézier 系数输出。','',
+'删除 H5 节点优化、Hermite 导数平滑、H5 专用查询适配和旧 u/z 实验入口。C3 需要的障碍 BVH、球体分离与查询覆盖缓存从原 H5 文件中拆出，分别放入 `ObstacleIndex.hpp` 和 `ObstacleSeparation.hpp`，没有保留整套 H5 求解器作为隐含依赖。','',
+'CLI、ROS 节点、RViz2 演示与 FIRI 对照均改用 C3。移除 `shape_mode` 开关，体积工具改用四控制点和九次截面平面方程。历史 H5 报告和结果继续保留；复现旧代码请使用归档分支。','',
+'```cpp',
+'#include <SweepCorridor/InverseQuery.hpp>',
+'namespace sc = SweepCorridor;',
+'auto result = sc::Generator(options).generate(seed, map, bounds);',
+'if (result) {',
+'    sc::Query query(result.corridor);',
+'    auto gradient = query.evaluateFirst(u, position);',
+'    sc::InverseQuery inverse(result.corridor);',
+'    auto residual = inverse(position, progress_hint);',
+'}','```','',
+'## 保留的 C3 特化','',
+'1. **固定三次求值。** 四个 Bézier 控制量直接转换为四个幂基系数，值、一阶及二阶导数使用明确的三次 Horner 表达，不再走通用次数循环。',
+'2. **稀疏提取。** 简单三次节点的提取矩阵每行分别只有 3、2、2、3 个非零项。跳过六个代数零项，保持其余项的累加顺序；输出数组一次分配。',
+'3. **反求中的引用复用。** Newton 每次截面求值只持有缓存帧引用，不复制中心、形状及导数。精确缓存键、选根提示与停止条件不变。',
+'4. **固定半带宽 19。** 每段依赖四个控制点，每点五个变量，因此局部 Hessian 最远相隔 19 个标量变量。分解内核固定这个宽度，按行指针访问系数，并移除每次分解前不必要的全矩阵清零。每个读取项都由当前分解先行写入；失败后的阻尼重试也独立覆盖这些项。',
+'5. **一次性容量分配。** knots、span 和输出控制数组按已知规模分配，减少重复扩容。','',
+'安全余量、支撑约束、Jacobian 证书、Newton 预算、障碍模型和线搜索接受条件均保持原值。','',
+'## 对照结果','',
+'参考为 `bd6d81f` 的 C3，沿用相同的 67 组冻结地图和路径。生成每例预热一次、正式七次，使用包含输出转换的 wall time；前后版本按案例交替运行。查询与轨迹使用原七例，轨迹每组预热一次、正式三次。全部串行，CPU 2、数值线程 1、地址空间限制 4 GiB。','',
+'| 指标 | 修改前 | 修改后 | 变化 |','| --- | ---: | ---: | ---: |']
+for key,label in [('all','67 例生成中位数之和 / ms'),('success','65 条成功路径生成中位数之和 / ms')]:
+ x=summary[key];lines.append(f"| {label} | {x['before_ms']:.2f} | {x['after_ms']:.2f} | {x['change_percent']:+.2f}% |")
+for mode,label in [('first_gradient','一阶查询微基准合计 / ms'),('inverse_unique','不同位置反求微基准合计 / ms')]:
+ x=summary['queries'][mode];lines.append(f"| {label} | {x['before_ms']:.3f} | {x['after_ms']:.3f} | {x['change_percent']:+.2f}% |")
+x=summary['trajectory'];lines.append(f"| 七例轨迹优化中位数之和 / ms | {x['before_ms']:.2f} | {x['after_ms']:.2f} | {x['change_percent']:+.2f}% |")
+lines+=['','生成耗时基本持平，本轮主要收益在查询热路径，不能把删除 H5 本身解释为生成加速。查询微基准每例每轮 16384 次，表中为七例各自重复中位数之和；不是一次调用耗时。','',
+'67 例状态完全一致，65 条成功走廊的几何系数和支撑平面逐字节相同，因此体积和边界平滑性保持不变。七例轨迹 CSV 逐字节相同，初始优化变量哈希一致，采样验收仍为 6/7。场景 5 保留原先约 6.08 mm 的走廊残差，其余六例通过原 5 mm 门槛。多数场景仍达到 800 次迭代上限，原始优化状态一并记录。','',
+'## 未采用的尝试','',
+'第一版去除 H5 并特化查询后，生成合计慢约 3%，虽然几何和轨迹完全一致。将三次的固定带宽用于分解后，生成耗时恢复到原水平。另测试了 Eigen 固定 20 列存储，七例初筛没有稳定收益，最终仍采用动态列存储配合固定带宽的寻址内核。生产代码没有增加这些实验开关。','',
+'## 验证与记录','',
+'- 固定带宽求解与独立稠密 Cholesky 对照，覆盖 20、41、103 维矩阵、阻尼变化、分解失败后的重试。',
+'- 一阶及隐式梯度有限差分、缓存命中和逐出、端点、连续证书与多翻译单元测试通过。',
+'- 独立轨迹反求回归、CLI、ROS 节点、FIRI 体积工具与交互演示继续使用同一个 C3 库。',
+'- 原始计时序列、状态、系数哈希、轨迹和过程日志保存在下列记录中。','',
+'- [汇总](validation/c3_specialization/summary.json)',
+'- [67 例生成对照](validation/c3_specialization/generation/summary.json)',
+'- [查询微基准](validation/c3_specialization/query_summary.json)',
+'- [轨迹逐例记录](validation/c3_specialization/trajectory_summary.json)',
+'- [未采用版本的初筛](validation/c3_specialization/trials.json)',
+'- [原始几何和轨迹 CSV](validation/c3_specialization/raw_csv.tar.gz)','',
+'交互启动命令：','',
+'```bash',
+'/home/zdp/ForCodex/GCOPTER/gcopter/tools/run_direct_demo.sh scene:=perlin search_timeout:=1.0',
+'/home/zdp/ForCodex/GCOPTER/gcopter/tools/run_direct_demo.sh scene:=maze search_timeout:=3.0','```','']
+Path('docs/H5归档与C3专用化第一轮.md').write_text('\n'.join(lines))

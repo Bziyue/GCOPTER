@@ -3,8 +3,8 @@
 #include <SweepCorridor/InverseQuery.hpp>
 // The same normalized query sequence is used for both degrees. Construction,
 // point preparation and cache reset are outside the timed blocks.
-template<int D> void queryMeasurements(const sc::Corridor<D>& c,std::ostream& log) {
-  sc::Query<D> q(c);sc::InverseQuery<D> inverse(c);
+void queryMeasurements(const sc::Corridor& c,std::ostream& log) {
+  constexpr int D=3;sc::Query q(c);sc::InverseQuery inverse(c);
   constexpr int count=16384;
   std::vector<sc::Vec3> points;points.reserve(count);
   for(int i=0;i<count;++i){double u=(i+.5)/count;

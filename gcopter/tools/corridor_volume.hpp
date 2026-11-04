@@ -81,40 +81,36 @@ struct Poly {
   }
 };
 struct Patch {
-  std::array<Vec3, 6> c;
-  std::array<Mat32, 6> m;
-  // The section-plane equation is degree 15 in the local parameter.
-  std::array<Eigen::Vector4d, 16> plane;
+  std::array<Vec3, 4> c;
+  std::array<Mat32, 4> m;
+  // The section-plane equation is degree 9 in the local parameter.
+  std::array<Eigen::Vector4d, 10> plane;
   Box box;
-  // Optional section membership for experimental planar shape families.
-  // Plane-root isolation remains the same independent degree-15 procedure.
-  std::function<bool(double, const Vec3&)> section_contains;
   void prepare() {
-    std::array<Vec3, 11> normal;
+    std::array<Vec3, 7> normal;
     for (auto& v : normal) v.setZero();
-    for (int i = 0; i < 6; ++i) {
+    for (int i = 0; i < 4; ++i) {
       const Vec3 e = m[i].rowwise().norm();
       box.lo = box.lo.cwiseMin(c[i] - e);
       box.hi = box.hi.cwiseMax(c[i] + e);
-      for (int j = 0; j < 6; ++j)
-        normal[i + j] += m[i].col(0).cross(m[j].col(1)) * choose(5, i) *
-                         choose(5, j) / choose(10, i + j);
+      for (int j = 0; j < 4; ++j)
+        normal[i + j] += m[i].col(0).cross(m[j].col(1)) * choose(3, i) *
+                         choose(3, j) / choose(6, i + j);
     }
     box.lo.array() -= 1e-9;
     box.hi.array() += 1e-9;
     for (auto& p : plane) p.setZero();
-    for (int i = 0; i < 6; ++i)
-      for (int j = 0; j < 11; ++j) {
-        const double w = choose(5, i) * choose(10, j) / choose(15, i + j);
+    for (int i = 0; i < 4; ++i)
+      for (int j = 0; j < 7; ++j) {
+        const double w = choose(3, i) * choose(6, j) / choose(9, i + j);
         plane[i + j].head<3>() += w * normal[j];
         plane[i + j][3] -= w * c[i].dot(normal[j]);
       }
   }
   bool disc(double t, const Vec3& point) const {
-    if (section_contains) return section_contains(t, point);
     auto cp = c;
     auto mp = m;
-    for (int k = 5; k > 0; --k)
+    for (int k = 3; k > 0; --k)
       for (int j = 0; j < k; ++j) {
         cp[j] = (1 - t) * cp[j] + t * cp[j + 1];
         mp[j] = (1 - t) * mp[j] + t * mp[j + 1];
@@ -126,14 +122,14 @@ struct Patch {
     return v.squaredNorm() <= 1 + 1e-9 &&
            (point - cp[0] - mp[0] * v).norm() < 1e-6;
   }
-  static double evaluate(std::array<double, 16> v, double t,
+  static double evaluate(std::array<double, 10> v, double t,
                          double& derivative) {
-    for (int k = 15; k > 1; --k)
+    for (int k = 9; k > 1; --k)
       for (int j = 0; j < k; ++j) v[j] = (1 - t) * v[j] + t * v[j + 1];
-    derivative = 15 * (v[1] - v[0]);
+    derivative = 9 * (v[1] - v[0]);
     return (1 - t) * v[0] + t * v[1];
   }
-  bool roots(const std::array<double, 16>& v, const Vec3& p, double a, double b,
+  bool roots(const std::array<double, 10>& v, const Vec3& p, double a, double b,
              int depth, std::size_t& unresolved) const {
     const auto mm = std::minmax_element(v.begin(), v.end());
     if (*mm.first > 0 || *mm.second < 0) return false;
@@ -170,21 +166,21 @@ struct Patch {
       return disc(.5 * (a + b), p);
     }
     auto x = v;
-    std::array<double, 16> left, right;
+    std::array<double, 10> left, right;
     left[0] = x[0];
-    right[15] = x[15];
-    for (int k = 1; k <= 15; ++k) {
-      for (int j = 0; j <= 15 - k; ++j) x[j] = .5 * (x[j] + x[j + 1]);
+    right[9] = x[9];
+    for (int k = 1; k <= 9; ++k) {
+      for (int j = 0; j <= 9 - k; ++j) x[j] = .5 * (x[j] + x[j + 1]);
       left[k] = x[0];
-      right[15 - k] = x[15 - k];
+      right[9 - k] = x[9 - k];
     }
     return roots(left, p, a, .5 * (a + b), depth + 1, unresolved) ||
            roots(right, p, .5 * (a + b), b, depth + 1, unresolved);
   }
   bool contains(const Vec3& p, std::size_t& unresolved) const {
     if (!box.contains(p)) return false;
-    std::array<double, 16> values;
-    for (int i = 0; i < 16; ++i)
+    std::array<double, 10> values;
+    for (int i = 0; i < 10; ++i)
       values[i] = plane[i].head<3>().dot(p) + plane[i][3];
     return roots(values, p, 0, 1, 0, unresolved);
   }
@@ -192,9 +188,9 @@ struct Patch {
 inline std::vector<Patch> patches(const Corridor& corridor) {
   std::vector<Patch> result(corridor.pieces());
   for (std::size_t i = 0; i < result.size(); ++i) {
-    for (int j = 0; j < 6; ++j) {
-      result[i].c[j] = corridor.centerControls()[6 * i + j];
-      result[i].m[j] = corridor.shapeControls()[6 * i + j];
+    for (int j = 0; j < 4; ++j) {
+      result[i].c[j] = corridor.controls()[4 * i + j].head<3>();
+      result[i].m[j] = Eigen::Map<const Mat32>(corridor.controls()[4 * i + j].data()+3);
     }
     result[i].prepare();
   }
@@ -204,7 +200,7 @@ struct Estimate {
   double mean = 0, ci95 = 0;
 };
 struct Measurement {
-  // Hermite union, FIRI union, same 3-m seed ROI for each, intersection.
+  // Cubic union, FIRI union, same 3-m seed ROI for each, intersection.
   std::array<Estimate, 5> volume;
   Estimate paired_difference;  // second union minus first, shared samples
   std::size_t unresolved = 0, cells = 0, samples = 0;

@@ -1,0 +1,176 @@
+{
+  "clean_vs_specialized": [
+    {
+      "case": 0,
+      "times_ms": {
+        "baseline": 22.489106,
+        "clean": 23.895081,
+        "build": 23.42107
+      }
+    },
+    {
+      "case": 1,
+      "times_ms": {
+        "baseline": 45.339483,
+        "clean": 47.33231,
+        "build": 46.539427
+      }
+    },
+    {
+      "case": 2,
+      "times_ms": {
+        "baseline": 27.790954,
+        "clean": 29.323359,
+        "build": 29.176188
+      }
+    },
+    {
+      "case": 3,
+      "times_ms": {
+        "baseline": 41.54786,
+        "clean": 43.510527,
+        "build": 42.457143
+      }
+    },
+    {
+      "case": 4,
+      "times_ms": {
+        "baseline": 20.345298,
+        "clean": 21.714523,
+        "build": 21.292292
+      }
+    },
+    {
+      "case": 5,
+      "times_ms": {
+        "baseline": 21.130351,
+        "clean": 22.125925,
+        "build": 21.797944
+      }
+    },
+    {
+      "case": 6,
+      "times_ms": {
+        "baseline": 24.431442,
+        "clean": 26.195988,
+        "build": 25.967658
+      }
+    }
+  ],
+  "fixed_bandwidth": [
+    {
+      "case": 0,
+      "times_ms": {
+        "baseline": 22.288075,
+        "clean": 23.78696,
+        "build": 22.403885
+      }
+    },
+    {
+      "case": 1,
+      "times_ms": {
+        "baseline": 44.80119,
+        "clean": 47.324439,
+        "build": 44.823071
+      }
+    },
+    {
+      "case": 2,
+      "times_ms": {
+        "baseline": 28.493476,
+        "clean": 29.405469,
+        "build": 28.831778
+      }
+    },
+    {
+      "case": 3,
+      "times_ms": {
+        "baseline": 41.347559,
+        "clean": 43.411477,
+        "build": 41.316369
+      }
+    },
+    {
+      "case": 4,
+      "times_ms": {
+        "baseline": 20.536049,
+        "clean": 21.736493,
+        "build": 20.501029
+      }
+    },
+    {
+      "case": 5,
+      "times_ms": {
+        "baseline": 21.173271,
+        "clean": 22.212155,
+        "build": 21.170241
+      }
+    },
+    {
+      "case": 6,
+      "times_ms": {
+        "baseline": 24.313442,
+        "clean": 25.740926,
+        "build": 24.472812
+      }
+    }
+  ],
+  "fixed_columns_rejected": [
+    {
+      "case": 0,
+      "times_ms": {
+        "baseline": 22.408746,
+        "clean": 23.845311,
+        "build": 23.72448
+      }
+    },
+    {
+      "case": 1,
+      "times_ms": {
+        "baseline": 44.63238,
+        "clean": 47.420089,
+        "build": 45.980005
+      }
+    },
+    {
+      "case": 2,
+      "times_ms": {
+        "baseline": 28.103584,
+        "clean": 29.544699,
+        "build": 28.478566
+      }
+    },
+    {
+      "case": 3,
+      "times_ms": {
+        "baseline": 41.537389,
+        "clean": 43.546907,
+        "build": 41.270749
+      }
+    },
+    {
+      "case": 4,
+      "times_ms": {
+        "baseline": 20.412188,
+        "clean": 24.572933,
+        "build": 20.384859
+      }
+    },
+    {
+      "case": 5,
+      "times_ms": {
+        "baseline": 21.07733,
+        "clean": 22.443876,
+        "build": 21.13709
+      }
+    },
+    {
+      "case": 6,
+      "times_ms": {
+        "baseline": 24.470762,
+        "clean": 25.839327,
+        "build": 24.380832
+      }
+    }
+  ]
+}

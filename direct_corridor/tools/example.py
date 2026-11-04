@@ -68,7 +68,7 @@ if args.plot:
         ax.plot(*ring.T, color='#8b5cf6', linewidth=.8, alpha=.65)
     ax.plot(*np.array(seed).T, '--', color='#f59e0b', label='Seed polyline')
     ax.plot(*centers.T, color='#0891b2', label='C2 reference')
-    ax.set(xlabel='x [m]', ylabel='y [m]', zlabel='z [m]', title='Direct quintic Hermite corridor')
+    ax.set(xlabel='x [m]', ylabel='y [m]', zlabel='z [m]', title='Direct cubic corridor')
     ax.set_box_aspect((8, 10, 5))
     ax.view_init(elev=38, azim=-60)
     ax.legend(loc='upper left', fontsize=8)

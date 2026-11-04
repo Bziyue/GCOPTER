@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include "Certificates.hpp"
-#include "QuinticOptimizer.hpp"
+#include "ObstacleSeparation.hpp"
 #include "LazyObstacles.hpp"
 #include "Runtime.hpp"
 #include "CubicMetrics.hpp"
@@ -63,7 +63,7 @@ struct CoverLayout {
 template<int D> struct MapCover {
   using Patch=GeometryPatch<D>;
   const ObstacleIndex& map;const Bounds& bounds;const GeometryOptions& options;
-  QueryCache& query_cache;CoverMetrics& timings;Metrics& metrics;
+  QueryCache& query_cache;CoverMetrics& timings;CoverMetrics::Primitives& metrics;
   Deadline& deadline;
   bool profile;
   std::vector<detail::SupportPlane> planes;
@@ -247,7 +247,6 @@ template<int D> struct MapCover {
 inline std::vector<detail::SupportPlane> mapCover(const Geometry& g,const ObstacleIndex& map,
     const Bounds& bounds,const GeometryOptions& options,QueryCache& cache,CoverMetrics& metrics,
     Deadline& deadline,const CoverLayout& layout,bool profile=false) {
-  if(g.degree==3){MapCover<3> c(map,bounds,options,cache,metrics,deadline,profile);c.build(g,layout);return c.planes;}
-  MapCover<5> c(map,bounds,options,cache,metrics,deadline,profile);c.build(g,layout);return c.planes;
+  MapCover<3> c(map,bounds,options,cache,metrics,deadline,profile);c.build(g,layout);return c.planes;
 }
 }

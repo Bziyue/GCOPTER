@@ -58,11 +58,11 @@ int main(int argc, char** argv) {
         rings(dir / "surface.csv"), metrics(dir / "metrics.json");
     coefficients << std::setprecision(17)
                  << "u0,u1,cx,cy,cz,m00,m10,m20,m01,m11,m21\n";
-    for (std::size_t k = 0; k < result.corridor.centerControls().size(); ++k) {
-      const auto& c = result.corridor.centerControls()[k];
-      const auto& m = result.corridor.shapeControls()[k];
-      coefficients << result.corridor.knots()[k / 6] << ','
-                   << result.corridor.knots()[k / 6 + 1] << ',' << c.x() << ','
+    for (std::size_t k = 0; k < result.corridor.controls().size(); ++k) {
+      const Vec3 c = result.corridor.controls()[k].head<3>();
+      const Mat32 m = Eigen::Map<const Mat32>(result.corridor.controls()[k].data()+3);
+      coefficients << result.corridor.knots()[k / 4] << ','
+                   << result.corridor.knots()[k / 4 + 1] << ',' << c.x() << ','
                    << c.y() << ',' << c.z();
       for (int j = 0; j < 2; ++j)
         for (int i = 0; i < 3; ++i) coefficients << ',' << m(i, j);
@@ -81,15 +81,9 @@ int main(int argc, char** argv) {
     }
     metrics << "{\"status\":\"SUCCESS\",\"total_ms\":"
             << result.metrics.total_ms
-            << ",\"representation\":\"quintic_hermite_v2\""
-            << ",\"nodes\":" << result.metrics.nodes
-            << ",\"max_center_shift\":" << result.metrics.max_center_shift
-            << ",\"optimization_ms\":" << result.metrics.optimization_ms
-            << ",\"certificate_ms\":" << result.metrics.certificate_ms
-            << ",\"active_constraints\":" << result.metrics.active_constraints
-            << ",\"newton_steps\":" << result.metrics.newton_steps
-            << ",\"optimization_passes\":" << result.metrics.optimization_passes
-            << ",\"inflation_steps\":" << result.metrics.inflation_steps
+            << ",\"representation\":\"native_cubic_v3\""
+            << ",\"nodes\":" << result.metrics.controls
+            << ",\"newton_steps\":" << result.metrics.iterations
             << ",\"controls\":" << result.metrics.controls
             << ",\"constraints\":" << result.metrics.constraints
             << ",\"refinements\":" << result.metrics.refinements << "}\n";

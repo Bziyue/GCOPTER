@@ -31,18 +31,8 @@ template<int D,class V> inline Curve<D,V> restrictCurve(Curve<D,V> p,double a,do
   return p;
 }
 inline double binomial(int n,int k) { double v=1;for(int j=1;j<=k;++j) v*=double(n+1-j)/j;return v; }
-template<int D,int E,class V> inline Curve<E,V> elevate(const Curve<D,V>& p) {
-  static_assert(E>=D);
-  Curve<E,V> q;
-  for(int j=0;j<=E;++j) {
-    q[j].setZero();
-    for(int k=std::max(0,j-E+D);k<=std::min(D,j);++k)
-      q[j]+=binomial(D,k)*binomial(E-D,j-k)/binomial(E,j)*p[k];
-  }
-  return q;
-}
 struct Geometry {
-  int degree=3;
+  static constexpr int degree=3;
   std::vector<double> breaks;
   std::vector<V9> controls; // Exactly degree+1 rows per span, world c / M.
   size_t pieces() const { return breaks.empty()?0:breaks.size()-1; }

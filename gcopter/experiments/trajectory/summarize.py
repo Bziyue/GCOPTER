@@ -30,7 +30,7 @@ for profile in ['final_fast','final_dense']:
 def pair(profile,case):
     rows=profiles[profile]['cases'][case]['runs']
     result={}
-    for method in ['firi','hermite']:
+    for method in ['firi','C3']:
         records=[r for r in rows if r['repeat']>=0 and r['method']==method]
         r=records[0].copy()
         r['median_ms']=statistics.median(x['optimize_ms'] for x in records)
@@ -41,7 +41,7 @@ def pair(profile,case):
     return result
 
 lines=['# 相同初值的 FIRI / 可微走廊轨迹优化对照','',
-'实验使用六组已有 RViz 冻结地图与种子路径，来自同一份 Perlin 地图的四条路径与一份 Maze 地图的两条路径。历史 Random 标签按地图 SHA256 更正为 Perlin-A，批量 Perlin 请求记为 Perlin-B。两边从同一份五次最小 jerk 样条及时间分配开始，用同一后端优化。当前可微走廊指默认 Hermite 椭圆扫掠，未使用可选 Minkowski 截面。','',
+'实验使用六组已有 RViz 冻结地图与种子路径，来自同一份 Perlin 地图的四条路径与一份 Maze 地图的两条路径。历史 Random 标签按地图 SHA256 更正为 Perlin-A，批量 Perlin 请求记为 Perlin-B。两边从同一份五次最小 jerk 样条及时间分配开始，用同一后端优化。当前可微走廊指原生 C3 椭圆扫掠。','',
 '**这是一套新接入的公共后端对照，不是原生 GCOPTER/FIRI 完整管线的性能排名。** 原生后端会根据多面体重建初值；本实验为了保持初值一致，使用统一的空间变量及软走廊约束。可微走廊的局部截面反求、FIRI 并集的活动约束切换都会影响优化。详细公式、容差与复现命令见 [实验说明](../gcopter/experiments/trajectory/README.md)。','',
 '![高预算耗时与走廊违约](figures/trajectory_comparison.png)','','## 设置与可信范围','',
 '- AMD Ryzen 7 9700X，GCC 15.2 Release；串行、单线程，无并行跑图。编译地址空间上限 2 GiB；每个运行进程 512 MiB。',
@@ -54,10 +54,10 @@ lines=['# 相同初值的 FIRI / 可微走廊轨迹优化对照','',
 for profile,title in [('final_fast','小预算'),('final_dense','高预算')]:
     lines += [f'## {title}结果','', '| 输入 | FIRI 优化 ms | 可微优化 ms | FIRI 违约 mm | 可微违约 mm | FIRI / 可微采样通过 |', '|---|---:|---:|---:|---:|---|']
     for i,name in enumerate(names):
-        r=pair(profile,i); f,h=r['firi'],r['hermite']
+        r=pair(profile,i); f,h=r['firi'],r['C3']
         lines.append(f"| {name} | {f['median_ms']:.1f} | {h['median_ms']:.1f} | {f['max_corridor_error_m']*1000:.2f} | {h['max_corridor_error_m']*1000:.2f} | {'通过' if f['sampled_feasible'] else '未通过'} / {'通过' if h['sampled_feasible'] else '未通过'} |")
-    counts={m:sum(pair(profile,i)[m]['sampled_feasible'] for i in range(6)) for m in ['firi','hermite']}
-    lines += ['',f"严格 5 mm 口径下：FIRI {counts['firi']}/6、可微 {counts['hermite']}/6。重复运行是同一输入的耗时重复，不算额外独立成功案例。",'']
+    counts={m:sum(pair(profile,i)[m]['sampled_feasible'] for i in range(6)) for m in ['firi','C3']}
+    lines += ['',f"严格 5 mm 口径下：FIRI {counts['firi']}/6、可微 {counts['C3']}/6。重复运行是同一输入的耗时重复，不算额外独立成功案例。",'']
 
 lines += ['## 高预算的轨迹质量与终止','',
 '以下展示全部输出，包含不满足走廊容差的轨迹，不能直接从某一项较低得出可行解更优。长度为稠密折线积分，jerk 能量为样条解析积分。','',
@@ -71,7 +71,7 @@ lines += ['', '状态 1：相对目标变化停止；-1008：达到迭代上限�
 '| 输入 | FIRI 单次梯度评估 μs | 可微单次梯度评估 μs | 初始种子在 FIRI 外的最大距离指标 m | FIRI 相邻不重叠数 |',
 '|---|---:|---:|---:|---:|']
 for i,name in enumerate(names):
-    r=pair('final_dense',i); f,h=r['firi'],r['hermite']
+    r=pair('final_dense',i); f,h=r['firi'],r['C3']
     lines.append(f"| {name} | {f['cost_per_evaluation_us']:.1f} | {h['cost_per_evaluation_us']:.1f} | {f['firi_seed_outside_m']:.3f} | {f['firi_disconnected_neighbors']} |")
 allruns=[r for profile in profiles.values() for c in profile['cases'] for r in c['runs']]
 maxgradient=max(r['gradient_relative_error'] for r in allruns)
@@ -83,7 +83,7 @@ f'- 每个进程最大实测 RSS {peak:.1f} MiB；CPU/wall 上限及每次终止
 f'- 两档 24 条不同配置/输入/方法输出中，原始膨胀障碍采样检查出现穿透的有 {collisions} 条；走廊违规仍独立计为失败，不能以“碰撞采样没发现问题”代替走廊约束。',
 '- 表中的“初始种子在 FIRI 外”按原始折线采样测量，不是初始样条碰撞量。它说明 shortcut/侵蚀之后原种子不一定仍被完整覆盖；相同初值不是“两边都可行的初值”。',
 '- 更高采样密度仍有节点间违约，证明仅增加积分点不能代替连续约束。',
-'- 可微几何在当前接入方式下没有自动变成更快的轨迹优化：局部截面求根与隐函数梯度是额外开销，多根与活动分支切换还可能影响线搜索。这个结论针对本适配器，不能归结为 Hermite 曲线本身慢。','',
+'- 可微几何在当前接入方式下没有自动变成更快的轨迹优化：局部截面求根与隐函数梯度是额外开销，多根与活动分支切换还可能影响线搜索。这个结论针对本适配器，不能归结为 C3 曲线本身慢。','',
 '空旷直线控制用例已通过：两边初值一致、采样可行，飞行时间、长度、jerk 能量在 1e-4 相对容差内一致。新实验目标与复用公共生成函数后的原体积 benchmark 均已编译通过。','','## 下一步应优先验证','',
 '1. 改进约束满足方式：用审计发现的最大违约位置增补约束/积分点，或做段级连续证书；先获得两边满足同一容差的解，再比较质量和收敛速度。',
 '2. 为可微走廊显式引入单调进度变量 u(t) 或局部坐标，研究有序、单射条件；避免每个样条采样点都做全局范围截面反求，并减少分支切换。',

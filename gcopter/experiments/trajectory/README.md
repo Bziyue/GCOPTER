@@ -1,14 +1,13 @@
 # 相同初值的走廊轨迹优化对照
 
-该目录提供独立的实验后端。比较 FIRI 与当前默认的五次 Hermite 椭圆扫掠走廊，不包含可选 Minkowski 截面。
+该目录提供独立的实验后端。比较 FIRI 与原生三次 C3 椭圆扫掠走廊，不包含可选 Minkowski 截面。
 
-**2026-11-03 更新：** 后端已迁入 diff-planner-swarm `7e41f0d` 四头。运行器现在默认 `--constraint bezier --bezier-depth 2`：FIRI 细分片固定关联一个凸多面体；Hermite 使用控制点与积分点各半权重的位置惩罚；两者速度均使用 Bézier 导数凸包。其余平坦性动力学仍积分。生产 `SplineSFCOptimizer` 同时接入了位置/速度 Bézier 约束，但本实验仍不调用其独立初始化管线。
+**2026-11-03 更新：** 后端已迁入 diff-planner-swarm `7e41f0d` 四头。运行器现在默认 `--constraint bezier --bezier-depth 2`：FIRI 细分片固定关联一个凸多面体；C3 使用控制点与积分点各半权重的位置惩罚；两者速度均使用 Bézier 导数凸包。其余平坦性动力学仍积分。生产 `SplineSFCOptimizer` 同时接入了位置/速度 Bézier 约束，但本实验仍不调用其独立初始化管线。
 
 下文的积分点位置约束说明及旧报告对应 `--constraint sampled`。若要重跑旧目标请显式加该参数；新版 L-BFGS 可能改变迭代结果。`--constraint bezier-controls` 仅用于非凸走廊的纯控制点消融，**不能证明曲线位于扫掠走廊内**。新原理、梯度及实测记录见 `docs/样条库迁移与Bezier约束.md`。
 
-截面查询默认 `--tube-mode fast`：保留原 Bernstein 浮点运算顺序，只计算一阶导数并使用有界精确缓存。`reference` 运行旧路径；`horner` 为可能改变非光滑优化终点的试验模式。`--profile` 单独启用细粒度计时，不用于正式速度排名；各计时字段的包含关系及六例等价验证见 `docs/截面求值与反求缓存加速.md`。
 
-生成器现在固定使用 SweepCorridor 的 H5 smooth 默认内核，历史 `--shape-mode`
+生成器现在固定使用 SweepCorridor 的原生 C3 内核，历史 `--shape-mode`
 及 refit/continuation 等实验入口已移除。历史实验代码可从 `92da988` 恢复，
 报告与验证数据保留。本目录是独立的轨迹实验后端，不属于 SweepCorridor 迁移包。
 

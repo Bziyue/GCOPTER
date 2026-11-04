@@ -11,9 +11,9 @@ namespace fs=std::filesystem;
 std::vector<sc::Vec3> read(const char* path){std::ifstream f(path);if(!f)throw std::runtime_error("missing input");
   std::vector<sc::Vec3> points;std::string line;while(std::getline(f,line)){if(line.empty()||line[0]=='#')continue;
     std::istringstream row(line);sc::Vec3 p;if(!(row>>p.x()>>p.y()>>p.z()))throw std::runtime_error("invalid point");points.push_back(p);}return points;}
-template<int D> void run(const std::vector<sc::Vec3>& seed,const sc::ObstacleIndex& map,const sc::Bounds& bounds,
+void run(const std::vector<sc::Vec3>& seed,const sc::ObstacleIndex& map,const sc::Bounds& bounds,
     const sc::Options& options,int repeats,const fs::path& dir,std::ostream& log) {
-  const std::string name=D==3?"C3-OPT-native":"H5-S";sc::Generator<D> generator(options);
+  constexpr int D=3;const std::string name="C3-OPT-native";sc::Generator generator(options);
   for(int repeat=-1;repeat<repeats;++repeat) {
     const auto start=std::chrono::steady_clock::now();auto r=generator.generate(seed,map,bounds);
     const double wall=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count();
@@ -44,7 +44,6 @@ int main(int argc,char** argv){try{if(argc!=12)throw std::runtime_error("seed ma
    const sc::Vec3 hi=(a.cwiseMax(b)+sc::Vec3::Constant(3)).cwiseMin(bounds.upper-sc::Vec3::Constant(.252));diagonal=std::max(diagonal,(hi-lo).norm());}
  o.max_radius=.5*diagonal+.001;o.max_offset=diagonal+.001;
  const fs::path dir=argv[3];fs::create_directories(dir);std::ofstream log(dir/"rows.jsonl");log<<std::setprecision(17);
- if(!std::getenv("NATIVE_SKIP_H5"))run<5>(seed,map,bounds,o,std::stoi(argv[10]),dir,log);
- if(std::getenv("NATIVE_CANDIDATES"))run<3>(seed,map,bounds,o,std::stoi(argv[10]),dir,log);
+ run(seed,map,bounds,o,std::stoi(argv[10]),dir,log);
  rusage usage{};getrusage(RUSAGE_SELF,&usage);log<<"{\"kind\":\"resource\",\"max_rss_kib\":"<<usage.ru_maxrss<<"}\n";
  return 0;}catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}

@@ -20,6 +20,7 @@ struct CubicBasis {
     for(size_t i=1;i<b.size();++i)
       if(!std::isfinite(b[i]) || b[i]<=b[i-1])
         throw std::invalid_argument("cubic breaks must increase strictly");
+    knots.reserve(b.size()+6);spans.reserve(b.size()-1);
     knots.insert(knots.end(),4,0.);
     knots.insert(knots.end(),b.begin()+1,b.end()-1);
     knots.insert(knots.end(),4,1.);

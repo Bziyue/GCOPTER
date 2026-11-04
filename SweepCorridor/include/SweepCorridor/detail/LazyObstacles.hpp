@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
-#include "QuinticOptimizer.hpp"
+#include "ObstacleSeparation.hpp"
 #include <memory>
 #include <queue>
 

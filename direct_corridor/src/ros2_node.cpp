@@ -176,18 +176,18 @@ class DirectCorridorNode final : public rclcpp::Node {
     }
     std_msgs::msg::Float64MultiArray coefficients;
     coefficients.layout.dim.resize(2);
-    const auto n = r.corridor.centerControls().size();
-    coefficients.layout.dim[0].label = "quintic_bezier_controls_v2";
+    const auto n = r.corridor.controls().size();
+    coefficients.layout.dim[0].label = "cubic_bezier_controls_v3";
     coefficients.layout.dim[0].size = n;
     coefficients.layout.dim[0].stride = n * 11;
     coefficients.layout.dim[1].label = "u0_u1_cx_cy_cz_m00_m10_m20_m01_m11_m21";
     coefficients.layout.dim[1].size = 11;
     coefficients.layout.dim[1].stride = 11;
     for (std::size_t i = 0; i < n; ++i) {
-      coefficients.data.push_back(r.corridor.knots()[i / 6]);
-      coefficients.data.push_back(r.corridor.knots()[i / 6 + 1]);
-      const auto& c = r.corridor.centerControls()[i];
-      const auto& m = r.corridor.shapeControls()[i];
+      coefficients.data.push_back(r.corridor.knots()[i / 4]);
+      coefficients.data.push_back(r.corridor.knots()[i / 4 + 1]);
+      const Vec3 c = r.corridor.controls()[i].head<3>();
+      const Mat32 m = Eigen::Map<const Mat32>(r.corridor.controls()[i].data()+3);
       for (int k = 0; k < 3; ++k) coefficients.data.push_back(c[k]);
       for (int j = 0; j < 2; ++j)
         for (int k = 0; k < 3; ++k) coefficients.data.push_back(m(k, j));
@@ -196,7 +196,7 @@ class DirectCorridorNode final : public rclcpp::Node {
     visualization_msgs::msg::Marker marker;
     marker.header.frame_id = frame_;
     marker.header.stamp = now();
-    marker.ns = "direct_hermite_corridor";
+    marker.ns = "direct_cubic_corridor";
     marker.id = 0;
     marker.type = marker.LINE_LIST;
     marker.action = marker.ADD;

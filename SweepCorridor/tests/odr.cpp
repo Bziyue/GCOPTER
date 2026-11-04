@@ -1,2 +1,2 @@
 #include <SweepCorridor.hpp>
-int odr(){return SweepCorridor::Corridor<5>::degree;}
+int odr(){return SweepCorridor::Corridor::degree;}

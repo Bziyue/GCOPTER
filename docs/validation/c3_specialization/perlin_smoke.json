@@ -1,0 +1,65 @@
+{
+  "status": "PASS [c3] request=1\nSearch 3029.1 ms; corridor 23.9 ms; total 3062.0 ms\nMin semiaxis 0.256 m",
+  "mesh": 188640,
+  "metrics": {
+    "request": 1,
+    "map_version": 1,
+    "status": "PASS",
+    "start": [
+      19.785017013549805,
+      -1.6015737056732178,
+      2.5
+    ],
+    "goal": [
+      -22.8094482421875,
+      -0.8623595237731934,
+      2.5
+    ],
+    "bounds_lower": [
+      -25,
+      -25,
+      0
+    ],
+    "bounds_upper": [
+      25,
+      25,
+      5
+    ],
+    "resolution": 0.25,
+    "robot_radius": 0.2,
+    "safety_margin": 0.05,
+    "reference_clearance": 0.2,
+    "control_spacing": 0.4,
+    "min_radius": 0.03,
+    "max_radius": 5.49229646359,
+    "max_offset": 10.9835929272,
+    "local_range": 3,
+    "local_progress": 7,
+    "shape_mode": "c3",
+    "search_timeout": 3,
+    "search_range": 2,
+    "corridor_budget_ms": 1000,
+    "obstacles": 239999,
+    "map_build_ms": 40.630326,
+    "search_ms": 3029.122579,
+    "corridor_ms": 23.91184,
+    "render_export_ms": 8.836559,
+    "total_ms": 3062.010859,
+    "seed_points": 31,
+    "seed_length": 43.4989647406,
+    "turns_over_30deg": 0,
+    "height_span": 2.56814879193,
+    "representation": "native_cubic_v3",
+    "visualization_adapter_ms": 0,
+    "trajectory_optimization": false,
+    "c3_stage_profiled": false,
+    "nodes": 112,
+    "regularity_repairs": 0,
+    "controls": 112,
+    "constraints": 8581,
+    "refinements": 0,
+    "min_axis": 0.256440416552,
+    "median_minor": 1.43238005716,
+    "median_major": 2.21009800684
+  }
+}

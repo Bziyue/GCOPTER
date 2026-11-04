@@ -55,11 +55,11 @@ int main(int argc, char** argv) {
     auto timer = Clock::now();
     ObstacleIndex map(std::move(spheres));
     const double index_ms = ms(timer);
-    Result hermite;
+    Result cubic;
     FiriResult firi;
     std::vector<double> ht, ft, ct, et, st;
     for (int rep = -1; rep < repeats; ++rep) {
-      auto h = [&] { hermite = generate(seed, map, bounds, options); };
+      auto h = [&] { cubic = generate(seed, map, bounds, options); };
       auto f = [&] {
         firi = generateFiri(seed, points, bounds, obstacle_radius,
                             options.robot_radius + options.safety_margin, solid,
@@ -72,12 +72,12 @@ int main(int argc, char** argv) {
         f();
         h();
       }
-      if (!hermite)
-        throw std::runtime_error(std::string("Hermite: ") +
-                                 statusName(hermite.status) + " " +
-                                 hermite.message);
+      if (!cubic)
+        throw std::runtime_error(std::string("Cubic: ") +
+                                 statusName(cubic.status) + " " +
+                                 cubic.message);
       if (rep >= 0) {
-        ht.push_back(hermite.metrics.total_ms);
+        ht.push_back(cubic.metrics.total_ms);
         ft.push_back(firi.total_ms);
         ct.push_back(firi.cover_ms);
         et.push_back(firi.erosion_ms);
@@ -86,7 +86,7 @@ int main(int argc, char** argv) {
     }
     double max_axis = 0, box_violation = 0;
     for (int k = 0; k <= 1000; ++k) {
-      const auto section = hermite.corridor.section(k / 1000.);
+      const auto section = cubic.corridor.section(k / 1000.);
       Eigen::SelfAdjointEigenSolver<Eigen::Matrix2d> eig(
           section.shape.transpose() * section.shape);
       max_axis = std::max(max_axis, std::sqrt(eig.eigenvalues()[1]));
@@ -105,27 +105,27 @@ int main(int argc, char** argv) {
     }
     if (box_violation > 1e-7)
       throw std::runtime_error("independent local expansion audit failed");
-    bool hermite_sample_safe = true;
-    std::size_t hermite_audit_samples = 0;
+    bool cubic_sample_safe = true;
+    std::size_t cubic_audit_samples = 0;
     if (solid) {
       const double pad = options.robot_radius + options.safety_margin;
       std::vector<int> ids;
       for (int k = 0; k <= 256; ++k) {
-        const auto section = hermite.corridor.section(k / 256.);
+        const auto section = cubic.corridor.section(k / 256.);
         for (double radius : {0., .5, 1.})
           for (int j = 0; j < 32; ++j) {
             const double theta = j * 2 * std::acos(-1.) / 32;
             const Vec3 p = section.point(
                 radius * Eigen::Vector2d(std::cos(theta), std::sin(theta)));
-            ++hermite_audit_samples;
+            ++cubic_audit_samples;
             map.query(p - Vec3::Constant(pad), p + Vec3::Constant(pad), ids);
             for (int id : ids)
               if ((p - map.obstacles()[id].center).norm() <
                   map.obstacles()[id].radius + pad - 1e-7)
-                hermite_sample_safe = false;
+                cubic_sample_safe = false;
             if ((p.array() < bounds.lower.array() + pad - 1e-7).any() ||
                 (p.array() > bounds.upper.array() - pad + 1e-7).any())
-              hermite_sample_safe = false;
+              cubic_sample_safe = false;
           }
       }
     }
@@ -166,7 +166,7 @@ int main(int argc, char** argv) {
         }
     timer = Clock::now();
     const auto volume =
-        corridor_volume::measure(corridor_volume::patches(hermite.corridor),
+        corridor_volume::measure(corridor_volume::patches(cubic.corridor),
                                  polys, seed, samples, 8, 1., range);
     const double volume_ms = ms(timer);
     std::filesystem::create_directories(dir);
@@ -176,36 +176,33 @@ int main(int argc, char** argv) {
         << ",\"expansion_policy\":\"" << policy
         << "\",\"local_range_m\":" << range
         << ",\"local_boxes\":" << expansion.size()
-        << ",\"hermite_radius_bound_m\":" << options.max_radius
-        << ",\"hermite_offset_bound_m\":" << options.max_offset
-        << ",\"hermite_max_axis_m\":" << max_axis
-        << ",\"hermite_max_center_shift_m\":"
-        << hermite.metrics.max_center_shift
-        << ",\"hermite_box_violation_m\":" << box_violation
-        << ",\"hermite_optimization_ms\":" << hermite.metrics.optimization_ms
-        << ",\"hermite_certificate_ms\":" << hermite.metrics.certificate_ms
-        << ",\"hermite_constraints\":" << hermite.metrics.constraints
-        << ",\"hermite_active_constraints\":" << hermite.metrics.active_constraints
-        << ",\"hermite_newton_steps\":" << hermite.metrics.newton_steps
-        << ",\"hermite_obstacle_pairs\":" << hermite.metrics.obstacle_pairs
-        << ",\"hermite_sample_safe\":" << (hermite_sample_safe ? "true" : "false")
-        << ",\"hermite_audit_samples\":" << hermite_audit_samples
-        << ",\"hermite_refinements\":" << hermite.metrics.refinements
+        << ",\"cubic_radius_bound_m\":" << options.max_radius
+        << ",\"cubic_offset_bound_m\":" << options.max_offset
+        << ",\"cubic_max_axis_m\":" << max_axis
+        << ",\"cubic_box_violation_m\":" << box_violation
+        << ",\"cubic_optimization_ms\":" << (cubic.metrics.solver.assembly_ms+cubic.metrics.solver.solve_ms+cubic.metrics.solver.line_search_ms)
+        << ",\"cubic_certificate_ms\":" << cubic.metrics.solver.certificate_ms
+        << ",\"cubic_constraints\":" << cubic.metrics.constraints
+        << ",\"cubic_active_constraints\":" << cubic.metrics.solver.active_constraints
+        << ",\"cubic_newton_steps\":" << cubic.metrics.iterations
+        << ",\"cubic_sample_safe\":" << (cubic_sample_safe ? "true" : "false")
+        << ",\"cubic_audit_samples\":" << cubic_audit_samples
+        << ",\"cubic_refinements\":" << cubic.metrics.refinements
         << ",\"obstacles\":" << points.size() << ",\"index_ms\":" << index_ms
-        << ",\"hermite_nodes\":" << hermite.metrics.nodes
+        << ",\"cubic_nodes\":" << cubic.metrics.controls
         << ",\"firi_before_shortcut\":" << firi.before_shortcut
         << ",\"firi_polys\":" << polys.size() << ",\"firi_empty\":" << empty
         << ",\"firi_connected\":" << (connected ? "true" : "false")
         << ",\"firi_endpoints\":" << (endpoints ? "true" : "false")
         << ",\"firi_sphere_safe\":" << (safe ? "true" : "false")
-        << ",\"hermite_median_ms\":" << quantile(ht, .5)
-        << ",\"hermite_p95_ms\":" << quantile(ht, .95)
+        << ",\"cubic_median_ms\":" << quantile(ht, .5)
+        << ",\"cubic_p95_ms\":" << quantile(ht, .95)
         << ",\"firi_median_ms\":" << quantile(ft, .5)
         << ",\"firi_p95_ms\":" << quantile(ft, .95)
         << ",\"firi_cover_ms\":" << quantile(ct, .5)
         << ",\"firi_erosion_ms\":" << quantile(et, .5)
         << ",\"firi_shortcut_ms\":" << quantile(st, .5)
-        << ",\"hermite_times_ms\":";
+        << ",\"cubic_times_ms\":";
     list(out, ht);
     out << ",\"firi_times_ms\":";
     list(out, ft);
@@ -213,7 +210,7 @@ int main(int argc, char** argv) {
         << ",\"volume_cells\":" << volume.cells
         << ",\"volume_ms\":" << volume_ms
         << ",\"unresolved_roots\":" << volume.unresolved;
-    const char* names[] = {"hermite_union", "firi_union", "hermite_roi",
+    const char* names[] = {"cubic_union", "firi_union", "cubic_roi",
                            "firi_roi", "intersection"};
     for (int i = 0; i < 5; ++i)
       out << ",\"" << names[i] << "_m3\":" << volume.volume[i].mean << ",\""
@@ -229,7 +226,7 @@ int main(int argc, char** argv) {
               << "ms F=" << quantile(ft, .5) << "ms V=" << volume.volume[0].mean
               << '/' << volume.volume[1].mean << " connected=" << connected
               << " safe=" << safe << " volume_ms=" << volume_ms << '\n';
-    return safe && connected && hermite_sample_safe && volume.unresolved == 0
+    return safe && connected && cubic_sample_safe && volume.unresolved == 0
                ? 0 : 1;
   } catch (const std::exception& e) {
     std::cerr << e.what() << '\n';

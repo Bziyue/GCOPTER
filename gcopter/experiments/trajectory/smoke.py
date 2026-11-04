@@ -18,7 +18,7 @@ output=root/'.scratch/trajectory_comparison/smoke'
 subprocess.run([sys.executable,str(Path(__file__).with_name('run.py')),'--inputs',str(inputs),
     '--output',str(output),'--repeats','1','--check-gradients'],check=True,cwd=root)
 rows=[json.loads(s) for s in (output/'case_00/runs.jsonl').read_text().splitlines()]
-f,h=[next(r for r in rows if r['repeat']==0 and r['method']==method) for method in ['firi','hermite']]
+f,h=[next(r for r in rows if r['repeat']==0 and r['method']==method) for method in ['firi','C3']]
 assert f['initial_hash']==h['initial_hash']
 assert f['sampled_feasible'] and h['sampled_feasible']
 for key in ['duration_s','length_m','jerk_energy']:

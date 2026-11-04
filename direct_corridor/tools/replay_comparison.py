@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Matched-parameter replay of saved direct_demo requests, with an independent audit.
-The baseline executable must support the same CLI arguments; nine-column cubic
-B-spline and eleven-column quintic Bezier output are both decoded here.
+The baseline executable must support the same CLI arguments; eleven-column cubic
+Bezier output is decoded here.
 """
 import argparse
 import hashlib
@@ -16,19 +16,11 @@ def sections(path, count=501):
     cp = np.loadtxt(path, delimiter=',', skiprows=1)
     values = []
     for u in np.linspace(0, 1, count):
-        if cp.shape[1] == 11:
-            i = min(np.searchsorted(cp[::6, 1], u, side='right'), len(cp)//6-1)
-            block = cp[6*i:6*i+6]
-            t = (u-block[0, 0])/(block[0, 1]-block[0, 0])
-            b = [math.comb(5, j)*t**j*(1-t)**(5-j) for j in range(6)]
-            q = np.array(b) @ block[:, 2:]
-        else:
-            t = u*(len(cp)-3)
-            i = min(int(t), len(cp)-4)
-            t -= i
-            b = np.array([(1-t)**3, 3*t**3-6*t*t+4,
-                          -3*t**3+3*t*t+3*t+1, t**3])/6
-            q = b @ cp[i:i+4]
+        i = min(np.searchsorted(cp[::4, 1], u, side='right'), len(cp)//4-1)
+        block = cp[4*i:4*i+4]
+        t = (u-block[0, 0])/(block[0, 1]-block[0, 0])
+        b = [math.comb(3, j)*t**j*(1-t)**(3-j) for j in range(4)]
+        q = np.array(b) @ block[:, 2:]
         values.append(q)
     return np.array(values)
 

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
-#include "SweepCorridor/detail/QuinticGeneratorImpl.hpp"
+#include "SweepCorridor/detail/ObstacleIndex.hpp"
 #include "SweepCorridor/detail/GeometryImpl.hpp"
 #include "SweepCorridor/detail/CubicOptimizerImpl.hpp"
 #include "SweepCorridor/detail/CubicRefinement.hpp"
@@ -84,16 +84,15 @@ inline Differential differential(const Section& s,const Vec3& x) {
   return out;
 }
 } // namespace detail
-template<int Degree> class Generator;
+class Generator;
 // Immutable after generation. Query preconditions: nonempty corridor, finite
 // u in [0,1], finite x. No repeated input scans in numerical evaluation.
-template<int Degree> class Corridor {
-  static_assert(Degree==3||Degree==5,"SweepCorridor supports degrees 3 and 5");
+class Corridor {
   std::vector<double> knots_;
   std::vector<Control> controls_;
-  friend class Generator<Degree>;
+  friend class Generator;
 public:
-  static constexpr int degree=Degree;
+  static constexpr int degree=3;
   std::size_t pieces()const{return knots_.empty()?0:knots_.size()-1;}
   bool empty()const{return pieces()==0;}
   const std::vector<double>& knots()const{return knots_;}
@@ -101,16 +100,16 @@ public:
   Section section(double u)const {
     const auto i=std::min(pieces()-1,std::size_t(std::upper_bound(knots_.begin(),knots_.end(),u)-knots_.begin()-1));
     const double h=knots_[i+1]-knots_[i];
-    internal::cubic::Curve<Degree,Control> p;
-    std::copy_n(controls_.begin()+(Degree+1)*i,Degree+1,p.begin());
-    return internal::cubic::evaluate<Degree>(p,(u-knots_[i])/h,h);
+    internal::cubic::Curve<3,Control> p;
+    std::copy_n(controls_.begin()+(4)*i,4,p.begin());
+    return internal::cubic::evaluate<3>(p,(u-knots_[i])/h,h);
   }
   Differential evaluate(double u,const Vec3& x)const{return detail::differential(section(u),x);}
 };
 // Optional power-basis cache. Owns coefficients, so no borrowed lifetime or
 // mutable state in Corridor. Use a separate Query per evaluation thread.
-template<int Degree> class Query {
-  struct Piece {std::array<Control,Degree+1> power;double inverse_width;};
+class Query {
+  struct Piece {std::array<Control,4> power;double inverse_width;};
   std::vector<double> knots_;
   std::vector<Piece> pieces_;
   mutable std::size_t cursor_=0;
@@ -126,36 +125,32 @@ template<int Degree> class Query {
     return cursor_;
   }
 public:
-  explicit Query(const Corridor<Degree>& corridor):knots_(corridor.knots()),pieces_(corridor.pieces()) {
+  explicit Query(const Corridor& corridor):knots_(corridor.knots()),pieces_(corridor.pieces()) {
     if(corridor.empty())throw std::invalid_argument("empty corridor query");
     for(std::size_t i=0;i<pieces_.size();++i) {
       uniform_ &= std::abs(knots_[i]-double(i)/pieces_.size())<1e-12;
       auto& p=pieces_[i];p.inverse_width=1/(knots_[i+1]-knots_[i]);
-      for(int k=0;k<=Degree;++k) {
-        p.power[k].setZero();
-        for(int j=0;j<=k;++j)p.power[k]+=internal::cubic::binomial(Degree,k)*
-          internal::cubic::binomial(k,j)*((k-j)%2?-1.:1.)*corridor.controls()[(Degree+1)*i+j];
-      }
+      const auto* b=corridor.controls().data()+4*i;
+      p.power[0]=b[0];
+      p.power[1]=-3*b[0];p.power[1]+=3*b[1];
+      p.power[2]=3*b[0];p.power[2]-=6*b[1];p.power[2]+=3*b[2];
+      p.power[3]=-b[0];p.power[3]+=3*b[1];p.power[3]-=3*b[2];p.power[3]+=b[3];
     }
   }
   Section section(double u)const {
     locate(u);
     const auto& p=pieces_[cursor_];const double t=(u-knots_[cursor_])*p.inverse_width;
-    Control y=p.power[Degree],d=Degree*p.power[Degree],dd=Degree*(Degree-1)*p.power[Degree];
-    for(int k=Degree-1;k>=0;--k)y=y*t+p.power[k];
-    for(int k=Degree-1;k>=1;--k)d=d*t+k*p.power[k];
-    for(int k=Degree-1;k>=2;--k)dd=dd*t+k*(k-1)*p.power[k];
-    d*=p.inverse_width;dd*=p.inverse_width*p.inverse_width;
+    const Control y=((p.power[3]*t+p.power[2])*t+p.power[1])*t+p.power[0];
+    const Control d=((3*p.power[3]*t+2*p.power[2])*t+p.power[1])*p.inverse_width;
+    const Control dd=(6*p.power[3]*t+2*p.power[2])*(p.inverse_width*p.inverse_width);
     return {y.head<3>(),d.head<3>(),dd.head<3>(),internal::cubic::shape(y),internal::cubic::shape(d),internal::cubic::shape(dd)};
   }
   const std::vector<double>& knots()const{return knots_;}
   FirstSection first(double u)const {
     const auto i=locate(u);const auto& p=pieces_[i];
     const double t=(u-knots_[i])*p.inverse_width;
-    Control y=p.power[Degree],d=Degree*p.power[Degree];
-    for(int k=Degree-1;k>=0;--k)y=y*t+p.power[k];
-    for(int k=Degree-1;k>=1;--k)d=d*t+k*p.power[k];
-    d*=p.inverse_width;
+    const Control y=((p.power[3]*t+p.power[2])*t+p.power[1])*t+p.power[0];
+    const Control d=((3*p.power[3]*t+2*p.power[2])*t+p.power[1])*p.inverse_width;
     return {y.head<3>(),d.head<3>(),internal::cubic::shape(y),internal::cubic::shape(d)};
   }
   FirstDifferential evaluateFirst(double u,const Vec3& x)const {
@@ -171,29 +166,27 @@ public:
   }
   Differential evaluate(double u,const Vec3& x)const{return detail::differential(section(u),x);}
 };
-template<int Degree> struct Metrics {
+struct Metrics {
   double total_ms=0;
   std::size_t controls=0,constraints=0;
   int iterations=0,refinements=0;
-  using Solver=std::conditional_t<Degree==3,internal::cubic::OptimizerMetrics,internal::Metrics>;
+  using Solver=internal::cubic::OptimizerMetrics;
   Solver solver;
 };
-template<int Degree> struct Result {
+struct Result {
   Status status=Status::InvalidInput;
   std::string message;
-  Corridor<Degree> corridor;
+  Corridor corridor;
   std::vector<SupportPlane> support_planes;
-  Metrics<Degree> metrics;
+  Metrics metrics;
   explicit operator bool()const{return status==Status::Success;}
 };
-template<int Degree> class Generator {
-  static_assert(Degree==3||Degree==5,"SweepCorridor supports degrees 3 and 5");
+class Generator {
   Options options_;
 public:
   explicit Generator(Options options={}):options_(std::move(options)){}
-  Result<Degree> generate(const std::vector<Vec3>& seed,const ObstacleIndex& map,const Bounds& bounds)const {
-    Result<Degree> out;
-    if constexpr(Degree==3) {
+  Result generate(const std::vector<Vec3>& seed,const ObstacleIndex& map,const Bounds& bounds)const {
+    Result out;
       internal::cubic::OptimizerSettings settings;settings.profile=options_.profile;
       auto r=internal::cubic::generateCubic(seed,map,bounds,internal::cubic::CubicOptions(options_),settings);
       out.status=detail::status(r.status);out.message=std::move(r.message);
@@ -202,24 +195,12 @@ public:
       out.metrics.refinements=r.refinements;out.metrics.solver=std::move(r.optimizer);
       if(out){out.corridor.knots_=std::move(r.corridor.breaks);out.corridor.controls_=std::move(r.corridor.controls);
         out.support_planes=std::move(r.cover);}
-    }else {
-      internal::Options settings(options_);settings.profile=options_.profile;
-      auto r=internal::generate(seed,map,bounds,settings);
-      out.status=detail::status(internal::statusName(r.status));out.message=std::move(r.message);
-      out.metrics.total_ms=r.metrics.total_ms;out.metrics.controls=r.metrics.nodes;
-      out.metrics.constraints=r.metrics.constraints;out.metrics.iterations=r.metrics.newton_steps;
-      out.metrics.refinements=r.metrics.refinements;out.metrics.solver=r.metrics;
-      if(out){out.corridor.knots_=r.corridor.knots();out.corridor.controls_.reserve(r.corridor.centerControls().size());
-        for(std::size_t i=0;i<r.corridor.centerControls().size();++i)
-          out.corridor.controls_.push_back(internal::cubic::pack(r.corridor.centerControls()[i],r.corridor.shapeControls()[i]));
-        out.support_planes=std::move(r.cover);}
-    }
     return out;
   }
 };
-template<int Degree> inline internal::cubic::Certificate certify(const Corridor<Degree>& corridor,
+inline internal::cubic::Certificate certify(const Corridor& corridor,
     const std::vector<SupportPlane>& planes) {
-  internal::cubic::Geometry g;g.degree=Degree;g.breaks=corridor.knots();g.controls=corridor.controls();
+  internal::cubic::Geometry g;g.breaks=corridor.knots();g.controls=corridor.controls();
   return internal::cubic::certify(g,planes);
 }
 } // namespace SweepCorridor

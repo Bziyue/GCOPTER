@@ -26,7 +26,6 @@
 #include "gcopter/sfc_gen.hpp"
 #include "gcopter/voxel_map.hpp"
 #include <SweepCorridor.hpp>
-#include <variant>
 
 using namespace gcopter::direct;
 using Clock = std::chrono::steady_clock;
@@ -35,31 +34,11 @@ using Marker = visualization_msgs::msg::Marker;
 using Markers = visualization_msgs::msg::MarkerArray;
 namespace {
 namespace sc = SweepCorridor;
-struct DisplayCorridor {
-  std::variant<sc::Corridor<3>,sc::Corridor<5>> value;
-  std::size_t pieces() const {return std::visit([](const auto& c){return c.pieces();},value);}
-  int degree() const {return std::visit([](const auto& c){return c.degree;},value);}
-  sc::Section section(double u) const {return std::visit([&](const auto& c){return c.section(u);},value);}
-  const std::vector<double>& knots() const {return std::visit([](const auto& c)->const auto&{return c.knots();},value);}
-  const std::vector<sc::Control>& controls() const {return std::visit([](const auto& c)->const auto&{return c.controls();},value);}
-};
-struct DisplayResult {
-  DisplayCorridor corridor;Metrics metrics;std::string message;bool success=false;
-  explicit operator bool() const{return success;}
-};
-template<int D> void accept(sc::Result<D>&& r,DisplayResult& out) {
-  out.success=bool(r);out.message=std::move(r.message);
-  out.metrics.total_ms=r.metrics.total_ms;out.metrics.nodes=r.metrics.controls;
-  out.metrics.controls=r.corridor.controls().size();out.metrics.constraints=r.metrics.constraints;
-  out.metrics.newton_steps=r.metrics.iterations;out.metrics.refinements=r.metrics.refinements;
-  if constexpr(D==5)out.metrics=r.metrics.solver;
-  else {const auto& m=r.metrics.solver;out.metrics.optimization_ms=m.assembly_ms+m.solve_ms+m.line_search_ms;
-    out.metrics.certificate_ms=m.certificate_ms;out.metrics.regularity_repairs=m.regularity_repairs;}
-  if(r)out.corridor.value=std::move(r.corridor);
-}
+using DisplayCorridor=sc::Corridor;
+using DisplayResult=sc::Result;
 void writeNative(const DisplayCorridor& c,const fs::path& path) {
   std::ofstream f(path);f<<std::setprecision(17)<<"degree,u0,u1,cx,cy,cz,m00,m10,m20,m01,m11,m21\n";
-  for(std::size_t i=0;i<c.controls().size();++i){f<<c.degree()<<','<<c.knots()[i/(c.degree()+1)]<<','<<c.knots()[i/(c.degree()+1)+1];
+  for(std::size_t i=0;i<c.controls().size();++i){f<<c.degree<<','<<c.knots()[i/(c.degree+1)]<<','<<c.knots()[i/(c.degree+1)+1];
     for(double v:c.controls()[i]) { f<<','<<v; }
     f<<'\n';}
 }
@@ -97,11 +76,8 @@ class DirectDemo final : public rclcpp::Node {
     options_.max_radius = declare_parameter<double>("max_radius", 1.5);
     options_.control_spacing = declare_parameter<double>("control_spacing", .4);
     options_.max_offset = declare_parameter<double>("max_offset", 1.5);
-    options_.local_range = declare_parameter<double>("local_range", 0.);
+    options_.local_range = declare_parameter<double>("local_range", 3.);
     options_.local_progress = declare_parameter<double>("local_progress", 7.);
-    shape_mode_ = declare_parameter<std::string>("shape_mode", "c3");
-    if (shape_mode_ != "smooth" && shape_mode_ != "c3")
-      throw std::invalid_argument("shape_mode must be c3 or smooth (H5)");
     options_.frame_smoothing=1.5;
     options_.certificate_depth = declare_parameter<int>("certificate_depth", 9);
     options_.budget_ms = declare_parameter<double>("corridor_budget_ms", 1000.);
@@ -181,7 +157,7 @@ class DirectDemo final : public rclcpp::Node {
     status("WAITING_FOR_MAP");
     RCLCPP_INFO(get_logger(), "session_dir=%s", session_.c_str());
     RCLCPP_INFO(get_logger(), "shape_mode=%s; local_range=%.2f m",
-                shape_mode_.c_str(), options_.local_range);
+                "c3", options_.local_range);
   }
 
  private:
@@ -472,15 +448,8 @@ class DirectDemo final : public rclcpp::Node {
           request_options.max_radius = .5 * diagonal + .001;
           request_options.max_offset = diagonal + .001;
         }
-        if(shape_mode_=="c3") {
-          auto generated=sc::Generator<3>(request_options).generate(seed,*map_,bounds_);
-          outcome=generated?"PASS":sc::statusName(generated.status);
-          accept(std::move(generated),result);
-        } else {
-          auto generated=sc::Generator<5>(request_options).generate(seed,*map_,bounds_);
-          outcome=generated?"PASS":sc::statusName(generated.status);
-          accept(std::move(generated),result);
-        }
+        result=sc::Generator(request_options).generate(seed,*map_,bounds_);
+        outcome=result?"PASS":sc::statusName(result.status);
       } else
         outcome = "SEARCH_EDGE_COLLISION";
     }
@@ -501,7 +470,7 @@ class DirectDemo final : public rclcpp::Node {
     double min_axis = 0, median_minor = 0, median_major = 0;
     const auto rendering_start = Clock::now();
     if (result) {
-      if(shape_mode_=="c3")writeNative(result.corridor,dir/"cubic_controls.csv");
+      writeNative(result.corridor,dir/"cubic_controls.csv");
       const auto& c = result.corridor;
       const int samples = std::min(1200, std::max(240, int(c.pieces() * 6)));
       constexpr int angles = 48;
@@ -572,7 +541,7 @@ class DirectDemo final : public rclcpp::Node {
       reference_pub_->publish(pathMessage(reference));
       std_msgs::msg::Float64MultiArray controls;
       controls.layout.dim.resize(2);
-      controls.layout.dim[0].label = c.degree()==3?"cubic_bezier_controls_v3":"quintic_bezier_controls_v2";
+      controls.layout.dim[0].label = "cubic_bezier_controls_v3";
       controls.layout.dim[0].size = c.controls().size();
       controls.layout.dim[0].stride = c.controls().size() * 11;
       controls.layout.dim[1].label = "u0_u1_cx_cy_cz_m00_m10_m20_m01_m11_m21";
@@ -582,9 +551,9 @@ class DirectDemo final : public rclcpp::Node {
       coefficients << std::setprecision(17)
                    << "u0,u1,cx,cy,cz,m00,m10,m20,m01,m11,m21\n";
       for (std::size_t k = 0; k < c.controls().size(); ++k) {
-        coefficients << c.knots()[k / (c.degree()+1)] << ',' << c.knots()[k / (c.degree()+1) + 1] << ',';
-        controls.data.push_back(c.knots()[k / (c.degree()+1)]);
-        controls.data.push_back(c.knots()[k / (c.degree()+1) + 1]);
+        coefficients << c.knots()[k / (c.degree+1)] << ',' << c.knots()[k / (c.degree+1) + 1] << ',';
+        controls.data.push_back(c.knots()[k / (c.degree+1)]);
+        controls.data.push_back(c.knots()[k / (c.degree+1) + 1]);
         const sc::Vec3 center = c.controls()[k].head<3>();
         const sc::Mat32 m = Eigen::Map<const sc::Mat32>(c.controls()[k].data()+3);
         for (int j = 0; j < 3; ++j) {
@@ -628,7 +597,7 @@ class DirectDemo final : public rclcpp::Node {
            << ",\"max_offset\":" << request_options.max_offset
            << ",\"local_range\":" << request_options.local_range
            << ",\"local_progress\":" << request_options.local_progress
-           << ",\"shape_mode\":\"" << shape_mode_ << '"'
+           << ",\"shape_mode\":\"" << "c3" << '"'
            << ",\"search_timeout\":" << search_timeout_
            << ",\"search_range\":" << search_range_
            << ",\"corridor_budget_ms\":" << options_.budget_ms
@@ -639,16 +608,11 @@ class DirectDemo final : public rclcpp::Node {
            << ",\"total_ms\":" << total_ms << ",\"seed_points\":" << seed.size()
            << ",\"seed_length\":" << length << ",\"turns_over_30deg\":" << turns
            << ",\"height_span\":" << (seed.empty() ? 0 : highz - lowz)
-           << ",\"representation\":\"" << (shape_mode_=="c3"?"native_cubic_v3":"quintic_hermite_v2") << '"'
+           << ",\"representation\":\"" << "native_cubic_v3" << '"'
            << ",\"visualization_adapter_ms\":" << adapter_ms
            << ",\"trajectory_optimization\":false,\"c3_stage_profiled\":false"
-           << ",\"nodes\":" << result.metrics.nodes
-           << ",\"max_center_shift\":" << result.metrics.max_center_shift
-           << ",\"optimization_ms\":" << result.metrics.optimization_ms
-           << ",\"certificate_ms\":" << result.metrics.certificate_ms
-           << ",\"smoothing_ms\":" << result.metrics.smoothing_ms
-           << ",\"mean_jet_fraction\":" << result.metrics.mean_jet_fraction
-           << ",\"regularity_repairs\":" << result.metrics.regularity_repairs
+           << ",\"nodes\":" << result.metrics.controls
+           << ",\"regularity_repairs\":" << result.metrics.solver.regularity_repairs
            << ",\"controls\":" << result.metrics.controls
            << ",\"constraints\":" << result.metrics.constraints
            << ",\"refinements\":" << result.metrics.refinements
@@ -662,7 +626,7 @@ class DirectDemo final : public rclcpp::Node {
     metrics.data = metric.str();
     metrics_pub_->publish(metrics);
     std::ostringstream label;
-    label << outcome << " [" << shape_mode_ << "] request=" << id << "\nSearch " << std::fixed
+    label << outcome << " [" << "c3" << "] request=" << id << "\nSearch " << std::fixed
           << std::setprecision(1) << search_ms << " ms; corridor "
           << result.metrics.total_ms << " ms; total " << total_ms << " ms";
     if (result)
@@ -671,7 +635,7 @@ class DirectDemo final : public rclcpp::Node {
       label << "\n" << result.message;
     status(label.str());
   }
-  std::string frame_, height_mode_, shape_mode_;
+  std::string frame_, height_mode_;
   double resolution_, height_, reference_clearance_, search_timeout_,
       search_range_, map_ms_ = 0;
   Bounds bounds_;

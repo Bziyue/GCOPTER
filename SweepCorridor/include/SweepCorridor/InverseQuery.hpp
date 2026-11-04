@@ -17,8 +17,8 @@ inline uint64_t queryMix(uint64_t x){x^=x>>30;x*=0xbf58476d1ce4e5b9ULL;x^=x>>27;
 }
 // Owns coefficients and bounded exact caches. One instance per thread.
 // Preconditions are the same as Query; hint is finite and in [0,1].
-template<int Degree> class InverseQuery {
-  Query<Degree> prepared_;
+class InverseQuery {
+  Query prepared_;
   struct Geometry {bool valid=false;double u=0;FirstSection section;Vec3 normal,normal_first;Eigen::Matrix2d inverse_gram;Eigen::Matrix<double,2,3> dual;};
   struct Answer {bool valid=false;std::array<double,4> key{};InverseResult value;};
   std::vector<Geometry> geometry_{4096};
@@ -40,12 +40,11 @@ template<int Degree> class InverseQuery {
     return item;
   }
   InverseResult compute(const Vec3& p, double hint) {
-    double u=hint,f=0,fu=0;FirstSection section;double last_u=std::numeric_limits<double>::quiet_NaN();Vec3 normal,normal_u;const Geometry* frame_pointer=nullptr;
+    double u=hint,f=0,fu=0;double last_u=std::numeric_limits<double>::quiet_NaN();const Geometry* frame_pointer=nullptr;
     auto plane=[&](double x) {
-      last_u=x;const auto& frame=geometryAt(x);frame_pointer=&frame;section=frame.section;
-      normal=frame.normal;normal_u=frame.normal_first;
-      f=normal.dot(p-section.center);
-      fu=normal_u.dot(p-section.center)-normal.dot(section.first);
+      last_u=x;const auto& frame=geometryAt(x);frame_pointer=&frame;const auto& section=frame.section;
+      f=frame.normal.dot(p-section.center);
+      fu=frame.normal_first.dot(p-section.center)-frame.normal.dot(section.first);
       return f;
     };
     for(int i=0;i<16;++i) {
@@ -70,6 +69,7 @@ template<int Degree> class InverseQuery {
       }
       if(last_u!=u)plane(u);
     }
+    const auto& section=frame_pointer->section;const auto& normal=frame_pointer->normal;
     InverseResult out;out.u=u;out.plane=f;out.grad_plane=normal;
     const bool root=std::abs(f)<1e-7&&std::abs(fu)>1e-10;
     out.valid=root||u==0||u==1;
@@ -96,7 +96,7 @@ template<int Degree> class InverseQuery {
   }
 
  public:
-  explicit InverseQuery(const Corridor<Degree>& corridor):prepared_(corridor){}
+  explicit InverseQuery(const Corridor& corridor):prepared_(corridor){}
   void reset(){for(auto& v:geometry_)v.valid=false;for(auto& v:answers_)v.valid=false;}
   InverseResult operator()(const Vec3& p,double hint) {
 

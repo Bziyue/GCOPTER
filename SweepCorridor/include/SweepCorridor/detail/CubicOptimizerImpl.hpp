@@ -147,7 +147,7 @@ inline void CubicProblem::Group::accumulateGradient(const V9& g,Eigen::VectorXd&
   }
 }
 inline CubicEnergy::CubicEnergy(const CubicModel& m,double length,const OptimizerSettings& settings)
-    :quadratic(5*m.basis.count,19),linear(Eigen::VectorXd::Zero(5*m.basis.count)) {
+    :quadratic(5*m.basis.count),linear(Eigen::VectorXd::Zero(5*m.basis.count)) {
   // Exact two-point Gauss integration of squared cubic second derivatives.
   for(int i=0;i<int(m.basis.spans.size());++i) {
     const double h=m.basis.breaks[i+1]-m.basis.breaks[i];
@@ -348,7 +348,7 @@ inline double CubicProblem::objective(const Eigen::VectorXd& x,double mu,Eigen::
   if(derivatives)*g=qx+linear;
   if(curvature){
     // Preserve allocated factor/scale buffers across Newton steps.
-    h->n=quadratic.n;h->width=quadratic.width;h->data=quadratic.data;
+    h->n=quadratic.n;h->data=quadratic.data;
   }
   auto logdet=[&](int i,const Eigen::Matrix2d& p,double weight,double sign) {
     const double det=p.determinant();if(p(0,0)<=0 || det<=0)return false;

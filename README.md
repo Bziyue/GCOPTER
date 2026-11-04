@@ -2,23 +2,22 @@
 
 ## Direct differentiable corridor experiment
 
-This branch adds a standalone **seed path → C² quintic Hermite elliptical corridor**
+This branch adds a standalone **seed path → C² native cubic elliptical corridor**
 module, without FIRI/polytope generation. It includes continuous support
 certificates with adaptive Bézier subdivision, optimized transverse centers and ellipse orientations, analytic derivatives, a reusable obstacle BVH, CLI/ROS2 interfaces,
 tests and reproducible benchmarks. The existing GCOPTER trajectory optimizer is
 unchanged. See [build and usage](direct_corridor/README.md),
-[mathematical model and limits](docs/五次Hermite走廊.md), and
-[validation results](docs/Hermite走廊验证.md).
+[query and trajectory validation](docs/SweepCorridor统一查询与轨迹复测.md).
 
 The integrated demo now uses the original **mockamap + Informed RRT*** search
 with interactive start/goal selection in RViz2. Run
 `gcopter/tools/run_direct_demo.sh` after building the three ROS2 packages.
 See [interactive setup, timings and original-map validation](docs/原始地图交互验证.md).
-The demo defaults to native C3 (`shape_mode:=c3`), using the latest Balanced
-preset and continuous support/full-disk Jacobian certificates, without trajectory
-optimization. See [C3 interactive commands](docs/C3交互可视化.md).
-The H5 comparison remains available with `shape_mode:=smooth`. See the [same-input geometry and
-performance comparison](docs/平滑走廊与全截面折叠修复.md).
+The demo uses native C3 with continuous support/full-disk Jacobian certificates,
+without trajectory optimization. The portable [SweepCorridor](SweepCorridor)
+header library exposes `Generator`, `Corridor`, `Query` and `InverseQuery`.
+H5 code and the final paired comparison are preserved on
+`archive/h5-sweep-corridor` (`bd6d81f`).
 
 __GCOPTER__ is an efficient and versatile multicopter trajectory optimizer built upon a novel sparse trajectory representation named [__MINCO__](https://arxiv.org/pdf/2103.00190.pdf). __User-defined state-input constraints__ for dynamics involving [__nonlinear drag effects__](https://github.com/ZJU-FAST-Lab/GCOPTER/blob/main/misc/flatness.pdf) are supported.
 

@@ -8,13 +8,8 @@
 #include "TrajectoryOptComponents/LinearTimeCost.hpp"
 #include <cstdint>
 #include <cstring>
-#include "tube_query.hpp"
-#ifdef SWEEP_COMPARISON
 #include "sweep_query.hpp"
 using BenchmarkTubeQuery=sweep_benchmark::Query;
-#else
-using BenchmarkTubeQuery=tube_query::Query;
-#endif
 
 using Spline = SplineTrajectory::QuinticSplineND<3>;
 using Opt = SplineTrajectory::SplineOptimizer<Spline>;
@@ -144,8 +139,6 @@ int main(int argc,char**argv) {try {
   std::string constraint=argv[17];int depth=std::stoi(argv[18]);
   if((constraint!="bezier"&&constraint!="sampled"&&constraint!="bezier-controls")||depth<0||depth>5)throw std::runtime_error("invalid constraint mode or depth (0..5)");
   const bool bezier=constraint!="sampled";
-  const char* mode=std::getenv("GCOPTER_TUBE_MODE");const bool fast=!mode||std::string(mode)!="reference";
-  const bool horner=mode&&std::string(mode)=="horner";
   const bool profile=std::getenv("GCOPTER_PROFILE")&&std::string(std::getenv("GCOPTER_PROFILE"))=="1";
   if(seed.size()<2||points.empty()||repeats<1||!std::isfinite(spacing)||spacing<=0||!std::isfinite(weight)||weight<=0||!std::isfinite(radius)||radius<=0||max_iterations<1||steps<2||!bounds.lower.allFinite()||!bounds.upper.allFinite()||!(bounds.upper.array()>bounds.lower.array()).all())
     throw std::runtime_error("invalid benchmark inputs");
@@ -157,19 +150,13 @@ int main(int argc,char**argv) {try {
   options.robot_radius=.2;options.safety_margin=.05;options.local_range=3;options.local_progress=7;
   double diagonal=0;for(auto b:expansionBoxes(seed,bounds,3,.252))diagonal=std::max(diagonal,(b.bounds.upper-b.bounds.lower).norm());
   options.max_radius=.5*diagonal+.001;options.max_offset=diagonal+.001;
-  const std::string shape_mode="smooth";
-#ifdef SWEEP_COMPARISON
-  SweepCorridor::Options unified;
-  static_cast<SweepCorridor::internal::GeometryOptions&>(unified)=options;
-  auto direct=SweepCorridor::Generator<5>(unified).generate(seed,index,bounds);
-  auto cubic=SweepCorridor::Generator<3>(unified).generate(seed,index,bounds);
-  if(!direct||!cubic)throw std::runtime_error("generation failed: H5="+direct.message+" C3="+cubic.message);
-  if(!SweepCorridor::certify(direct.corridor,direct.support_planes).safe()||
-     !SweepCorridor::certify(cubic.corridor,cubic.support_planes).safe())throw std::runtime_error("certificate failed");
-  decltype(generateFiri(seed,points,bounds,radius,.25,true,3)) firi;int disconnected=0,empty_polys=0;double seed_outside=0;
-#else
   auto direct=generate(seed,index,bounds,options);
   if(!direct)throw std::runtime_error(direct.message);
+  if(!SweepCorridor::certify(direct.corridor,direct.support_planes).safe())throw std::runtime_error("certificate failed");
+#ifdef SWEEP_COMPARISON
+  FiriResult firi;int disconnected=0,empty_polys=0;double seed_outside=0;
+  constexpr int method_count=1;
+#else
   auto firi=generateFiri(seed,points,bounds,radius,.25,true,3);
   int disconnected=0,empty_polys=0;Vec3 interior;
   for(const auto& h:firi.polys)if(!geo_utils::findInterior(h,interior))++empty_polys;
@@ -177,6 +164,7 @@ int main(int argc,char**argv) {try {
   double seed_outside=0;Vec3 grad_seed;
   for(size_t i=1;i<seed.size();++i)for(int k=0;k<=100;++k)
     seed_outside=std::max(seed_outside,polyDistance(firi.polys,seed[i-1]+(seed[i]-seed[i-1])*(k/100.),grad_seed));
+  constexpr int method_count=2;
 #endif
   std::vector<double> arc{0};for(size_t i=1;i<seed.size();++i)arc.push_back(arc.back()+(seed[i]-seed[i-1]).norm());
   const int pieces=std::max(2,int(std::ceil(arc.back()/spacing)));
@@ -193,32 +181,15 @@ int main(int argc,char**argv) {try {
   Eigen::VectorXd limits(5),weights(5);limits<<4,2.1,1.05,2,12;weights<<0,1e4,1e4,1e4,1e5;
   std::ofstream out(dir/"runs.jsonl");out<<std::setprecision(12);
   std::string expected_hash;
-  for(int rep=-1;rep<repeats;++rep) for(int order=0;order<2;++order) {
-#ifdef SWEEP_COMPARISON
-    const bool is_cubic=(rep+order+2)%2;const bool ellipse=true;
-    std::string name=is_cubic?"C3":"H5";
-    auto audit=[&](const Vec3& p,double u){
-      if(is_cubic)return referenceTubeValue(cubic.corridor,p,u,[&](double t){return cubic.corridor.section(t);});
-      return referenceTubeValue(direct.corridor,p,u,[&](double t){return direct.corridor.section(t);});
-    };
-    const std::string query_mode="unified-first";
-    const std::string geometry_mode=is_cubic?"native-cubic":"smooth";
-    const double generation_ms=is_cubic?cubic.metrics.total_ms:direct.metrics.total_ms;
-#else
-    bool ellipse=(rep+order+2)%2;std::string name=ellipse?"hermite":"firi";
+  for(int rep=-1;rep<repeats;++rep) for(int order=0;order<method_count;++order) {
+    const bool ellipse=method_count==1||(rep+order+2)%2;
+    std::string name=ellipse?"C3":"firi";
     auto audit=[&](const Vec3& p,double u){return tubeValue(direct.corridor,p,u);};
-    const std::string query_mode=horner?"horner":fast?"fast":"reference";
-    const std::string geometry_mode=shape_mode;
+    const std::string query_mode="cubic-first",geometry_mode="native-cubic";
     const double generation_ms=ellipse?direct.metrics.total_ms:firi.total_ms;
-#endif
     clock=Clock::now();Run run;SplineTrajectory::OptimizerOptions config;config.energy_weight=1;config.integration_steps=steps;
     if(!run.optimizer.prepare(problem,config))throw std::runtime_error("prepare failed");
-#ifdef SWEEP_COMPARISON
-    if(is_cubic)run.query=std::make_unique<BenchmarkTubeQuery>(cubic.corridor,profile);
-    else run.query=std::make_unique<BenchmarkTubeQuery>(direct.corridor,profile);
-#else
-    run.query=std::make_unique<BenchmarkTubeQuery>(direct.corridor,fast,profile,horner);
-#endif
+    run.query=std::make_unique<BenchmarkTubeQuery>(direct.corridor,profile);
     run.cost.query=run.query.get();
     flatness::FlatnessMap flat;flat.reset(.61,9.8,.70,.80,.01,.0001);
     run.cost.dynamics.reset(&empty,&ids,.01,limits,weights,&flat);
@@ -298,12 +269,7 @@ int main(int argc,char**argv) {try {
        <<",\"dynamics_callback_ms\":"<<profile_stats.dynamics_ms<<",\"coefficient_callback_ms\":"<<profile_stats.coefficient_ms
        <<",\"spline_mapping_other_ms\":"<<profile_stats.objective_ms-profile_stats.integral_ms-profile_stats.coefficient_ms
        <<",\"tube_query_ms\":"<<profile_stats.tube_ms
-#ifndef SWEEP_COMPARISON
-       <<",\"section_eval_ms\":"<<profile_stats.section_ms
-       <<",\"tube_queries\":"<<profile_stats.queries<<",\"tube_cache_hits\":"<<profile_stats.query_hits
-       <<",\"section_calls\":"<<profile_stats.section_calls<<",\"section_cache_hits\":"<<profile_stats.section_hits
-       <<",\"plane_evaluations\":"<<profile_stats.plane_evaluations<<",\"root_fallbacks\":"<<profile_stats.fallbacks
-#endif
+
        <<",\"constraint\":\""<<constraint<<"\",\"bezier_depth\":"<<depth
        <<",\"tube_integral_retained\":"<<(bezier&&ellipse&&run.cost.keep_tube_integral?"true":"false")
        <<",\"control_position_violation_m\":"<<run.bezier_cost.max_position_violation

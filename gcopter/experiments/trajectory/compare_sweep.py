@@ -34,9 +34,8 @@ def main():
                     raise ValueError(f'Input hash mismatch: {c[kind]}')
                 checked.add(c[kind])
     env = dict(os.environ, OMP_NUM_THREADS='1', OPENBLAS_NUM_THREADS='1', MKL_NUM_THREADS='1')
-    for key in ('GCOPTER_PROFILE', 'GCOPTER_TUBE_MODE', 'NATIVE_SKIP_H5', 'SWEEP_QUERY_MEASURE'):
+    for key in ('GCOPTER_PROFILE', 'SWEEP_QUERY_MEASURE'):
         env.pop(key, None)
-    env['NATIVE_CANDIDATES'] = '1'
     if args.stage == 'profile':
         env['GCOPTER_PROFILE'] = '1'
     def limit():

@@ -63,8 +63,8 @@ def main():
                           virtual_memory_limit_mib=512)
             records.append(record)
             (args.output/'results.json').write_text(json.dumps(records, indent=2)+'\n')
-            print(f"{case} {model}: H {record['hermite_median_ms']:.1f} ms / "
-                  f"{record['hermite_union_m3']:.1f} m3; "
+            print(f"{case} {model}: C3 {record['cubic_median_ms']:.1f} ms / "
+                  f"{record['cubic_union_m3']:.1f} m3; "
                   f"F {record['firi_median_ms']:.1f} ms / {record['firi_union_m3']:.1f} m3; "
                   f"RSS {record['max_rss_mib']:.1f} MiB; connected={record['firi_connected']}", flush=True)
 
