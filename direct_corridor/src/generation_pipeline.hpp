@@ -19,6 +19,5 @@ Result generateWithShapeStage(const std::vector<Vec3>& seed,
                               const ObstacleIndex& index, const Bounds& bounds,
                               const Options& options, const ShapeStage& stage,
                               int first_iteration_limit = 12,
-                              bool fraction_to_boundary = false,
-                              bool continue_barrier = false);
+                              bool fraction_to_boundary = false);
 }

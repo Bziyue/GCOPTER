@@ -19,7 +19,7 @@ int main(){
     if (!base){
       throw std::runtime_error(base.message);
     }
-    for (int mode : {5, 3, 0, -1, -2, -6, -8, -112, -212}) {
+    for (int mode : {5, 3, 0, -1, -2, -6, -8, -112}) {
       int d = mode <= 0 ? 5 : mode;
       auto reference = base.corridor;
       if (mode == -1) {
@@ -36,11 +36,11 @@ int main(){
         if (r.metrics.reused_planes == 0 || r.metrics.planes_ms != 0 ||
             !r.metrics.direct_initialization)
           throw std::runtime_error("integrated stage did not reuse its cover");
-      } else if (mode == -112 || mode == -212) {
-        auto warm = detail::generateWithShapeStage(seed, map, bounds, o, {}, 12, true, mode == -212);
+      } else if (mode == -112) {
+        auto warm = detail::generateWithShapeStage(seed, map, bounds, o, {}, 12, true);
         if (!warm) throw std::runtime_error(warm.message);
         reference = std::move(warm.corridor);
-        auto fast = experiment::generateCoordinateShape(seed, map, bounds, o, r.metrics, 12, true, true, mode == -212);
+        auto fast = experiment::generateCoordinateShape(seed, map, bounds, o, r.metrics, 12, true, true);
         if (!fast) throw std::runtime_error(fast.message);
         r.corridor = std::move(fast.corridor);
       } else if (mode < -2) {

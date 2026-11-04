@@ -36,8 +36,7 @@ Result generateCoordinateShape(const std::vector<Vec3>& seed, const ObstacleInde
                                const Bounds& bounds, const Options& options,
                                ShapeFitMetrics& metrics, int warmup_limit = 8,
                                bool check_derivatives = false,
-                               bool fraction_to_boundary = false,
-                               bool continue_barrier = false);
+                               bool fraction_to_boundary = false);
 inline void writeShapeMetrics(std::ostream& s, const ShapeFitMetrics& m){
   s << ",\"shape_refit_ms\":" << m.total_ms << ",\"shape_planes_ms\":" << m.planes_ms
     << ",\"shape_setup_ms\":" << m.setup_ms << ",\"shape_optimize_ms\":" << m.optimize_ms

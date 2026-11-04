@@ -789,7 +789,7 @@ Result generateFastShape(const std::vector<Vec3>& seed, const ObstacleIndex& map
 
 Result generateCoordinateShape(const std::vector<Vec3>& seed, const ObstacleIndex& map,
                                const Bounds& bounds, const Options& options,
-                               ShapeFitMetrics& metrics, int warmup_limit, bool check, bool fraction_to_boundary, bool continue_barrier) {
+                               ShapeFitMetrics& metrics, int warmup_limit, bool check, bool fraction_to_boundary) {
   if (warmup_limit < 1 || warmup_limit > 12)
     throw std::invalid_argument("coordinate warmup limit");
   metrics = {};
@@ -799,7 +799,7 @@ Result generateCoordinateShape(const std::vector<Vec3>& seed, const ObstacleInde
         auto fit = fitScalarShape(base, cover, length, stop, check, true);
         metrics = fit.metrics;
         base = std::move(fit.corridor);
-      }, warmup_limit, fraction_to_boundary, continue_barrier);
+      }, warmup_limit, fraction_to_boundary);
 }
 
 }

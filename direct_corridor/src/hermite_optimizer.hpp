@@ -486,7 +486,7 @@ struct ShapeCertificates {
     std::vector<int> failed;
     unsigned processed = 0;
     while (next >= 0) {
-      if ((++processed & 31u) == 0) stop();
+      if ((++processed & 1023u) == 0) stop();
       auto& selected = blocks[next / block_size];
       selected.alive &= ~(1ull << (next - selected.begin));
       nearest(selected);
@@ -800,7 +800,6 @@ struct ShapeOptimizer {
   Shape shape_support;
   int iteration_limit = 12;
   bool fraction_to_boundary = false;
-  int barrier_begin = 0;
   const Options& o;
   const Stop& stop;
   std::vector<H5> diagonal, upper, transfer;
@@ -992,7 +991,7 @@ struct ShapeOptimizer {
     step.resize(count);
     scaling.resize(count);
     constexpr double barriers[] = {.003, .0001, .00001};
-    for (int stage = barrier_begin; stage < 3; ++stage) {
+    for (int stage = 0; stage < 3; ++stage) {
       const double mu = barriers[stage];
       for (int iteration = 0; iteration < iteration_limit; ++iteration) {
         stop();

@@ -230,7 +230,7 @@ Result generate(const std::vector<Vec3>& seed, const ObstacleIndex& index,
 Result detail::generateWithShapeStage(const std::vector<Vec3>& seed,
                 const ObstacleIndex& index, const Bounds& bounds,
                 const Options& o, const ShapeStage& shape_stage, int first_iteration_limit,
-                bool fraction_to_boundary, bool continue_barrier) {
+                bool fraction_to_boundary) {
   using namespace detail;
   Result result;
   const auto begin = std::chrono::steady_clock::now();
@@ -239,6 +239,7 @@ Result detail::generateWithShapeStage(const std::vector<Vec3>& seed,
                std::chrono::steady_clock::now() - begin)
         .count();
   };
+  const auto stageElapsed = [&] { return o.profile ? elapsed() : 0.0; };
   const Stop stop = [&] {
     if (o.cancelled && o.cancelled())
       throw Failure{Status::Cancelled, "request cancelled"};
@@ -454,7 +455,7 @@ Result detail::generateWithShapeStage(const std::vector<Vec3>& seed,
              ++iteration) {
           if (iteration && elapsed() > .5 * o.budget_ms) break;
           try {
-            double timer = elapsed();
+            double timer = stageElapsed();
             Certificates certificates(index, bounds, o, stop, result.metrics,
                                       local_boxes, query_cache);
             std::vector<SupportPlane> candidate_planes;
@@ -463,7 +464,7 @@ Result detail::generateWithShapeStage(const std::vector<Vec3>& seed,
             // Use the learned metric only after the first inflation solve.
             certificates.use_shape_metric = iteration > 0;
             certificates.build(nodes);
-            result.metrics.certificate_ms += elapsed() - timer;
+            result.metrics.certificate_ms += stageElapsed() - timer;
             for (const auto& c : certificates.cuts)
               if (value(c, nodes) >= c.h - 1e-11)
                 throw Failure{Status::InsufficientClearance,
@@ -479,16 +480,12 @@ Result detail::generateWithShapeStage(const std::vector<Vec3>& seed,
             if (unconstrained)
               nodes = std::move(full);
             else {
-              timer = elapsed();
+              timer = stageElapsed();
               Optimizer optimizer(o, stop);
-              // A continuation run preserves the reference first inflation;
-              // only the warm second solve changes its step/barrier policy.
-              optimizer.fraction_to_boundary = fraction_to_boundary &&
-                                               (!continue_barrier || iteration > 0);
-              if (continue_barrier && iteration > 0) optimizer.barrier_begin = 1;
+              optimizer.fraction_to_boundary = fraction_to_boundary;
               if (iteration == 0) optimizer.iteration_limit = first_iteration_limit;
               optimizer.optimize(nodes, certificates.cuts, result.metrics);
-              result.metrics.optimization_ms += elapsed() - timer;
+              result.metrics.optimization_ms += stageElapsed() - timer;
             }
             if (o.certify_jacobian) {
               for (int repair=0;;++repair) {
@@ -528,12 +525,12 @@ Result detail::generateWithShapeStage(const std::vector<Vec3>& seed,
                   for(size_t i=0;i<nodes.size();++i)
                     nodes[i].x=(1-fraction)*circle(initial_radius)+fraction*candidate[i].x;
                 }
-                timer=elapsed();
+                timer=stageElapsed();
                 Optimizer repair_optimizer(o,stop);
                 repair_optimizer.fraction_to_boundary=true;
                 repair_optimizer.iteration_limit=8;
                 repair_optimizer.optimize(nodes,certificates.cuts,result.metrics);
-                result.metrics.optimization_ms+=elapsed()-timer;
+                result.metrics.optimization_ms+=stageElapsed()-timer;
                 ++result.metrics.regularity_repairs;
               }
             }
@@ -572,10 +569,10 @@ Result detail::generateWithShapeStage(const std::vector<Vec3>& seed,
                             result.corridor.shapeControls().data()+6*i))
               throw Failure{Status::DegeneratePath,"shape stage full-disk certificate failed"};
         if (o.jet_smoothing > 0) {
-          const double timer=elapsed();
+          const double timer=stageElapsed();
           GeneratorAccess::replace(result.corridor,smoothSweep(result.corridor,accepted_planes,
               o.jet_smoothing,o.max_radius,result.metrics.mean_jet_fraction,stop));
-          result.metrics.smoothing_ms=elapsed()-timer;
+          result.metrics.smoothing_ms=stageElapsed()-timer;
           stop();
         }
         result.metrics.nodes = best.size();

@@ -99,6 +99,7 @@ class Corridor {
 };
 
 struct Options {
+  bool profile = false; // Optional stage timers; total time and deadlines remain active.
   double control_spacing = 0.5;
   double min_radius =
       0.02;  // native optimizer floor, not a floor after optional jet smoothing

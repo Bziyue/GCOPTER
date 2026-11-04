@@ -97,6 +97,18 @@ void derivatives(const Corridor& c) {
 }
 }  // namespace
 int main() {
+  {
+    const std::vector<Vec3> seed{{-3,0,0},{0,.5,0},{3,1,0}};
+    ObstacleIndex map({});auto options=opts();
+    const auto plain=generate(seed,map,box(),options);success(plain);
+    options.profile=true;
+    const auto profiled=generate(seed,map,box(),options);success(profiled);
+    check(plain.corridor.centerControls()==profiled.corridor.centerControls(),"profile changes centers");
+    check(plain.corridor.shapeControls()==profiled.corridor.shapeControls(),"profile changes shapes");
+    check(plain.metrics.certificate_ms==0,"disabled stage timer");
+    check(profiled.metrics.certificate_ms>0,"enabled stage timer");
+  }
+
   try {
     // Query identity is independent of the changing section shapes. Check
     // cross-span sharing, round reuse and the memory-cap fallback explicitly.
