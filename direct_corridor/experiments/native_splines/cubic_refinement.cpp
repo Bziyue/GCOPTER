@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 #include "cubic_optimizer.hpp"
 #include "cubic_volume.hpp"
+#include "support_barrier.hpp"
 #include <chrono>
+#include <limits>
 
 namespace gcopter::direct::native {
 using M2=Eigen::Matrix2d;
@@ -26,11 +28,36 @@ double CubicProblem::LineModel::delta(double alpha)const {
     if(change<=-1)return INFINITY;
     out-=t.weight*std::log1p(change);
   }
+  for(const auto& t:distances) {
+    const double square_change=alpha*(t.b+alpha*t.a);
+    const double radius=std::sqrt(std::max(support_epsilon*support_epsilon,t.c+square_change));
+    const double change=(alpha*t.derivative-square_change/(radius+t.radius))/t.gap;
+    if(change<=-1)return INFINITY;
+    out-=t.weight*std::log1p(change);
+  }
   return out;
+}
+double CubicProblem::LineModel::upperBound(double alpha)const {
+  if(!distances.empty())return INFINITY;
+  double out=alpha*(linear+alpha*quadratic),magnitude=std::abs(out);
+  for(const auto& t:terms) {
+    const double change=alpha*(t.b+alpha*t.a);
+    if(change<=-1)return INFINITY;
+    // For q >= 0: log(1+q) >= 2q/(2+q).
+    // For -1 < q < 0: log(1+q) >= q(2+q)/(2(1+q)).
+    // Both bounds match the linear and quadratic Taylor terms at zero.
+    const double lower=change>=0?change/(1+.5*change):
+                                 change*(2+change)/(2*(1+change));
+    const double term=-t.weight*lower;
+    out+=term;magnitude+=std::abs(term);
+  }
+  // Cover accumulation/roundoff before using this sufficient acceptance test.
+  return out+8*std::numeric_limits<double>::epsilon()*(terms.size()+2)*(1+magnitude);
 }
 CubicProblem::LineModel CubicProblem::prepareLine(const Eigen::VectorXd& x,
     const Eigen::VectorXd& direction,double mu,const Evaluation* cache)const {
   LineModel line;line.terms.reserve(cuts.size()+4*model.basis.count);
+  if(settings.distance_barrier)line.distances.reserve(geometric_cuts);
   line.linear=cache?direction.dot(cache->energy_gradient):direction.dot(quadratic.multiply(x)+linear);
   line.quadratic=.5*direction.dot(quadratic.multiply(direction));
   double limit=INFINITY;
@@ -57,24 +84,31 @@ CubicProblem::LineModel CubicProblem::prepareLine(const Eigen::VectorXd& x,
     const double a=-v.squaredNorm(),b=-2*c.dot(v),gap=options.max_offset*options.max_offset-c.squaredNorm();
     append(a,b,gap,mu);boundary(a,b,gap,1,0);
   }
-  auto cone=[&](const Vec3& v,const Vec3& d,bool active) {
+  auto cone=[&](const Vec3& v,const Vec3& d,bool active,bool smooth=false) {
     const double a=d[0]*d[0]-d.tail<2>().squaredNorm();
     const double b=2*(v[0]*d[0]-v.tail<2>().dot(d.tail<2>()));
-    const double c=v[0]*v[0]-v.tail<2>().squaredNorm();
-    boundary(a,b,c,v[0],d[0]);if(active)append(a,b,c,mu);
+    const double c=v[0]*v[0]-v.tail<2>().squaredNorm()-(smooth?support_epsilon*support_epsilon:0);
+    boundary(a,b,c,v[0],d[0]);
+    if(active) {
+      if(smooth) {
+        const double radius=supportRadius(v);
+        line.distances.push_back({d.tail<2>().squaredNorm(),2*v.tail<2>().dot(d.tail<2>()),
+          radius*radius,radius,v[0]-radius,d[0],mu});
+      } else append(a,b,c,mu);
+    }
   };
   size_t id=0;
   for(const auto& group:groups) {
     V9 y;if(!cache)y=group.geometry(x);
     const V9 d=group.direction(direction);
-    for(const auto& p:group.supports) {
-      const auto& n=p.normal;
-      const Vec3 v=cache?cache->cones[id]:Vec3(p.bound-n.dot(y.head<3>()),n.dot(y.segment<3>(3)),n.dot(y.tail<3>()));
-      ++id;
-      cone(v,
-           Vec3(-n.dot(d.head<3>()),n.dot(d.segment<3>(3)),n.dot(d.tail<3>())),
-           !settings.grouped_assembly||settings.reference_assembly||p.active);
+    for(size_t j=0;j<group.boundary_count;++j) {
+      const auto& p=group.supports[j];
+      const Vec3 v=cache?cache->cones[id+j]:p.project(y);
+      cone(v,p.projectDirection(d),
+           !p.redundant&&(!settings.grouped_assembly||settings.reference_assembly||p.active),
+           settings.distance_barrier&&!p.redundant);
     }
+    id+=group.supports.size();
   }
   for(size_t j=geometric_cuts;j<cuts.size();++j) {
     const auto& c=cuts[j];Vec3 v;
@@ -85,7 +119,7 @@ CubicProblem::LineModel CubicProblem::prepareLine(const Eigen::VectorXd& x,
   return line;
 }
 
-void CubicProblem::inflate(Eigen::VectorXd& x,OptimizerMetrics& metrics)const {
+void CubicProblem::inflate(Eigen::VectorXd& x,OptimizerMetrics& metrics,int sweeps,double fraction)const {
   const auto start=std::chrono::steady_clock::now();
   struct Incident {int cut,local;};
   std::vector<std::vector<Incident>> incident(model.basis.count);
@@ -95,18 +129,18 @@ void CubicProblem::inflate(Eigen::VectorXd& x,OptimizerMetrics& metrics)const {
     for(int k=0;k<c.count;++k)if(!c.normals[k].isZero(0))incident[c.first/5+k].push_back({int(j),k});
   }
   Eigen::VectorXd energy_gradient=quadratic.multiply(x)+linear;
-  for(int sweep=0;sweep<settings.coordinate_sweeps;++sweep)for(int order=0;order<model.basis.count;++order) {
+  for(int sweep=0;sweep<(sweeps<0?settings.coordinate_sweeps:sweeps);++sweep)for(int order=0;order<model.basis.count;++order) {
     const int node=sweep%2?model.basis.count-1-order:order,offset=5*node;
     const Vec3 s=x.segment<3>(offset+2);
     const double largest=.5*(s[0]+s[2])+std::hypot(.5*(s[0]-s[2]),s[1]);
-    double alpha=.995*(options.max_radius/largest-1);
+    double alpha=fraction*(options.max_radius/largest-1);
     for(const auto& entry:incident[node]) {
       const auto& n=cuts[entry.cut].normals[entry.local];const auto& v=values[entry.cut];
       const Eigen::Vector2d d(s[0]*n[0]+s[1]*n[1],s[1]*n[0]+s[2]*n[1]);
       const double a=d.squaredNorm();if(a==0)continue;
       const double b=v.tail<2>().dot(d),gap=v[0]*v[0]-v.tail<2>().squaredNorm();
       const double root=std::sqrt(b*b+a*gap);
-      alpha=std::min(alpha,.995*(b>=0?gap/(root+b):(root-b)/a));
+      alpha=std::min(alpha,fraction*(b>=0?gap/(root+b):(root-b)/a));
     }
     // Minimize the exact logdet-plus-bending objective along this radius ray.
     const double l=s.dot(energy_gradient.segment<3>(offset+2));

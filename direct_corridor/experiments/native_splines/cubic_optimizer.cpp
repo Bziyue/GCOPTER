@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #include "cubic_optimizer.hpp"
+#include "support_barrier.hpp"
 #include "cubic_certificates.hpp"
 #include <Eigen/Eigenvalues>
 #include <Eigen/SparseCholesky>
@@ -175,6 +176,25 @@ void CubicProblem::Group::accumulate(const V9& g,const Eigen::Matrix<double,9,9>
     }
   }
 }
+void CubicProblem::Group::accumulateGradient(const V9& g,Eigen::VectorXd& out)const {
+  for(int k=0;k<count;++k) {
+    const auto& f=maps[k];const int offset=first+5*k;
+    out.segment<2>(offset).noalias()+=f.transpose()*g.head<3>();
+    out[offset+2]+=f.col(0).dot(g.segment<3>(3));
+    out[offset+3]+=f.col(1).dot(g.segment<3>(3))+f.col(0).dot(g.tail<3>());
+    out[offset+4]+=f.col(1).dot(g.tail<3>());
+  }
+}
+void CubicProblem::Group::accumulateCenter(const Eigen::Matrix3d& h,BandedSPD& out)const {
+  for(int b=0;b<count;++b) {
+    const Mat32 product=h*maps[b];
+    for(int a=b;a<count;++a) {
+      const Eigen::Matrix2d block=maps[a].transpose()*product;
+      for(int j=0;j<2;++j)for(int k=0;k<(a==b?j+1:2);++k)
+        out.add(first+5*a+j,first+5*b+k,block(j,k));
+    }
+  }
+}
 CubicEnergy::CubicEnergy(const CubicModel& m,double length,const OptimizerSettings& settings)
     :quadratic(5*m.basis.count,19),linear(Eigen::VectorXd::Zero(5*m.basis.count)) {
   // Exact two-point Gauss integration of squared cubic second derivatives.
@@ -268,17 +288,20 @@ CubicProblem::CubicProblem(const CubicModel& m,const std::vector<detail::Support
       }
       merged_supports+=supports.size()-count;supports.resize(count);
     }
-    for(const auto& p:group.supports) {
-      Cut c;c.first=group.first;c.count=group.count;c.bound=p.bound-p.normal.dot(group.reference.head<3>());
-      for(int k=0;k<c.count;++k)c.normals[k]=group.maps[k].transpose()*p.normal;
-      c.compact();cuts.push_back(c);
+    for(size_t j=0;j<group.supports.size();++j) {
+      auto& p=group.supports[j];p.original_id=int(j);
+      if(settings.axis_kernels)for(int axis=0;axis<3;++axis)
+        if(p.normal[axis]!=0&&p.normal[(axis+1)%3]==0&&p.normal[(axis+2)%3]==0)p.axis=axis;
     }
   }
   // Polar hull pruning is independent of ellipse shape: a strictly interior
   // dual point is implied by the remaining spatial halfspaces. Keep boundary
   // and degenerate cases. All original cuts still bound the line search and
   // remain in the final continuous certificate.
-  if(settings.polar_pruning)for(auto& group:groups) {
+  const auto pruning_start=Clock::now();
+  if(settings.projected_pruning)for(auto& group:groups)
+    pruneProjectedSupports(group,m.x,o.max_offset,o.max_radius);
+  else if(settings.polar_pruning)for(auto& group:groups) {
     const int count=group.supports.size();if(count<5)continue;
     const V9 y=group.geometry(m.x);
     Eigen::Matrix<double,3,Eigen::Dynamic> points(3,count+1);points.col(count).setZero();
@@ -309,6 +332,21 @@ CubicProblem::CubicProblem(const CubicModel& m,const std::vector<detail::Support
       bool inside=true;const double guard=1e-10*(1+points.col(j).norm());
       for(const auto& face:faces)if(face.second-face.first.dot(points.col(j))<=guard){inside=false;break;}
       if(inside){group.supports[j].active=false;group.supports[j].redundant=true;}
+    }
+  }
+  if(settings.projected_pruning||settings.polar_pruning)pruning_ms=ms(pruning_start);
+  for(auto& group:groups) {
+    if(settings.projected_pruning||settings.polar_pruning) {
+      const auto last=std::stable_partition(group.supports.begin(),group.supports.end(),
+                                          [](const Support& p){return !p.redundant;});
+      group.retained=last-group.supports.begin();
+    } else group.retained=group.supports.size();
+    group.boundary_count=settings.projected_pruning==2?group.retained:group.supports.size();
+    for(const auto& p:group.supports) {
+      Cut c;c.first=group.first;c.count=group.count;c.bound=p.bound-p.normal.dot(group.reference.head<3>());
+      c.redundant=p.redundant;
+      for(int k=0;k<c.count;++k)c.normals[k]=group.maps[k].transpose()*p.normal;
+      c.compact();cuts.push_back(c);
     }
   }
   if(settings.tensor_assembly)for(auto& group:groups) {
@@ -371,25 +409,58 @@ CubicProblem::CubicProblem(const CubicModel& m,const std::vector<detail::Support
     for(int i=0;i<qr.rank();++i)equalities.row(i)=a.row(qr.colsPermutation().indices()[i]);
   }
 }
-double CubicProblem::objective(const Eigen::VectorXd& x,double mu,Eigen::VectorXd* g,BandedSPD* h,Evaluation* cache)const {
-  const bool derivatives=g;
+template<bool WithValue>
+static bool exactSupportJets(const CubicProblem::Group& group,const V9& y,double mu,
+                             V9& gradient,Eigen::Matrix<double,9,9>& hessian,double& cost,
+                             CubicProblem::Evaluation* cache,size_t offset) {
+  const size_t count=cache?group.boundary_count:group.retained;
+  for(size_t id=0;id<count;++id) {
+    const auto& p=group.supports[id];
+    if(!p.active&&!cache)continue;
+    const Vec3 v=p.project(y);
+    if(cache)cache->cones[offset+id]=v;
+    if(!p.active)continue;
+    const double slack=v[0]*v[0]-v.tail<2>().squaredNorm();
+    if(v[0]<=0||slack<=0)return false;
+    if constexpr(WithValue)cost-=mu*std::log(slack);
+    const double f=2*mu/slack;
+    p.addGradient(f*v,gradient);
+    Eigen::Matrix3d hc=(2*f/slack)*v*v.transpose();
+    hc(0,0)-=f;hc(1,1)+=f;hc(2,2)+=f;
+    if(p.axis>=0) {
+      const int axis=p.axis;const double n2=p.normal[axis]*p.normal[axis];
+      for(int a=0;a<3;++a)for(int b=0;b<=a;++b)hessian(3*a+axis,3*b+axis)+=hc(a,b)*n2;
+    } else {
+      const Eigen::Matrix3d nn=p.normal*p.normal.transpose();
+      for(int a=0;a<3;++a)for(int b=0;b<=a;++b)hessian.block<3,3>(3*a,3*b).noalias()+=hc(a,b)*nn;
+    }
+  }
+  for(int a=0;a<3;++a)for(int b=0;b<a;++b)hessian.block<3,3>(3*b,3*a)=hessian.block<3,3>(3*a,3*b).transpose();
+  return true;
+}
+double CubicProblem::objective(const Eigen::VectorXd& x,double mu,Eigen::VectorXd* g,BandedSPD* h,Evaluation* cache,
+                               double weak_ratio,std::uint64_t* weak_rows,bool evaluate_cost)const {
+  const bool derivatives=g,curvature=h;
+  std::uint64_t weak_count=0;
   const auto qx=quadratic.multiply(x);
-  double cost=.5*x.dot(qx)+linear.dot(x);
+  double cost=evaluate_cost?.5*x.dot(qx)+linear.dot(x):0;
   if(cache){cache->energy_gradient=qx+linear;cache->cones.resize(cuts.size());}
   size_t cached_id=0;
-  if(derivatives){
-    *g=qx+linear;
+  if(derivatives)*g=qx+linear;
+  if(curvature){
     // Preserve allocated factor/scale buffers across Newton steps.
     h->n=quadratic.n;h->width=quadratic.width;h->data=quadratic.data;
   }
   auto logdet=[&](int i,const Eigen::Matrix2d& p,double weight,double sign) {
     const double det=p.determinant();if(p(0,0)<=0 || det<=0)return false;
-    cost-=weight*std::log(det);
+    if(evaluate_cost)cost-=weight*std::log(det);
     if(derivatives) {
       const double a=p(1,1)/det,b=-p(0,1)/det,c=p(0,0)/det;
       g->segment<3>(5*i+2)-=weight*sign*Vec3(a,2*b,c);
-      Eigen::Matrix3d v;v<<a*a,2*a*b,b*b,2*a*b,2*(a*c+b*b),2*b*c,b*b,2*b*c,c*c;
-      for(int j=0;j<3;++j)for(int k=0;k<=j;++k)h->add(5*i+2+j,5*i+2+k,weight*v(j,k));
+      if(curvature) {
+        Eigen::Matrix3d v;v<<a*a,2*a*b,b*b,2*a*b,2*(a*c+b*b),2*b*c,b*b,2*b*c,c*c;
+        for(int j=0;j<3;++j)for(int k=0;k<=j;++k)h->add(5*i+2+j,5*i+2+k,weight*v(j,k));
+      }
     }
     return true;
   };
@@ -400,45 +471,95 @@ double CubicProblem::objective(const Eigen::VectorXd& x,double mu,Eigen::VectorX
        !logdet(i,options.max_radius*Eigen::Matrix2d::Identity()-s,mu,-1))return INFINITY;
     const Eigen::Vector2d d=x.segment<2>(5*i);const double gap=options.max_offset*options.max_offset-d.squaredNorm();
     if(gap<=0)return INFINITY;
-    cost-=mu*std::log(gap);
+    if(evaluate_cost)cost-=mu*std::log(gap);
     if(derivatives) {
       g->segment<2>(5*i)+=2*mu/gap*d;
-      const Eigen::Matrix2d v=2*mu/gap*Eigen::Matrix2d::Identity()+4*mu/(gap*gap)*d*d.transpose();
-      for(int j=0;j<2;++j)for(int k=0;k<=j;++k)h->add(5*i+j,5*i+k,v(j,k));
+      if(curvature) {
+        const Eigen::Matrix2d v=2*mu/gap*Eigen::Matrix2d::Identity()+4*mu/(gap*gap)*d*d.transpose();
+        for(int j=0;j<2;++j)for(int k=0;k<=j;++k)h->add(5*i+j,5*i+k,v(j,k));
+      }
     }
   }
   if(settings.grouped_assembly && !settings.reference_assembly)for(const auto& group:groups) {
     const V9 y=group.geometry(x);
     V9 gy;Eigen::Matrix<double,9,9> hy;Eigen::Matrix<double,6,6> tensor;
-    if(derivatives){gy.setZero();if(settings.tensor_assembly)tensor.setZero();else hy.setZero();}
-    for(size_t id=0;id<group.supports.size();++id) {
+    Eigen::Matrix3d weak_center=Eigen::Matrix3d::Zero();bool full_curvature=false;
+    if(derivatives)gy.setZero();
+    if(curvature){if(settings.tensor_assembly&&!settings.distance_barrier)tensor.setZero();else hy.setZero();}
+    // Dispatch experimental curvature/barrier variants once per group. The
+    // common exact Newton kernel has no per-plane mode or value-only branches.
+    if(curvature&&!settings.tensor_assembly&&!settings.distance_barrier&&weak_ratio==0) {
+      const bool feasible=evaluate_cost?exactSupportJets<true>(group,y,mu,gy,hy,cost,cache,cached_id):
+                                        exactSupportJets<false>(group,y,mu,gy,hy,cost,cache,cached_id);
+      if(!feasible)return INFINITY;
+      group.accumulate(gy,hy,*g,*h);cached_id+=group.supports.size();continue;
+    }
+    const size_t evaluate_count=cache?group.boundary_count:group.retained;
+    for(size_t id=0;id<evaluate_count;++id) {
       const auto& support=group.supports[id];
       if(!support.active&&!cache)continue;
       const auto& normal=support.normal;
-      const Vec3 v(support.bound-normal.dot(y.head<3>()),normal.dot(y.segment<3>(3)),normal.dot(y.tail<3>()));
-      if(cache)cache->cones[cached_id++]=v;
+      const Vec3 v=support.project(y);
+      if(cache)cache->cones[cached_id+id]=v;
       if(!support.active)continue;
+      if(settings.distance_barrier) {
+        const double radius=supportRadius(v),gap=v[0]-radius;
+        if(gap<=0)return INFINITY;
+        if(evaluate_cost)cost-=mu*std::log(gap);
+        if(derivatives) {
+          Vec3 local_gradient;Eigen::Matrix3d local_hessian;
+          if(curvature)distanceBarrierJet(v,mu,radius,gap,local_gradient,local_hessian);
+          else {local_gradient<<1,v[1]/radius,v[2]/radius;local_gradient*=mu/gap;}
+          support.addGradient(local_gradient,gy);
+          if(curvature) {
+            if(support.axis>=0) {
+              const int axis=support.axis;const double n2=normal[axis]*normal[axis];
+              for(int a=0;a<3;++a)for(int b=0;b<=a;++b)hy(3*a+axis,3*b+axis)+=local_hessian(a,b)*n2;
+            } else {
+              const Eigen::Matrix3d nn=normal*normal.transpose();
+              for(int a=0;a<3;++a)for(int b=0;b<=a;++b)hy.block<3,3>(3*a,3*b).noalias()+=local_hessian(a,b)*nn;
+            }
+          }
+        }
+        continue;
+      }
       const double slack=v[0]*v[0]-v.tail<2>().squaredNorm();
       if(v[0]<=0 || slack<=0)return INFINITY;
-      cost-=mu*std::log(slack);
+      if(evaluate_cost)cost-=mu*std::log(slack);
       if(derivatives) {
         const double f=2*mu/slack;
-        for(int a=0;a<3;++a)gy.segment<3>(3*a)+=(f*v[a])*normal;
+        support.addGradient(f*v,gy);
+        if(!curvature)continue;
+        if(weak_ratio>0&&v.tail<2>().squaredNorm()<weak_ratio*weak_ratio*v[0]*v[0]) {
+          const double coefficient=(2*f/slack)*v[0]*v[0]-f;
+          if(support.axis>=0)weak_center(support.axis,support.axis)+=coefficient*normal[support.axis]*normal[support.axis];
+          else weak_center.noalias()+=coefficient*(normal*normal.transpose());
+          ++weak_count;continue;
+        }
+        full_curvature=true;
         if(settings.tensor_assembly) {
           const double scale=2*f/slack;Eigen::Matrix<double,6,1> hc;
           hc<<scale*v[0]*v[0]-f,scale*v[1]*v[0],scale*v[1]*v[1]+f,
               scale*v[2]*v[0],scale*v[2]*v[1],scale*v[2]*v[2]+f;
-          tensor.noalias()+=group.normal_products[id]*hc.transpose();
+          if(support.axis>=0)tensor.row(support.axis==0?0:support.axis==1?2:5)+=
+              (normal[support.axis]*normal[support.axis])*hc.transpose();
+          else tensor.noalias()+=group.normal_products[id]*hc.transpose();
         } else {
           Eigen::Matrix3d hc=(2*f/slack)*v*v.transpose();
           hc(0,0)-=f;hc(1,1)+=f;hc(2,2)+=f;
-          const Eigen::Matrix3d nn=normal*normal.transpose();
-          for(int a=0;a<3;++a)for(int b=0;b<=a;++b)hy.block<3,3>(3*a,3*b).noalias()+=hc(a,b)*nn;
+          if(support.axis>=0) {
+            const int axis=support.axis;const double n2=normal[axis]*normal[axis];
+            for(int a=0;a<3;++a)for(int b=0;b<=a;++b)hy(3*a+axis,3*b+axis)+=hc(a,b)*n2;
+          } else {
+            const Eigen::Matrix3d nn=normal*normal.transpose();
+            for(int a=0;a<3;++a)for(int b=0;b<=a;++b)hy.block<3,3>(3*a,3*b).noalias()+=hc(a,b)*nn;
+          }
         }
       }
     }
-    if(derivatives) {
-      if(settings.tensor_assembly) {
+    cached_id+=group.supports.size();
+    if(curvature&&(full_curvature||settings.distance_barrier||weak_ratio==0)) {
+      if(settings.tensor_assembly&&!settings.distance_barrier) {
         // Symmetry in both the three world channels and n*n^T leaves only
         // 6x6 independent entries. Expand once per group, not once per plane.
         int column=0;
@@ -448,18 +569,41 @@ double CubicProblem::objective(const Eigen::VectorXd& x,double mu,Eigen::VectorX
         }
       }
       for(int a=0;a<3;++a)for(int b=0;b<a;++b)hy.block<3,3>(3*b,3*a)=hy.block<3,3>(3*a,3*b).transpose();
+      if(weak_ratio>0)hy.topLeftCorner<3,3>()+=weak_center;
       group.accumulate(gy,hy,*g,*h);
+    } else if(derivatives) {
+      group.accumulateGradient(gy,*g);
+      if(curvature)group.accumulateCenter(weak_center,*h);
     }
   }
   const size_t begin=settings.grouped_assembly && !settings.reference_assembly?geometric_cuts:0;
   for(size_t id=begin;id<cuts.size();++id) {
     const auto& c=cuts[id];Eigen::Vector3d v=c.apply(x);v[0]=c.bound-v[0];
     if(cache)cache->cones[id]=v;
+    if(c.redundant)continue;
+    if(settings.distance_barrier&&id<geometric_cuts) {
+      const double radius=supportRadius(v),gap=v[0]-radius;
+      if(gap<=0)return INFINITY;
+      if(evaluate_cost)cost-=mu*std::log(gap);
+      if(derivatives) {
+        Vec3 local_gradient;Eigen::Matrix3d local_hessian;
+        distanceBarrierJet(v,mu,radius,gap,local_gradient,local_hessian);
+        const auto map=c.dense();const int n=5*c.count;
+        g->segment(c.first,n).noalias()+=map.leftCols(n).transpose()*local_gradient;
+        if(curvature) {
+          const Eigen::Matrix<double,20,20> local=map.transpose()*local_hessian*map;
+          for(int j=0;j<n;++j)for(int k=0;k<=j;++k)h->add(c.first+j,c.first+k,local(j,k));
+        }
+      }
+      continue;
+    }
     const double slack=v[0]*v[0]-v.tail<2>().squaredNorm();
     if(v[0]<=0 || slack<=0)return INFINITY;
-    cost-=mu*std::log(slack);
-    if(derivatives && !settings.reference_assembly) c.accumulate(v,mu,slack,*g,*h);
-    else if(derivatives) {
+    if(evaluate_cost)cost-=mu*std::log(slack);
+    const bool weak=curvature&&id<geometric_cuts&&weak_ratio>0&&
+                    v.tail<2>().squaredNorm()<weak_ratio*weak_ratio*v[0]*v[0];
+    if(curvature && !weak && !settings.reference_assembly) c.accumulate(v,mu,slack,*g,*h);
+    else if(curvature&&!weak) {
       const auto map=c.dense();
       const int n=5*c.count;
       const Eigen::Matrix<double,20,1> ds=-2*map.transpose()*v;
@@ -469,8 +613,22 @@ double CubicProblem::objective(const Eigen::VectorXd& x,double mu,Eigen::VectorX
       local.noalias()+=2*first*map.bottomRows<2>().transpose()*map.bottomRows<2>();
       local.noalias()-=2*first*map.row(0).transpose()*map.row(0);
       for(int j=0;j<n;++j)for(int k=0;k<=j;++k)h->add(c.first+j,c.first+k,local(j,k));
+    } else if(derivatives) {
+      const double f=2*mu/slack;
+      for(int k=0;k<c.count;++k) {
+        const auto& n=c.normals[k];const int offset=c.first+5*k;
+        g->segment<2>(offset)+=(f*c.center_sign*v[0])*n;
+        g->segment<3>(offset+2)+=f*Vec3(v[1]*n[0],v[1]*n[1]+v[2]*n[0],v[2]*n[1]);
+      }
+      if(weak) {
+        ++weak_count;const double coefficient=(2*f/slack)*v[0]*v[0]-f;
+        for(int a=0;a<c.count;++a)for(int b=0;b<=a;++b)
+          for(int j=0;j<2;++j)for(int k=0;k<(a==b?j+1:2);++k)
+            h->add(c.first+5*a+j,c.first+5*b+k,coefficient*c.normals[a][j]*c.normals[b][k]);
+      }
     }
   }
+  if(weak_rows)*weak_rows=weak_count;
   return cost;
 }
 void CubicProblem::checkDerivatives(const Eigen::VectorXd& x,OptimizerMetrics& metrics)const {
@@ -492,10 +650,11 @@ int CubicProblem::activateSupports(const Eigen::VectorXd& x)const {
   int active=0;
   for(const auto& group:groups) {
     const V9 y=group.geometry(x);
-    for(const auto& support:group.supports) {
+    for(size_t j=0;j<group.boundary_count;++j) {
+      const auto& support=group.supports[j];
       if(!support.active && !support.redundant) {
-        const double radius=std::hypot(support.normal.dot(y.segment<3>(3)),support.normal.dot(y.tail<3>()));
-        support.active=support.bound-support.normal.dot(y.head<3>())<2*radius+1e-6;
+        const Vec3 v=support.project(y);const double radius=std::hypot(v[1],v[2]);
+        support.active=v[0]<2*radius+1e-6;
       }
       active+=support.active;
     }
@@ -513,11 +672,12 @@ double CubicProblem::feasibleStep(const Eigen::VectorXd& x,const Eigen::VectorXd
     if(r0>0)limit=std::min(limit,r0);
     if(r1>0)limit=std::min(limit,r1);
   };
-  auto cone=[&](const Vec3& v,const Vec3& d) {
+  auto cone=[&](const Vec3& v,const Vec3& d,bool smooth=false) {
+    const double regularization=smooth?support_epsilon*support_epsilon:0;
     const Vec3 trial=v+std::min(1.,limit)*d;
-    if(trial[0]>0 && trial[0]*trial[0]>trial.tail<2>().squaredNorm())return;
+    if(trial[0]>0 && trial[0]*trial[0]>trial.tail<2>().squaredNorm()+regularization)return;
     if(d[0]<0)limit=std::min(limit,-v[0]/d[0]);
-    quadraticLimit(d[0]*d[0]-d.tail<2>().squaredNorm(),2*(v[0]*d[0]-v.tail<2>().dot(d.tail<2>())),v[0]*v[0]-v.tail<2>().squaredNorm());
+    quadraticLimit(d[0]*d[0]-d.tail<2>().squaredNorm(),2*(v[0]*d[0]-v.tail<2>().dot(d.tail<2>())),v[0]*v[0]-v.tail<2>().squaredNorm()-regularization);
   };
   auto spd=[&](const Eigen::Matrix2d& a,const Eigen::Matrix2d& d) {
     const Eigen::Matrix2d trial=a+std::min(1.,limit)*d;
@@ -536,10 +696,9 @@ double CubicProblem::feasibleStep(const Eigen::VectorXd& x,const Eigen::VectorXd
   for(const auto& group:groups) {
     const V9 y=group.geometry(x);
     const V9 d=group.direction(step);
-    for(const auto& support:group.supports) {
-      const auto& normal=support.normal;
-      cone(Vec3(support.bound-normal.dot(y.head<3>()),normal.dot(y.segment<3>(3)),normal.dot(y.tail<3>())),
-           Vec3(-normal.dot(d.head<3>()),normal.dot(d.segment<3>(3)),normal.dot(d.tail<3>())));
+    for(size_t j=0;j<group.boundary_count;++j) {
+      const auto& support=group.supports[j];
+      cone(support.project(y),support.projectDirection(d),settings.distance_barrier&&!support.redundant);
     }
   }
   for(size_t j=geometric_cuts;j<cuts.size();++j){const auto& c=cuts[j];auto v=c.apply(x),d=c.apply(step);v[0]=c.bound-v[0];d[0]=-d[0];cone(v,d);}
@@ -548,7 +707,17 @@ double CubicProblem::feasibleStep(const Eigen::VectorXd& x,const Eigen::VectorXd
 void CubicProblem::optimize(Eigen::VectorXd& x,OptimizerMetrics& metrics,const std::function<void()>& stop)const {
   metrics.controls=model.basis.count;metrics.variables=x.size()-4;metrics.constraints=cuts.size();metrics.equality_rank=equalities.rows();
   metrics.merged_supports=merged_supports;metrics.support_groups=groups.size();metrics.pruned_supports=0;
-  for(const auto& group:groups)for(const auto& p:group.supports)metrics.pruned_supports+=p.redundant;
+  metrics.axis_supports=0;
+  int fixed_active=0;
+  for(const auto& group:groups)for(const auto& p:group.supports){
+    metrics.pruned_supports+=p.redundant;metrics.axis_supports+=!p.redundant&&p.axis>=0;fixed_active+=p.active;
+  }
+  metrics.pruning_ms+=pruning_ms;
+  int retained=0,boundary=0;
+  for(const auto& group:groups){retained+=group.retained;boundary+=group.boundary_count;}
+  const int progress=cuts.size()-geometric_cuts;
+  fixed_active+=progress;
+  metrics.passes.push_back({int(geometric_cuts),retained,boundary,progress,0,pruning_ms});
   metrics.hessian_nonzero=x.size()*20-190;
   if(settings.check_gradients)checkDerivatives(x,metrics);
   const std::vector<double> barriers=settings.barrier_stages==1?std::vector<double>{.00001}:
@@ -571,17 +740,28 @@ void CubicProblem::optimize(Eigen::VectorXd& x,OptimizerMetrics& metrics,const s
       if(!accepted)++metrics.predictor_rejections;
       metrics.predictor_ms+=ms(timer);
     }
-    bool converged=false;
+    bool converged=false,refresh_next=true,exact_next=false;
     const int limit=stage>0 && settings.corrector_iterations>0?settings.corrector_iterations:settings.iterations;
     for(int it=0;it<limit;++it) {
       stop();auto timer=Clock::now();
-      metrics.active_constraints=settings.working_set?activateSupports(x):0;
-      if(!settings.working_set){for(const auto& group:groups)for(const auto& p:group.supports)metrics.active_constraints+=p.active;metrics.active_constraints+=cuts.size()-geometric_cuts;}
-      const double f=objective(x,mu,&g,&h,settings.cache_values?&evaluation:nullptr);metrics.assembly_ms+=ms(timer);
+      const bool refresh=refresh_next||it%settings.hessian_interval==0||settings.working_set;
+      const double weak_ratio=exact_next?0:settings.weak_curvature_ratio;
+      refresh_next=false;
+      exact_next=false;
+      metrics.active_constraints=settings.working_set?activateSupports(x):fixed_active;
+      std::uint64_t weak_rows=0;
+      // Cached Armijo evaluates the exact cost difference. Its Newton pass
+      // needs derivatives and domain checks, but no absolute logarithm sum.
+      const double f=objective(x,mu,&g,refresh?&h:nullptr,settings.cache_values?&evaluation:nullptr,
+                               weak_ratio,&weak_rows,!settings.cached_line||!settings.skip_unused_values);
+      metrics.assembly_ms+=ms(timer);
+      metrics.weak_curvature_rows+=weak_rows;
+      metrics.gradient_support_rows+=metrics.active_constraints;
+      if(refresh){metrics.hessian_support_rows+=metrics.active_constraints;++metrics.hessian_refreshes;}
       if(!std::isfinite(f))throw std::runtime_error("cubic optimizer initial point is infeasible");
-      for(int id:{0,1,int(x.size())-5,int(x.size())-4}){g[id]=0;h.fix(id);}
+      for(int id:{0,1,int(x.size())-5,int(x.size())-4}){g[id]=0;if(refresh)h.fix(id);}
       timer=Clock::now();double damping=0;
-      while(!h.factor(damping)){damping=damping==0?1e-8:damping*10;++metrics.damping_retries;if(damping>1e6)throw std::runtime_error("cubic band factorization failed");}
+      if(refresh)while(!h.factor(damping)){damping=damping==0?1e-8:damping*10;++metrics.damping_retries;if(damping>1e6)throw std::runtime_error("cubic band factorization failed");}
       h.solveInto(g,step,-1);
       if(settings.path_predictor>0&&!equalities.rows()&&!settings.working_set) {
         Eigen::VectorXd primary=quadratic.multiply(x)+linear;
@@ -601,11 +781,15 @@ void CubicProblem::optimize(Eigen::VectorXd& x,OptimizerMetrics& metrics,const s
       }
       metrics.solve_ms+=ms(timer);
       const double decrement=-g.dot(step);metrics.final_decrement=decrement;
-      if(decrement<settings.gradient_tolerance){converged=true;break;}
+      if(decrement<settings.gradient_tolerance){
+        if(!refresh||weak_ratio>0){refresh_next=true;exact_next=true;continue;}
+        converged=true;break;
+      }
       timer=Clock::now();double alpha=1;
       LineModel line;
       if(settings.cached_line) {
         line=prepareLine(x,step,mu,settings.cache_values?&evaluation:nullptr);alpha=line.step;++metrics.feasible_scans;
+        metrics.boundary_support_rows+=boundary+progress;
       } else if(settings.trial_first&&!settings.working_set) {
         next=x+step;
         if(objective(next,mu)<=f-1e-4*decrement) {
@@ -613,16 +797,36 @@ void CubicProblem::optimize(Eigen::VectorXd& x,OptimizerMetrics& metrics,const s
           metrics.line_search_ms+=ms(timer);continue;
         }
       }
-      if(!settings.cached_line&&(settings.fraction_boundary>0||settings.working_set)){alpha=feasibleStep(x,step);++metrics.feasible_scans;}
+      if(!settings.cached_line&&(settings.fraction_boundary>0||settings.working_set)){
+        alpha=feasibleStep(x,step);++metrics.feasible_scans;metrics.boundary_support_rows+=boundary+progress;
+      }
+      bool accepted=true;
       for(;;) {
         next=x+alpha*step;
-        if(settings.cached_line?line.delta(alpha)<=-1e-4*alpha*decrement:objective(next,mu)<=f-1e-4*alpha*decrement)break;
+        const double decrease=-1e-4*alpha*decrement;
+        if(settings.cached_line) {
+          if(settings.bounded_line) {
+            ++metrics.bound_line_evaluations;metrics.line_support_rows+=metrics.active_constraints;
+            if(line.upperBound(alpha)<=decrease){++metrics.bound_line_accepts;break;}
+          }
+          ++metrics.exact_line_evaluations;metrics.line_support_rows+=metrics.active_constraints;
+          if(line.delta(alpha)<=decrease)break;
+        } else {
+          metrics.line_support_rows+=metrics.active_constraints;
+          if(objective(next,mu)<=f+decrease)break;
+        }
         alpha*=.5;++metrics.backtracks;
-        if(alpha<1e-12){metrics.termination="line_search_stalled";return;}
+        if(alpha<1e-12){
+          if(!refresh){refresh_next=true;accepted=false;break;}
+          metrics.termination="line_search_stalled";return;
+        }
       }
       metrics.line_search_ms+=ms(timer);
+      if(!accepted)continue;
       x.swap(next);++metrics.steps;if(alpha==1)++metrics.full_step_accepts;
+      ++metrics.passes.back().steps;
       metrics.minimum_step=std::min(metrics.minimum_step,alpha);metrics.step_sum+=alpha;
+      refresh_next=alpha<.01;
     }
     metrics.termination=converged?"newton_decrement":"iteration_limit";
   }

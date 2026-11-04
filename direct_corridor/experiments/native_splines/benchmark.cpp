@@ -98,6 +98,7 @@ int main(int argc,char** argv) {
        <<",\"total_ms\":"<<r.metrics.total_ms<<",\"certificate_ms\":"<<r.metrics.certificate_ms
        <<",\"optimization_ms\":"<<r.metrics.optimization_ms<<",\"smoothing_ms\":"<<r.metrics.smoothing_ms
        <<",\"nodes\":"<<r.metrics.nodes<<",\"constraints\":"<<r.metrics.constraints
+       <<",\"active_constraints\":"<<r.metrics.active_constraints
        <<",\"newton_steps\":"<<r.metrics.newton_steps<<",\"refinements\":"<<r.metrics.refinements<<"}\n";log.flush();
       if(!r)throw std::runtime_error(r.message);
       baseline_times.push_back(r.metrics.total_ms);
@@ -154,12 +155,22 @@ int main(int argc,char** argv) {
       if(const char* v=std::getenv("NATIVE_PROGRESS_SAMPLES"))solver.progress_samples=std::stoi(v);
       if(const char* v=std::getenv("NATIVE_PROGRESS_DEPTH"))solver.progress_depth=std::stoi(v);
       if(const char* v=std::getenv("NATIVE_POLAR_PRUNING"))solver.polar_pruning=std::stoi(v)!=0;
+      if(const char* v=std::getenv("NATIVE_PROJECTED_PRUNING"))solver.projected_pruning=std::stoi(v);
+      if(const char* v=std::getenv("NATIVE_DISTANCE_BARRIER"))solver.distance_barrier=std::stoi(v)!=0;
+      if(const char* v=std::getenv("NATIVE_INITIAL_SWEEPS"))solver.initial_sweeps=std::stoi(v);
+      if(const char* v=std::getenv("NATIVE_INITIAL_FRACTION"))solver.initial_fraction=std::stod(v);
+      if(const char* v=std::getenv("NATIVE_HESSIAN_INTERVAL"))solver.hessian_interval=std::stoi(v);
+      if(const char* v=std::getenv("NATIVE_WEAK_CURVATURE_RATIO"))solver.weak_curvature_ratio=std::stod(v);
       if(const char* v=std::getenv("NATIVE_MERGE_SUPPORTS"))solver.merge_shared_supports=std::stoi(v)!=0;
       if(const char* v=std::getenv("NATIVE_TENSOR_ASSEMBLY"))solver.tensor_assembly=std::stoi(v)!=0;
+      if(const char* v=std::getenv("NATIVE_GROUPED_ASSEMBLY"))solver.grouped_assembly=std::stoi(v)!=0;
+      if(const char* v=std::getenv("NATIVE_AXIS_KERNELS"))solver.axis_kernels=std::stoi(v)!=0;
       if(const char* v=std::getenv("NATIVE_TRIAL_FIRST"))solver.trial_first=std::stoi(v)!=0;
       if(const char* v=std::getenv("NATIVE_WARM_STAGE"))solver.warm_start_stage=std::stoi(v);
       if(const char* v=std::getenv("NATIVE_WARM_RESERVE"))solver.warm_reserve=std::stod(v);
       if(const char* v=std::getenv("NATIVE_CACHED_LINE"))solver.cached_line=std::stoi(v)!=0;
+      if(const char* v=std::getenv("NATIVE_SKIP_UNUSED_VALUES"))solver.skip_unused_values=std::stoi(v)!=0;
+      if(const char* v=std::getenv("NATIVE_BOUNDED_LINE"))solver.bounded_line=std::stoi(v)!=0;
       if(const char* v=std::getenv("NATIVE_REUSE_ENERGY"))solver.reuse_energy=std::stoi(v)!=0;
       if(const char* v=std::getenv("NATIVE_CACHE_VALUES"))solver.cache_values=std::stoi(v)!=0;
       if(const char* v=std::getenv("NATIVE_SEPARATOR_REUSE_GAP"))solver.separator_reuse_gap=std::stod(v);
@@ -186,6 +197,10 @@ int main(int argc,char** argv) {
          <<",\"center_energy\":"<<solver.center_energy<<",\"shape_energy\":"<<solver.shape_energy
          <<",\"progress_samples\":"<<solver.progress_samples<<",\"progress_depth\":"<<solver.progress_depth
          <<",\"merge_shared_supports\":"<<solver.merge_shared_supports<<",\"tensor_assembly\":"<<solver.tensor_assembly
+         <<",\"grouped_assembly\":"<<solver.grouped_assembly
+         <<",\"axis_kernels\":"<<solver.axis_kernels
+         <<",\"skip_unused_values\":"<<solver.skip_unused_values
+         <<",\"bounded_line\":"<<solver.bounded_line
          <<",\"cached_line\":"<<solver.cached_line<<",\"trial_first\":"<<solver.trial_first
          <<",\"reuse_energy\":"<<solver.reuse_energy<<",\"cache_values\":"<<solver.cache_values
          <<",\"separator_reuse_gap\":"<<solver.separator_reuse_gap
@@ -195,6 +210,10 @@ int main(int argc,char** argv) {
          <<",\"path_predictor\":"<<solver.path_predictor<<",\"volume_refinements\":"<<solver.volume_refinements<<",\"volume_trust\":"<<solver.volume_trust
          <<",\"warm_start_stage\":"<<solver.warm_start_stage<<",\"warm_reserve\":"<<solver.warm_reserve
          <<",\"coordinate_sweeps\":"<<solver.coordinate_sweeps<<",\"polar_pruning\":"<<solver.polar_pruning
+         <<",\"projected_pruning\":"<<solver.projected_pruning
+         <<",\"distance_barrier\":"<<solver.distance_barrier<<",\"initial_sweeps\":"<<solver.initial_sweeps<<",\"initial_fraction\":"<<solver.initial_fraction
+         <<",\"hessian_interval\":"<<solver.hessian_interval
+         <<",\"weak_curvature_ratio\":"<<solver.weak_curvature_ratio
          <<",\"working_set\":"<<solver.working_set<<"}\n";
       for(int rep=-1;rep<repeats;++rep) {
         solver.check_gradients=rep==-1;
@@ -214,6 +233,16 @@ int main(int argc,char** argv) {
            <<",\"verification_ms\":"<<result.verification_ms<<",\"variables\":"<<m.variables<<",\"controls\":"<<m.controls
            <<",\"active_constraints\":"<<m.active_constraints<<",\"final_decrement\":"<<m.final_decrement
            <<",\"merged_supports\":"<<m.merged_supports<<",\"support_groups\":"<<m.support_groups<<",\"pruned_supports\":"<<m.pruned_supports
+           <<",\"pruning_ms\":"<<m.pruning_ms
+           <<",\"initial_inflation_ms\":"<<m.initial_inflation_ms
+           <<",\"hessian_refreshes\":"<<m.hessian_refreshes
+           <<",\"bound_line_evaluations\":"<<m.bound_line_evaluations
+           <<",\"bound_line_accepts\":"<<m.bound_line_accepts
+           <<",\"exact_line_evaluations\":"<<m.exact_line_evaluations
+           <<",\"weak_curvature_rows\":"<<m.weak_curvature_rows
+           <<",\"axis_supports\":"<<m.axis_supports
+           <<",\"gradient_support_rows\":"<<m.gradient_support_rows<<",\"hessian_support_rows\":"<<m.hessian_support_rows
+           <<",\"boundary_support_rows\":"<<m.boundary_support_rows<<",\"line_support_rows\":"<<m.line_support_rows
            <<",\"full_step_accepts\":"<<m.full_step_accepts<<",\"feasible_scans\":"<<m.feasible_scans
            <<",\"warm_reserves\":"<<m.warm_reserves
            <<",\"energy_builds\":"<<m.energy_builds<<",\"minimum_step\":"<<m.minimum_step<<",\"mean_step\":"<<(m.steps?m.step_sum/m.steps:0)
@@ -226,6 +255,14 @@ int main(int argc,char** argv) {
            <<",\"regularity_repairs\":"<<m.regularity_repairs
            <<",\"damping_retries\":"<<m.damping_retries<<",\"equality_rank\":"<<m.equality_rank
            <<",\"initial_scale\":"<<m.initial_scale<<",\"gradient_error\":"<<m.gradient_error<<",\"hessian_error\":"<<m.hessian_error;
+        log<<",\"optimization_passes\":[";
+        for(size_t p=0;p<m.passes.size();++p) {
+          const auto& pass=m.passes[p];if(p)log<<',';
+          log<<"{\"geometric\":"<<pass.geometric<<",\"retained\":"<<pass.retained
+             <<",\"boundary\":"<<pass.boundary<<",\"progress\":"<<pass.progress
+             <<",\"steps\":"<<pass.steps<<",\"pruning_ms\":"<<pass.pruning_ms<<'}';
+        }
+        log<<']';
         success=result.status=="SUCCESS";
         if(success) {
           certificate(log,ns::certify(result.corridor,result.cover));

@@ -3,6 +3,11 @@
 Research branch based on `ros2@15c70cd`. Production generation and ROS defaults
 remain H5-S. The report, figures, full measurement sequences and compressed
 geometry/trajectory coefficients are in
+[`原生三次走廊冗余约束与Newton内核优化.md`](../../../docs/原生三次走廊冗余约束与Newton内核优化.md).
+This fifth round selects configurations by corridor generation time, union
+volume, geometric regularity and continuous safety. Trajectory optimization
+is retained as historical data and is not a selection criterion.
+The fourth-round report is
 [`原生三次走廊连续约束与自适应优化实验.md`](../../../docs/原生三次走廊连续约束与自适应优化实验.md).
 The [third-round report](../../../docs/原生三次走廊约束与求解加速.md) covers
 shared supports, block assembly and scalar line searches.
@@ -25,6 +30,14 @@ neither H5 nor FIRI. `generateNative(seed, index,
 bounds, options)` selects `NativePreset::Balanced`; `Fast` and `Volume` select
 the measured alternatives. `generateCubic()` exposes individual research
 settings and the optional H5 projection reference.
+
+`Balanced` now also uses proved support pruning in both Hessian assembly and
+step-boundary scans, axis-aligned plane kernels, derivative-only Newton assembly,
+and a rational sufficient Armijo test with an exact logarithm fallback. It takes
+8/3/3 Newton steps per inflation, uses the preceding factor for barrier-path
+predictions, and finishes with one certified swept-volume refinement.
+The other presets retain their previous solver budgets. Their exact kernels
+also omit unused values and use the sufficient line-search test.
 
 `CubicQuery` consumes the returned degree-three `Geometry` directly. It uses
 cubic Horner evaluation, an analytical 2×2 Gram inverse, and exact-key caches.
@@ -81,6 +94,36 @@ The continuous oracle supports degree-six support slacks and degree-four fixed
 normal progress slacks; only support-point exchange is connected to generation.
 Exact knot insertion is tested independently; the current adaptive experiment
 selects an initial nonuniform knot vector rather than performing online insertion.
+
+Fifth-round generation experiments use `explore_round5.py`. It explicitly
+freezes the old solver settings before applying each configuration, alternates
+configuration order by case, uses CPU 2 and a 4 GiB address-space limit, and
+records binary/source/input hashes. The `frozen` arm expects a separately built
+`f72f3fe` benchmark at `.scratch/native_splines/round5_baseline/native_spline_benchmark`.
+`pruned_predict3_volume1` is the new Balanced configuration; `projected_axis_bounded`
+isolates pruning plus exact kernels at the old Newton budget.
+
+```bash
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 \
+python3 direct_corridor/experiments/native_splines/explore_round5.py \
+  --configurations frozen,projected_axis_bounded,pruned_predict3_volume1 \
+  --repeats 21 --output .scratch/native_splines/reproduce-round5
+```
+
+`evaluate_corridors_round5.py` checks the archived screening geometries with a
+shared-domain QMC sequence and an independent geometry audit. It never runs a
+trajectory optimizer. `evaluate_round5.py` retains the earlier comparison and
+requires an explicit `--trajectories` to replay trajectories. `analyze_round5.py`
+archives all screening/final data, verifies that the finally timed coefficients
+match the measured geometries, and plots time, volume and curvature together.
+The selected configuration improves time and union volume on the seven frozen
+development cases; local curvature and shape bending can increase.
+
+Experimental alternatives remain explicit settings: `projected_pruning=1`
+prunes only assembly, `distance_barrier` uses the regularized support-distance
+barrier, `initial_sweeps` inflates the initial shapes, `hessian_interval` reuses
+a factor, and `weak_curvature_ratio` omits weak shape/cross curvature while
+keeping the full gradient. These alternatives do not bypass final certificates.
 
 The CSV v3 header begins `degree,u0,u1` followed by nine world-space geometric
 channels. There are exactly four or six controls per interval. The legacy v2

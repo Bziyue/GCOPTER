@@ -11,10 +11,19 @@ inline void applyNativePreset(NativePreset preset,Options& options,OptimizerSett
   solver.progress_threshold=.03;
   solver.tensor_assembly=false;
   solver.cached_line=true;
+  solver.axis_kernels=true;
+  solver.skip_unused_values=true;
+  solver.bounded_line=true;
   solver.progress_depth=0;
   solver.center_energy=solver.shape_energy=preset==NativePreset::Volume?1e-6:1e-5;
   solver.iterations=preset==NativePreset::Balanced?8:6;
   solver.corrector_iterations=preset==NativePreset::Volume?0:4;
+  if(preset==NativePreset::Balanced) {
+    solver.projected_pruning=2;
+    solver.path_predictor=1;
+    solver.corrector_iterations=3;
+    solver.volume_refinements=1;
+  }
   options.initial_iterations=solver.iterations;
   options.inflation_iterations=2;
 }

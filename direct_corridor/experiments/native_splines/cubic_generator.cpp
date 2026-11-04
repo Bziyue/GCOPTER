@@ -59,6 +59,10 @@ CubicResult generateCubic(const std::vector<Vec3>& input_seed,const ObstacleInde
      !(solver.warm_reserve>=0&&solver.warm_reserve<1)||
      (solver.progress_samples!=1&&solver.progress_samples!=3)||solver.progress_depth<0||solver.progress_depth>1||
      solver.coordinate_sweeps<0||solver.coordinate_sweeps>10||
+     solver.projected_pruning<0||solver.projected_pruning>2||
+     solver.initial_sweeps<0||solver.initial_sweeps>10||!(solver.initial_fraction>0&&solver.initial_fraction<1)||
+     solver.hessian_interval<1||solver.hessian_interval>8||
+     !(solver.weak_curvature_ratio>=0&&solver.weak_curvature_ratio<1)||
      solver.support_exchange<0||solver.support_exchange>3||solver.exchange_rounds<0||solver.exchange_iterations<1||
      solver.adaptive_knots<0||solver.adaptive_knots>2||!(solver.path_predictor>=0&&solver.path_predictor<=2)||
      solver.volume_refinements<0||solver.volume_refinements>8||!(solver.volume_trust>0)) {
@@ -167,6 +171,14 @@ CubicResult generateCubic(const std::vector<Vec3>& input_seed,const ObstacleInde
         if(!energy)++result.optimizer.energy_builds;
         const Eigen::VectorXd initial=model.x;
         auto candidate=model.x;
+        if(!iteration&&solver.initial_sweeps>0) {
+          timer=Clock::now();
+          problem.inflate(candidate,result.optimizer,solver.initial_sweeps,solver.initial_fraction);
+          if(!certify(model.geometry(candidate),cover).safe()) {
+            candidate=initial;++result.optimizer.coordinate_rejections;
+          }
+          result.optimizer.initial_inflation_ms+=ms(timer);
+        }
         if(iteration&&solver.warm_reserve>0) {
           timer=Clock::now();
           // Uniform shape contraction preserves each support halfspace and
