@@ -1,7 +1,8 @@
 # Native spline experiments
 
-Research branch based on `ros2@15c70cd`. Production generation and ROS defaults
-remain H5-S. The report, figures, full measurement sequences and compressed
+Research branch based on `ros2@15c70cd`. The RViz2 interactive demo now defaults
+to native C3; see [interactive commands](../../../docs/C3交互可视化.md).
+The production `generate()` library entry remains H5-S. The report, figures, full measurement sequences and compressed
 geometry/trajectory coefficients are in
 [`原生三次走廊冗余约束与Newton内核优化.md`](../../../docs/原生三次走廊冗余约束与Newton内核优化.md).
 This fifth round selects configurations by corridor generation time, union

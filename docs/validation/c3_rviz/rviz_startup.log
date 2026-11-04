@@ -1,0 +1,15 @@
+[INFO] [launch]: All log files can be found below /home/zdp/.ros/log/2026-11-04-13-57-35-876333-zdp-MS-7E30-64287
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [mockamap_node-1]: process started with pid [64315]
+[INFO] [direct_corridor_demo-2]: process started with pid [64316]
+[INFO] [rviz2-3]: process started with pid [64317]
+[direct_corridor_demo-2] [INFO] [1793771855.926738898] [direct_demo]: WAITING_FOR_MAP
+[direct_corridor_demo-2] [INFO] [1793771855.926840719] [direct_demo]: session_dir=/tmp/gcopter_direct_demo/run_1793771855923589000_64316
+[direct_corridor_demo-2] [INFO] [1793771855.926845539] [direct_demo]: shape_mode=c3; local_range=3.00 m
+[mockamap_node-1] [INFO] [1793771855.989178914] [mockamap.maps]: threshold: 0.057230
+[mockamap_node-1] [INFO] [1793771856.012589986] [mockamap.maps]: the number of points before optimization is 239999
+[mockamap_node-1] [INFO] [1793771856.013115307] [mockamap.maps]: finish: infill 0.299999%
+[rviz2-3] [INFO] [1793771857.163458634] [rviz2]: Stereo is NOT SUPPORTED
+[rviz2-3] [INFO] [1793771857.163519334] [rviz2]: OpenGl version: 4.6 (GLSL 4.6)
+[rviz2-3] [INFO] [1793771857.168573057] [rviz2]: Stereo is NOT SUPPORTED
+[direct_corridor_demo-2] [INFO] [1793771857.318683055] [direct_demo]: WAITING_FOR_START

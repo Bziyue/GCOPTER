@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// GCOPTER mockamap + original Informed RRT* -> direct quintic Hermite corridor
+// GCOPTER mockamap + original Informed RRT* -> native C3 corridor
 // demo.
 #include <ompl/util/RandomNumbers.h>
 #include <unistd.h>
@@ -26,6 +26,7 @@
 #include "gcopter/sfc_gen.hpp"
 #include "gcopter/voxel_map.hpp"
 #include "refit.hpp"
+#include "cubic_generator.hpp"
 
 using namespace gcopter::direct;
 using Clock = std::chrono::steady_clock;
@@ -69,10 +70,10 @@ class DirectDemo final : public rclcpp::Node {
     options_.max_offset = declare_parameter<double>("max_offset", 1.5);
     options_.local_range = declare_parameter<double>("local_range", 0.);
     options_.local_progress = declare_parameter<double>("local_progress", 7.);
-    shape_mode_ = declare_parameter<std::string>("shape_mode", "smooth");
-    if (shape_mode_ != "baseline" && shape_mode_ != "boundary-12" && shape_mode_ != "smooth")
-      throw std::invalid_argument("shape_mode must be baseline, boundary-12 or smooth");
-    if(shape_mode_=="smooth") {
+    shape_mode_ = declare_parameter<std::string>("shape_mode", "c3");
+    if (shape_mode_ != "baseline" && shape_mode_ != "boundary-12" && shape_mode_ != "smooth" && shape_mode_ != "c3")
+      throw std::invalid_argument("shape_mode must be c3, baseline, boundary-12 or smooth");
+    if(shape_mode_=="smooth" || shape_mode_=="c3") {
       options_.frame_smoothing=1.5;
       options_.section_smoothing=.2;
       options_.jet_smoothing=.01;
@@ -424,6 +425,8 @@ class DirectDemo final : public rclcpp::Node {
     const double search_ms = milliseconds(begin);
     std::string outcome = "SEARCH_FAILED";
     Result result;
+    native::CubicResult cubic;
+    double adapter_ms=0;
     Options request_options = options_;
     experiment::ShapeFitMetrics shape_metrics;
     if (std::isfinite(cost) && seed.size() >= 2 &&
@@ -456,11 +459,33 @@ class DirectDemo final : public rclcpp::Node {
           request_options.max_radius = .5 * diagonal + .001;
           request_options.max_offset = diagonal + .001;
         }
+        if(shape_mode_=="c3") {
+          cubic=native::generateNative(seed,*map_,bounds_,request_options);
+          result.metrics.total_ms=cubic.total_ms;
+          result.metrics.nodes=cubic.optimizer.controls;
+          result.metrics.controls=cubic.corridor.controls.size();
+          result.metrics.constraints=cubic.optimizer.constraints;
+          result.metrics.refinements=cubic.refinements;
+          result.metrics.optimization_ms=cubic.optimizer.assembly_ms+cubic.optimizer.solve_ms+cubic.optimizer.line_search_ms;
+          result.metrics.certificate_ms=cubic.optimizer.certificate_ms+cubic.verification_ms;
+          result.metrics.newton_steps=cubic.optimizer.steps;
+          result.metrics.regularity_repairs=cubic.optimizer.regularity_repairs;
+          result.message=cubic.message;
+          if(cubic.status=="SUCCESS") {
+            result.status=Status::Success;
+            const auto adapter_start=Clock::now();
+            // Exact degree elevation for the existing renderer only.
+            result.corridor=cubic.corridor.quinticAdapter();
+            adapter_ms=milliseconds(adapter_start);
+          }
+          outcome=cubic.status=="SUCCESS"?"PASS":cubic.status;
+        } else {
         result = shape_mode_ == "boundary-12"
             ? experiment::generateCoordinateShape(seed, *map_, bounds_, request_options,
                                                    shape_metrics, 12, false, true)
             : generate(seed, *map_, bounds_, request_options);
         outcome = result ? "PASS" : statusName(result.status);
+        }
       } else
         outcome = "SEARCH_EDGE_COLLISION";
     }
@@ -481,6 +506,7 @@ class DirectDemo final : public rclcpp::Node {
     double min_axis = 0, median_minor = 0, median_major = 0;
     const auto rendering_start = Clock::now();
     if (result) {
+      if(shape_mode_=="c3")cubic.corridor.write((dir/"cubic_controls.csv").string());
       const auto& c = result.corridor;
       const int samples = std::min(1200, std::max(240, int(c.pieces() * 6)));
       constexpr int angles = 48;
@@ -618,7 +644,13 @@ class DirectDemo final : public rclcpp::Node {
            << ",\"total_ms\":" << total_ms << ",\"seed_points\":" << seed.size()
            << ",\"seed_length\":" << length << ",\"turns_over_30deg\":" << turns
            << ",\"height_span\":" << (seed.empty() ? 0 : highz - lowz)
-           << ",\"representation\":\"quintic_hermite_v2\""
+           << ",\"representation\":\"" << (shape_mode_=="c3"?"native_cubic_v3":"quintic_hermite_v2") << '"'
+           << ",\"visualization_adapter_ms\":" << adapter_ms
+           << ",\"trajectory_optimization\":false"
+           << ",\"c3_assembly_ms\":" << cubic.optimizer.assembly_ms
+           << ",\"c3_solve_ms\":" << cubic.optimizer.solve_ms
+           << ",\"c3_line_search_ms\":" << cubic.optimizer.line_search_ms
+           << ",\"c3_cover_ms\":" << cubic.cover_metrics.total_ms
            << ",\"nodes\":" << result.metrics.nodes
            << ",\"max_center_shift\":" << result.metrics.max_center_shift
            << ",\"optimization_ms\":" << result.metrics.optimization_ms
