@@ -6,6 +6,9 @@ namespace gcopter::direct::native {
 enum class NativePreset { Fast, Balanced, Volume };
 inline void applyNativePreset(NativePreset preset,Options& options,OptimizerSettings& solver) {
   solver=OptimizerSettings{};
+  solver.reuse_construction=true;
+  solver.fast_construction=true;
+  solver.cache_coverage=true;
   solver.initial_radius_fraction=.65;
   solver.fraction_boundary=.99;
   solver.progress_threshold=.03;

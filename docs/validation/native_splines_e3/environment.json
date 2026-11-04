@@ -1,0 +1,12 @@
+{
+  "kernel": "Linux-7.0.0-42-generic-x86_64-with-glibc2.43",
+  "cpu": "AMD Ryzen 7 9700X 8-Core Processor",
+  "compiler": "c++ (Ubuntu 15.2.0-16ubuntu1) 15.2.0",
+  "build_type": "Release",
+  "native_arch": false,
+  "benchmark_cpu": 2,
+  "numerical_threads": 1,
+  "build_jobs": 1,
+  "address_space_limit_bytes": 4294967296,
+  "baseline_commit": "3a34a75dc4b9497d069bd179f3ba2a6c01ed1a90"
+}

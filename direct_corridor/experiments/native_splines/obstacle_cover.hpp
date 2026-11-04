@@ -23,10 +23,46 @@ template<int D> struct GeometryPatch {
 };
 struct CoverMetrics {
   double query_ms=0, separation_ms=0, total_ms=0;
+  double topology_ms=0;
+  int topology_builds=0,reused_cover_spans=0;
   int reused_planes=0,reused_spheres=0;
   size_t separator_cache_bytes=0;
   size_t priority_evaluations=0;
   Metrics primitives;
+};
+// Valid for one seed/knots/bounds/options tuple. The generator owns a fresh
+// layout per knot refinement, while changing geometry reuses these intervals.
+// Dynamic support tests and separation planes are still computed each pass.
+struct CoverLayout {
+  struct Part {double begin,end;Bounds bounds;};
+  struct Span {size_t begin,end;Vec3 lower,upper;};
+  std::vector<Span> spans;
+  std::vector<Part> parts;
+  CoverLayout(const std::vector<double>& breaks,const std::vector<Vec3>& seed,const Bounds& bounds,const Options& options) {
+    const double pad=options.robot_radius+options.safety_margin+options.certificate_margin;
+    std::vector<detail::LocalBox> boxes;
+    double length=0;Vec3 a,b=seed.front();
+    for(size_t j=1;j<seed.size();) {
+      a=b;if((a-seed[j]).norm()>options.local_progress)b=a+(seed[j]-a).normalized()*options.local_progress;else b=seed[j++];
+      const double end=length+(b-a).norm();
+      boxes.push_back({length,end,{(a.cwiseMin(b)-Vec3::Constant(options.local_range)).cwiseMax(bounds.lower+Vec3::Constant(pad)),
+                                   (a.cwiseMax(b)+Vec3::Constant(options.local_range)).cwiseMin(bounds.upper-Vec3::Constant(pad))}});
+      length=end;
+    }
+    spans.resize(breaks.size()-1);
+    parts.reserve(spans.size()+boxes.size());
+    for(size_t i=0;i<spans.size();++i) {
+      auto& span=spans[i];span.begin=parts.size();span.lower=Vec3::Constant(INFINITY);span.upper=-span.lower;
+      const double s=breaks[i]*length,e=breaks[i+1]*length,h=e-s;
+      for(const auto& box:boxes) {
+        const double from=std::clamp((box.begin-s)/h,0.,1.),to=std::clamp((box.end-s)/h,0.,1.);
+        if(to<=from)continue;
+        parts.push_back({from,to,box.bounds});
+        span.lower=span.lower.cwiseMin(box.bounds.lower);span.upper=span.upper.cwiseMax(box.bounds.upper);
+      }
+      span.end=parts.size();
+    }
+  }
 };
 struct SeparatorCache {
   struct Mask {int block;unsigned long long bits;};
@@ -280,7 +316,7 @@ template<int D> struct MapCover {
       pairCuts(halves.second, failed, depth + 1);
     }
   }
-  void build(const Geometry& g,const std::vector<Vec3>& seed) {
+  void build(const Geometry& g,const std::vector<Vec3>& seed,const CoverLayout* layout=nullptr) {
     using Clock=std::chrono::steady_clock;
     auto elapsed=[](auto t){return std::chrono::duration<double,std::milli>(Clock::now()-t).count();};
     const auto start=Clock::now();
@@ -288,7 +324,7 @@ template<int D> struct MapCover {
     const double pad=options.robot_radius+options.safety_margin+options.certificate_margin;
     std::vector<detail::LocalBox> boxes;
     double length=0;Vec3 a,b=seed.front();
-    for(size_t j=1;j<seed.size();) {
+    if(!layout)for(size_t j=1;j<seed.size();) {
       a=b;if((a-seed[j]).norm()>options.local_progress)b=a+(seed[j]-a).normalized()*options.local_progress;else b=seed[j++];
       const double end=length+(b-a).norm();
       boxes.push_back({length,end,{(a.cwiseMin(b)-Vec3::Constant(options.local_range)).cwiseMax(bounds.lower+Vec3::Constant(pad)),
@@ -300,11 +336,18 @@ template<int D> struct MapCover {
       for(int axis=0;axis<3;++axis){limit(p,Vec3::Unit(axis),bounds.upper[axis]-pad);limit(p,-Vec3::Unit(axis),-bounds.lower[axis]-pad);}
       const double s=g.breaks[i]*length,e=g.breaks[i+1]*length,h=e-s;
       Vec3 lo=Vec3::Constant(INFINITY),hi=-lo;
-      for(const auto& box:boxes) {
+      auto emit=[&](double from,double to,const Bounds& box) {
+        const Patch part{i,from,to,restrictCurve<D>(p.controls,from,to)};
+        for(int axis=0;axis<3;++axis){limit(part,Vec3::Unit(axis),box.upper[axis]);limit(part,-Vec3::Unit(axis),-box.lower[axis]);}
+      };
+      if(layout) {
+        const auto& span=layout->spans[i];
+        for(size_t j=span.begin;j<span.end;++j){const auto& part=layout->parts[j];emit(part.begin,part.end,part.bounds);}
+        lo=span.lower;hi=span.upper;++timings.reused_cover_spans;
+      }else for(const auto& box:boxes) {
         const double from=std::clamp((box.begin-s)/h,0.,1.),to=std::clamp((box.end-s)/h,0.,1.);
         if(to<=from)continue;
-        const Patch part{i,from,to,restrictCurve<D>(p.controls,from,to)};
-        for(int axis=0;axis<3;++axis){limit(part,Vec3::Unit(axis),box.bounds.upper[axis]);limit(part,-Vec3::Unit(axis),-box.bounds.lower[axis]);}
+        emit(from,to,box.bounds);
         lo=lo.cwiseMin(box.bounds.lower);hi=hi.cwiseMax(box.bounds.upper);
       }
       auto timer=Clock::now();std::vector<int> scratch;
@@ -317,8 +360,9 @@ template<int D> struct MapCover {
 };
 inline std::vector<detail::SupportPlane> mapCover(const Geometry& g,const std::vector<Vec3>& seed,
     const ObstacleIndex& map,const Bounds& bounds,const Options& options,QueryCache& cache,
-    CoverMetrics& metrics,const std::function<void()>& stop,SeparatorCache* reuse=nullptr,double reuse_gap=0,bool lazy=false) {
-  if(g.degree==3){MapCover<3> c(map,bounds,options,cache,metrics,stop,reuse,reuse_gap,lazy);c.build(g,seed);return c.planes;}
-  MapCover<5> c(map,bounds,options,cache,metrics,stop,reuse,reuse_gap,lazy);c.build(g,seed);return c.planes;
+    CoverMetrics& metrics,const std::function<void()>& stop,SeparatorCache* reuse=nullptr,double reuse_gap=0,bool lazy=false,
+    const CoverLayout* layout=nullptr) {
+  if(g.degree==3){MapCover<3> c(map,bounds,options,cache,metrics,stop,reuse,reuse_gap,lazy);c.build(g,seed,layout);return c.planes;}
+  MapCover<5> c(map,bounds,options,cache,metrics,stop,reuse,reuse_gap,lazy);c.build(g,seed,layout);return c.planes;
 }
 }

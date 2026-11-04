@@ -219,44 +219,78 @@ CubicEnergy::CubicEnergy(const CubicModel& m,double length,const OptimizerSettin
 }
 CubicProblem::CubicProblem(const CubicModel& m,const std::vector<detail::SupportPlane>& cover,
                            double length,const Options& o,const OptimizerSettings& s,
-                           std::shared_ptr<const CubicEnergy> shared_energy)
+                           std::shared_ptr<const CubicEnergy> shared_energy,const CubicProblem* geometric_template)
     :model(m),options(o),settings(s),
      energy(shared_energy?std::move(shared_energy):std::make_shared<CubicEnergy>(m,length,s)),
      quadratic(energy->quadratic),linear(energy->linear) {
+  // The generator supplies this template only while model, cover, geometric
+  // settings and the pruning reference x are unchanged. Solver/progress
+  // settings may change. State-dependent progress cones are rebuilt below.
+  if(geometric_template) {
+    groups=geometric_template->groups;
+    cuts.assign(geometric_template->cuts.begin(),geometric_template->cuts.begin()+geometric_template->geometric_cuts);
+    merged_supports=geometric_template->merged_supports;reused_construction=true;
+    for(auto& group:groups)group.reach_candidates=group.exact_reach_evaluations=group.exact_reach_additional=0;
+  }else {
   // On the same parameter interval, equal normals only need the tightest
   // bound. World/local-box duplicates otherwise add both work and barrier bias.
   std::map<std::tuple<int,double,double,double,double,double>,detail::SupportPlane> unique;
-  for(const auto& p:cover) {
+  std::vector<detail::SupportPlane> planes;
+  if(settings.fast_construction) {
+    // Stable ordering reproduces std::map's first/minimum-bound winner,
+    // including equal normals and signed-zero payloads, without per-node allocation.
+    auto key=[](const auto& p){return std::make_tuple(p.span,p.begin,p.end,p.normal[0],p.normal[1],p.normal[2]);};
+    planes=cover;std::stable_sort(planes.begin(),planes.end(),[&](const auto& a,const auto& b){return key(a)<key(b);});
+    size_t count=0;
+    for(const auto& p:planes) {
+      if(count&&key(p)==key(planes[count-1])){if(p.bound<planes[count-1].bound)planes[count-1]=p;}
+      else planes[count++]=p;
+    }
+    planes.resize(count);
+  }else for(const auto& p:cover) {
     const auto key=std::make_tuple(p.span,p.begin,p.end,p.normal[0],p.normal[1],p.normal[2]);
     auto found=unique.find(key);
     if(found==unique.end()||p.bound<found->second.bound)unique[key]=p;
   }
-  std::vector<detail::SupportPlane> planes;
   SupportRefinement refinement;
   if(settings.certificate_refinement&&settings.certificate_fraction>0) {
     const auto start=Clock::now();
-    planes.reserve(unique.size());for(const auto& entry:unique)planes.push_back(entry.second);
+    if(!settings.fast_construction){planes.reserve(unique.size());for(const auto& entry:unique)planes.push_back(entry.second);}
     refinement=selectSupportRefinement(m.geometry(),planes,settings.certificate_refinement,settings.certificate_fraction);
     support_selection_ms=ms(start);support_intervals=refinement.intervals;
     refined_intervals=refinement.selected_intervals;refined_planes=refinement.selected_planes;
     refinement_extra_rows=refinement.extra_rows;support_gap_sum=refinement.gap_sum;
   }
   std::map<std::tuple<int,double,double,int>,size_t> group_ids;
+  struct IntervalRows {
+    Curve<5,Eigen::Vector4d> weights;
+    std::array<int,6> groups{{-1,-1,-1,-1,-1,-1}};
+  };
+  std::map<std::tuple<int,double,double,int>,IntervalRows> interval_rows;
   auto add_plane=[&](const detail::SupportPlane& plane,auto degree_tag) {
     constexpr int degree=decltype(degree_tag)::value;
     const auto& span=m.basis.spans[plane.span];
     Curve<degree,Eigen::Vector4d> basis;
-    if constexpr(degree==3) {
-      for(int j=0;j<4;++j)basis[j]=span.extraction.row(j);
-      basis=restrictCurve<3>(basis,plane.begin,plane.end);
-    }else {
-      Curve<3,Eigen::Vector4d> cubic;
-      for(int j=0;j<4;++j)cubic[j]=span.extraction.row(j);
-      basis=elevate<3,5>(restrictCurve<3>(cubic,plane.begin,plane.end));
+    IntervalRows* cached=nullptr;bool extract=true;
+    if(settings.fast_construction) {
+      const auto found=interval_rows.try_emplace(std::make_tuple(plane.span,plane.begin,plane.end,degree));
+      cached=&found.first->second;extract=found.second;
+      if(extract)++basis_cache_misses;else ++basis_cache_hits;
+    }
+    if(extract) {
+      if constexpr(degree==3) {
+        for(int j=0;j<4;++j)basis[j]=span.extraction.row(j);
+        basis=restrictCurve<3>(basis,plane.begin,plane.end);
+      }else {
+        Curve<3,Eigen::Vector4d> cubic;
+        for(int j=0;j<4;++j)cubic[j]=span.extraction.row(j);
+        basis=elevate<3,5>(restrictCurve<3>(cubic,plane.begin,plane.end));
+      }
+      if(cached)for(int j=0;j<=degree;++j)cached->weights[j]=basis[j];
     }
     for(int j=0;j<(plane.begin==plane.end?1:degree+1);++j) {
       int local_span=plane.span;
-      Eigen::Vector4d weights=basis[j];
+      Eigen::Vector4d weights=cached?cached->weights[j]:basis[j];
       // Disjoint interior row IDs prevent cubic/elevated group aliasing.
       auto group_key=std::make_tuple(plane.span,plane.begin,plane.end,j+(degree==5?4:0));
       if(settings.merge_shared_supports&&(j==0||j==degree)) {
@@ -277,8 +311,13 @@ CubicProblem::CubicProblem(const CubicModel& m,const std::vector<detail::Support
       }
       // Skip constraints which are identically constant (e.g. a straight end cap).
       if(!c.compact()){if(c.bound < -1e-9)throw std::runtime_error("inconsistent constant support plane");continue;}
-      auto inserted=group_ids.emplace(group_key,groups.size());
-      if(inserted.second) {
+      size_t group_id;bool create=false;
+      if(cached&&cached->groups[j]>=0){group_id=cached->groups[j];++group_lookup_reuses;}
+      else {
+        const auto inserted=group_ids.emplace(group_key,groups.size());group_id=inserted.first->second;create=inserted.second;
+        if(cached)cached->groups[j]=int(group_id);
+      }
+      if(create) {
         Group group;group.first=5*local.ids[0];group.count=4;
         group.reference.setZero();
         for(int k=0;k<4;++k) {
@@ -291,7 +330,7 @@ CubicProblem::CubicProblem(const CubicModel& m,const std::vector<detail::Support
         for(int k=0;k<group.count;++k)group.maps[k]=group.maps[k+start];
         groups.push_back(std::move(group));
       }
-      groups[inserted.first->second].supports.push_back({plane.normal,plane.bound,!settings.working_set});
+      groups[group_id].supports.push_back({plane.normal,plane.bound,!settings.working_set});
     }
   };
   const auto cubic=std::integral_constant<int,3>{};
@@ -386,6 +425,7 @@ CubicProblem::CubicProblem(const CubicModel& m,const std::vector<detail::Support
       product<<n[0]*n[0],n[1]*n[0],n[1]*n[1],n[2]*n[0],n[2]*n[1],n[2]*n[2];
       group.normal_products.push_back(product);
     }
+  }
   }
   geometric_cuts=cuts.size();
   if(settings.working_set)activateSupports(m.x);
@@ -755,6 +795,9 @@ double CubicProblem::feasibleStep(const Eigen::VectorXd& x,const Eigen::VectorXd
   return std::min(1.,(settings.fraction_boundary>0?settings.fraction_boundary:.99)*limit);
 }
 void CubicProblem::optimize(Eigen::VectorXd& x,OptimizerMetrics& metrics,const std::function<void()>& stop)const {
+  metrics.construction_reuses+=reused_construction;
+  metrics.basis_cache_hits+=basis_cache_hits;metrics.basis_cache_misses+=basis_cache_misses;
+  metrics.group_lookup_reuses+=group_lookup_reuses;
   metrics.controls=model.basis.count;metrics.variables=x.size()-4;metrics.constraints=cuts.size();metrics.equality_rank=equalities.rows();
   metrics.merged_supports=merged_supports;metrics.support_groups=groups.size();metrics.pruned_supports=0;
   metrics.axis_supports=0;

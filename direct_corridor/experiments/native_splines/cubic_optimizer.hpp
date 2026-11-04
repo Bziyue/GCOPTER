@@ -21,6 +21,9 @@ struct CubicModel {
 };
 struct OptimizerMetrics {
   double setup_ms=0,assembly_ms=0,solve_ms=0,line_search_ms=0,certificate_ms=0;
+  double initial_problem_ms=0,initial_pruning_ms=0;
+  int construction_reuses=0;
+  int basis_cache_hits=0,basis_cache_misses=0,group_lookup_reuses=0;
   double gradient_error=0,hessian_error=0,initial_scale=1;
   double gradient_reference_error=0,hessian_reference_error=0,derivative_min_step=1;
   int steps=0,backtracks=0,damping_retries=0,regularity_backtracks=0;
@@ -66,6 +69,8 @@ struct OptimizerSettings {
   bool skip_unused_values=false;
   bool bounded_line=false;
   bool reuse_energy=true,cache_values=false;
+  bool reuse_construction=false,cache_coverage=false;
+  bool fast_construction=false;
   double separator_reuse_gap=-1;
   int support_exchange=0,exchange_rounds=4,exchange_iterations=4;
   bool lazy_priorities=true;
@@ -156,6 +161,8 @@ struct CubicProblem {
   std::vector<Group> groups;
   size_t geometric_cuts=0;
   int merged_supports=0;
+  bool reused_construction=false;
+  int basis_cache_hits=0,basis_cache_misses=0,group_lookup_reuses=0;
   double pruning_ms=0;
   double support_selection_ms=0,support_gap_sum=0;
   int support_intervals=0,refined_intervals=0,refined_planes=0,refinement_extra_rows=0;
@@ -165,7 +172,8 @@ struct CubicProblem {
   Eigen::MatrixXd equalities;
   CubicProblem(const CubicModel& m,const std::vector<detail::SupportPlane>& cover,
                double length,const Options& o,const OptimizerSettings& s,
-               std::shared_ptr<const CubicEnergy> shared_energy={});
+               std::shared_ptr<const CubicEnergy> shared_energy={},
+               const CubicProblem* geometric_template=nullptr);
   struct Evaluation {
     Eigen::VectorXd energy_gradient;
     std::vector<Vec3> cones;

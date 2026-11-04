@@ -34,6 +34,22 @@ plane and the full-section Jacobian. `run_e2.py --blocks 3 --repeats 7` rotates
 configuration order across three serial blocks and retains all 21 timings,
 CPU time, coefficient hashes and certificate audits. It reuses the E1 input
 manifest and enforces a 4 GiB address-space limit and one numerical thread.
+
+The [E3 construction/coverage experiment](../../../docs/原生三次走廊E3构造缓存与覆盖复用实验.md)
+keeps cubic coefficients, original support planes and Newton decisions exactly
+unchanged. Across 67 frozen inputs, the sum of per-case generation medians falls
+by 6.75% (6.83% for the 65 successful cases). All three native presets now enable
+`reuse_construction`, `fast_construction` and `cache_coverage`. These reuse the
+initial feasible problem and geometric rows during progress repairs, cache
+interval extraction/group lookups, and retain the static local-box layout.
+Dynamic obstacle separation still runs for the current geometry each pass.
+The benchmark switches are `NATIVE_REUSE_CONSTRUCTION`,
+`NATIVE_FAST_CONSTRUCTION` and `NATIVE_CACHE_COVERAGE`; setting all three to `0`
+selects the instrumented legacy implementation. `run_e3.py` compares it with the
+frozen `3a34a75` binary, individual ablations and the combined implementation,
+serially under the same 4 GiB limit. `setup_ms` now includes initialization's
+feasibility-problem construction; `initial_problem_ms` exposes that component.
+
 The fourth-round report is
 [`原生三次走廊连续约束与自适应优化实验.md`](../../../docs/原生三次走廊连续约束与自适应优化实验.md).
 The [third-round report](../../../docs/原生三次走廊约束与求解加速.md) covers
@@ -52,7 +68,8 @@ natural-endpoint projection ablation, and common-backend trajectory replay.
 The current native path uses clearance-based initialization, grouped 9D
 support Hessians, shared-support merging, occupied 5×5 band blocks, cached
 quadratic line searches, shared fixed energy matrices,
-lazy obstacle metric priorities, and quadratic-derivative progress cones. It calls
+cached construction and coverage layouts, lazy obstacle metric priorities, and
+quadratic-derivative progress cones. It calls
 neither H5 nor FIRI. `generateNative(seed, index,
 bounds, options)` selects `NativePreset::Balanced`; `Fast` and `Volume` select
 the measured alternatives. `generateCubic()` exposes individual research

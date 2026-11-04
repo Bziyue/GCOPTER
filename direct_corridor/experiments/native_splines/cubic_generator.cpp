@@ -105,6 +105,12 @@ CubicResult generateCubic(const std::vector<Vec3>& input_seed,const ObstacleInde
       result.initialization_ms+=ms(timer);
       if(size_t(model.basis.count)>o.max_controls)throw Failure{Status::Capacity,"cubic control capacity"};
       QueryCache cache;std::vector<detail::SupportPlane> cover;bool initialized=false;
+      std::unique_ptr<CoverLayout> cover_layout;
+      if(solver.cache_coverage) {
+        timer=Clock::now();cover_layout=std::make_unique<CoverLayout>(model.basis.breaks,seed,bounds,o);
+        const double elapsed=ms(timer);result.cover_metrics.topology_ms+=elapsed;
+        result.cover_metrics.total_ms+=elapsed;++result.cover_metrics.topology_builds;
+      }
       SeparatorCache separator_cache;
       auto* reused_separators=solver.separator_reuse_gap>=0?&separator_cache:nullptr;
       std::shared_ptr<const CubicEnergy> energy;
@@ -113,6 +119,7 @@ CubicResult generateCubic(const std::vector<Vec3>& input_seed,const ObstacleInde
         result.optimizer.setup_ms+=ms(timer);++result.optimizer.energy_builds;
       }
       const auto original=model.x;
+      std::unique_ptr<CubicProblem> initial_problem;
       for(int attempt=0;attempt<(projected_reference?20:solver.initial_radius_fraction>0?2:1);++attempt) {
         ++result.initialization_attempts;stop();
         if(attempt) {
@@ -125,12 +132,20 @@ CubicResult generateCubic(const std::vector<Vec3>& input_seed,const ObstacleInde
         }
         try {
           const auto g=model.geometry();
-          cover=mapCover(g,seed,index,bounds,o,cache,result.cover_metrics,stop,reused_separators,std::max(1e-6,solver.separator_reuse_gap),solver.lazy_priorities);
+          cover=mapCover(g,seed,index,bounds,o,cache,result.cover_metrics,stop,reused_separators,std::max(1e-6,solver.separator_reuse_gap),solver.lazy_priorities,cover_layout.get());
           if(!certify(g,cover).safe())throw Failure{Status::VerificationFailed,"initial full-disk certificate"};
           auto initialization_solver=solver;initialization_solver.certificate_refinement=0;
+          const auto preparation=Clock::now();
           CubicProblem test(model,cover,length,o,initialization_solver,energy);
+          const double preparation_ms=ms(preparation);
+          result.optimizer.initial_problem_ms+=preparation_ms;result.optimizer.setup_ms+=preparation_ms;
+          result.optimizer.initial_pruning_ms+=test.pruning_ms;result.optimizer.pruning_ms+=test.pruning_ms;
+          result.optimizer.basis_cache_hits+=test.basis_cache_hits;result.optimizer.basis_cache_misses+=test.basis_cache_misses;
+          result.optimizer.group_lookup_reuses+=test.group_lookup_reuses;
           if(!energy)++result.optimizer.energy_builds;
           if(!std::isfinite(test.objective(model.x,.003/model.basis.count)))throw Failure{Status::InsufficientClearance,"initial SOC interior"};
+          if(solver.reuse_construction&&!solver.support_exchange&&!solver.working_set)
+            initial_problem=std::make_unique<CubicProblem>(std::move(test));
           initialized=true;break;
         }catch(const Failure& error){result.message=error.message;}
       }
@@ -156,7 +171,7 @@ CubicResult generateCubic(const std::vector<Vec3>& input_seed,const ObstacleInde
             }
             result.initialization_ms+=ms(timer);
           }
-          cover=mapCover(model.geometry(),seed,index,bounds,o,cache,result.cover_metrics,stop,reused_separators,std::max(1e-6,solver.separator_reuse_gap),solver.lazy_priorities);
+          cover=mapCover(model.geometry(),seed,index,bounds,o,cache,result.cover_metrics,stop,reused_separators,std::max(1e-6,solver.separator_reuse_gap),solver.lazy_priorities,cover_layout.get());
         }
         timer=Clock::now();
         auto current=solver;current.progress_spans=known_progress;if(!iteration)current.iterations=o.initial_iterations;
@@ -173,7 +188,8 @@ CubicResult generateCubic(const std::vector<Vec3>& input_seed,const ObstacleInde
             point.begin=point.end=plane.begin+t*(plane.end-plane.begin);working_cover.push_back(point);
           }
         }
-        CubicProblem problem(model,working_cover,length,o,current,energy);result.optimizer.setup_ms+=ms(timer);
+        CubicProblem problem(model,working_cover,length,o,current,energy,initial_problem.get());
+        initial_problem.reset();result.optimizer.setup_ms+=ms(timer);
         if(!energy)++result.optimizer.energy_builds;
         const Eigen::VectorXd initial=model.x;
         auto candidate=model.x;
@@ -243,7 +259,10 @@ CubicResult generateCubic(const std::vector<Vec3>& input_seed,const ObstacleInde
           current.strict_progress_spans.erase(std::unique(current.strict_progress_spans.begin(),current.strict_progress_spans.end()),current.strict_progress_spans.end());
           current.barrier_begin=0;
           current.check_gradients=false;++result.optimizer.regularity_repairs;
-          timer=Clock::now();CubicProblem repaired(model,working_cover,length,o,current,energy);result.optimizer.setup_ms+=ms(timer);
+          timer=Clock::now();
+          CubicProblem repaired(model,working_cover,length,o,current,energy,
+              solver.reuse_construction&&!solver.support_exchange&&!solver.working_set?&problem:nullptr);
+          result.optimizer.setup_ms+=ms(timer);
           if(!energy)++result.optimizer.energy_builds;
           // The old and proposed points already obey the geometric SOCs.
           // Find an interior warm start using only the new progress cones.

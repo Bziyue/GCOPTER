@@ -181,6 +181,9 @@ int main(int argc,char** argv) {
       if(const char* v=std::getenv("NATIVE_SKIP_UNUSED_VALUES"))solver.skip_unused_values=std::stoi(v)!=0;
       if(const char* v=std::getenv("NATIVE_BOUNDED_LINE"))solver.bounded_line=std::stoi(v)!=0;
       if(const char* v=std::getenv("NATIVE_REUSE_ENERGY"))solver.reuse_energy=std::stoi(v)!=0;
+      if(const char* v=std::getenv("NATIVE_REUSE_CONSTRUCTION"))solver.reuse_construction=std::stoi(v)!=0;
+      if(const char* v=std::getenv("NATIVE_FAST_CONSTRUCTION"))solver.fast_construction=std::stoi(v)!=0;
+      if(const char* v=std::getenv("NATIVE_CACHE_COVERAGE"))solver.cache_coverage=std::stoi(v)!=0;
       if(const char* v=std::getenv("NATIVE_CACHE_VALUES"))solver.cache_values=std::stoi(v)!=0;
       if(const char* v=std::getenv("NATIVE_SEPARATOR_REUSE_GAP"))solver.separator_reuse_gap=std::stod(v);
       if(const char* v=std::getenv("NATIVE_SUPPORT_EXCHANGE"))solver.support_exchange=std::stoi(v);
@@ -212,6 +215,8 @@ int main(int argc,char** argv) {
          <<",\"bounded_line\":"<<solver.bounded_line
          <<",\"cached_line\":"<<solver.cached_line<<",\"trial_first\":"<<solver.trial_first
          <<",\"reuse_energy\":"<<solver.reuse_energy<<",\"cache_values\":"<<solver.cache_values
+         <<",\"reuse_construction\":"<<solver.reuse_construction<<",\"cache_coverage\":"<<solver.cache_coverage
+         <<",\"fast_construction\":"<<solver.fast_construction
          <<",\"separator_reuse_gap\":"<<solver.separator_reuse_gap
          <<",\"support_exchange\":"<<solver.support_exchange<<",\"exchange_rounds\":"<<solver.exchange_rounds<<",\"exchange_iterations\":"<<solver.exchange_iterations
          <<",\"lazy_priorities\":"<<solver.lazy_priorities
@@ -240,9 +245,15 @@ int main(int argc,char** argv) {
            <<",\"initialization_ms\":"<<result.initialization_ms<<",\"refinements\":"<<result.refinements
            <<",\"initialization_attempts\":"<<result.initialization_attempts<<",\"cover_ms\":"<<c.total_ms
            <<",\"query_ms\":"<<c.query_ms<<",\"separation_ms\":"<<c.separation_ms
+           <<",\"cover_topology_ms\":"<<c.topology_ms<<",\"cover_topology_builds\":"<<c.topology_builds
+           <<",\"reused_cover_spans\":"<<c.reused_cover_spans
            <<",\"reused_planes\":"<<c.reused_planes<<",\"reused_spheres\":"<<c.reused_spheres<<",\"separator_cache_bytes\":"<<c.separator_cache_bytes
            <<",\"priority_evaluations\":"<<c.priority_evaluations
            <<",\"setup_ms\":"<<m.setup_ms<<",\"assembly_ms\":"<<m.assembly_ms<<",\"solve_ms\":"<<m.solve_ms
+           <<",\"initial_problem_ms\":"<<m.initial_problem_ms<<",\"initial_pruning_ms\":"<<m.initial_pruning_ms
+           <<",\"construction_reuses\":"<<m.construction_reuses
+           <<",\"basis_cache_hits\":"<<m.basis_cache_hits<<",\"basis_cache_misses\":"<<m.basis_cache_misses
+           <<",\"group_lookup_reuses\":"<<m.group_lookup_reuses
            <<",\"line_search_ms\":"<<m.line_search_ms<<",\"jacobian_check_ms\":"<<m.certificate_ms
            <<",\"verification_ms\":"<<result.verification_ms<<",\"variables\":"<<m.variables<<",\"controls\":"<<m.controls
            <<",\"active_constraints\":"<<m.active_constraints<<",\"final_decrement\":"<<m.final_decrement

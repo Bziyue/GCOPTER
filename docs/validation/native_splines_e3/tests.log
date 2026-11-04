@@ -1,0 +1,180 @@
+Start testing: Nov 04 16:18 CST
+----------------------------------------------------------
+1/9 Testing: native_spline_math
+1/9 Test: native_spline_math
+Command: "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/build/native_spline_tests"
+Directory: /home/zdp/ForCodex/GCOPTER/.scratch/native_splines/build
+"native_spline_math" start time: Nov 04 16:18 CST
+Output:
+----------------------------------------------------------
+nonuniform extraction, derivatives, C2, subdivision, elevation, energies and full-disk certificates passed
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"native_spline_math" end time: Nov 04 16:18 CST
+"native_spline_math" time elapsed: 00:00:00
+----------------------------------------------------------
+
+2/9 Testing: native_optimizer_math
+2/9 Test: native_optimizer_math
+Command: "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/build/native_optimizer_tests"
+Directory: /home/zdp/ForCodex/GCOPTER/.scratch/native_splines/build
+"native_optimizer_math" start time: Nov 04 16:18 CST
+Output:
+----------------------------------------------------------
+gradient 2.33304e-09, Hv 4.6995e-10
+swept-volume gradient 5.84514e-10
+SUCCESS , 4.09912 ms
+NBC SUCCESS 
+<end of output>
+Test time =   0.02 sec
+----------------------------------------------------------
+Test Passed.
+"native_optimizer_math" end time: Nov 04 16:18 CST
+"native_optimizer_math" time elapsed: 00:00:00
+----------------------------------------------------------
+
+3/9 Testing: native_minjerk_reference
+3/9 Test: native_minjerk_reference
+Command: "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/build/native_reference_test"
+Directory: /home/zdp/ForCodex/GCOPTER/.scratch/native_splines/build
+"native_minjerk_reference" start time: Nov 04 16:18 CST
+Output:
+----------------------------------------------------------
+free-jet variational solution agrees with migrated QuinticSplineND<9>: 2.38116e-15
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"native_minjerk_reference" end time: Nov 04 16:18 CST
+"native_minjerk_reference" time elapsed: 00:00:00
+----------------------------------------------------------
+
+4/9 Testing: native_synthetic_scenes
+4/9 Test: native_synthetic_scenes
+Command: "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/build/native_scene_tests"
+Directory: /home/zdp/ForCodex/GCOPTER/.scratch/native_splines/build
+"native_synthetic_scenes" start time: Nov 04 16:18 CST
+Output:
+----------------------------------------------------------
+straight reach=0: SUCCESS, 1.16897 ms, refinements=0
+right_angle reach=0: SUCCESS, 1.44867 ms, refinements=0
+u_turn reach=0: SUCCESS, 2.0045 ms, refinements=0
+vertical reach=0: SUCCESS, 1.07137 ms, refinements=0
+backtracking_cusp reach=0: INITIALIZATION_FAILED, 1.04825 ms, refinements=3
+narrow_003m reach=0: INITIALIZATION_FAILED, 0.452081 ms, refinements=3
+helix reach=0: SUCCESS, 4.65457 ms, refinements=0
+close_nonadjacent_legs reach=0: SUCCESS, 1.5712 ms, refinements=0
+straight reach=1: SUCCESS, 1.05948 ms, refinements=0
+right_angle reach=1: SUCCESS, 1.43468 ms, refinements=0
+u_turn reach=1: SUCCESS, 2.00271 ms, refinements=0
+vertical reach=1: SUCCESS, 1.06933 ms, refinements=0
+backtracking_cusp reach=1: INITIALIZATION_FAILED, 1.05846 ms, refinements=3
+narrow_003m reach=1: INITIALIZATION_FAILED, 0.438591 ms, refinements=3
+helix reach=1: SUCCESS, 4.74066 ms, refinements=0
+close_nonadjacent_legs reach=1: SUCCESS, 1.58963 ms, refinements=0
+straight reach=2: SUCCESS, 1.08864 ms, refinements=0
+right_angle reach=2: SUCCESS, 1.41193 ms, refinements=0
+u_turn reach=2: SUCCESS, 2.08423 ms, refinements=0
+vertical reach=2: SUCCESS, 1.06646 ms, refinements=0
+backtracking_cusp reach=2: INITIALIZATION_FAILED, 1.03507 ms, refinements=3
+narrow_003m reach=2: INITIALIZATION_FAILED, 0.433121 ms, refinements=3
+helix reach=2: SUCCESS, 4.58637 ms, refinements=0
+close_nonadjacent_legs reach=2: SUCCESS, 1.60621 ms, refinements=0
+<end of output>
+Test time =   0.04 sec
+----------------------------------------------------------
+Test Passed.
+"native_synthetic_scenes" end time: Nov 04 16:18 CST
+"native_synthetic_scenes" time elapsed: 00:00:00
+----------------------------------------------------------
+
+5/9 Testing: native_cubic_query
+5/9 Test: native_cubic_query
+Command: "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/build/native_query_tests"
+Directory: /home/zdp/ForCodex/GCOPTER/.scratch/native_splines/build
+"native_cubic_query" start time: Nov 04 16:18 CST
+Output:
+----------------------------------------------------------
+section_error=1.28675e-13, value_error=2.7478e-15, gradient_error=9.84595e-15, finite_difference_error=3.58552e-09
+native_ms=0.360212, elevated_ms=0.888613
+native_ms=0.360521, elevated_ms=0.887793
+native_ms=0.371101, elevated_ms=0.889423
+native_ms=0.378972, elevated_ms=0.897792
+native_ms=0.361941, elevated_ms=0.908063
+<end of output>
+Test time =   0.01 sec
+----------------------------------------------------------
+Test Passed.
+"native_cubic_query" end time: Nov 04 16:18 CST
+"native_cubic_query" time elapsed: 00:00:00
+----------------------------------------------------------
+
+6/9 Testing: native_adaptive_algorithms
+6/9 Test: native_adaptive_algorithms
+Command: "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/build/native_algorithm_tests"
+Directory: /home/zdp/ForCodex/GCOPTER/.scratch/native_splines/build
+"native_adaptive_algorithms" start time: Nov 04 16:18 CST
+Output:
+----------------------------------------------------------
+lazy order matches exhaustive search; world-space knot insertion preserves geometry and C2
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"native_adaptive_algorithms" end time: Nov 04 16:18 CST
+"native_adaptive_algorithms" time elapsed: 00:00:00
+----------------------------------------------------------
+
+7/9 Testing: native_support_pruning
+7/9 Test: native_support_pruning
+Command: "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/build/native_pruning_tests"
+Directory: /home/zdp/ForCodex/GCOPTER/.scratch/native_splines/build
+"native_support_pruning" start time: Nov 04 16:18 CST
+Output:
+----------------------------------------------------------
+exact reach: 100000 extrema, relative error 3.49598e-15
+projected proofs retain witnesses; original constraints, derivatives and line bounds verified
+<end of output>
+Test time =   0.04 sec
+----------------------------------------------------------
+Test Passed.
+"native_support_pruning" end time: Nov 04 16:18 CST
+"native_support_pruning" time elapsed: 00:00:00
+----------------------------------------------------------
+
+8/9 Testing: native_support_refinement
+8/9 Test: native_support_refinement
+Command: "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/build/native_refinement_tests"
+Directory: /home/zdp/ForCodex/GCOPTER/.scratch/native_splines/build
+"native_support_refinement" start time: Nov 04 16:18 CST
+Output:
+----------------------------------------------------------
+mode 1 gradient 4.83243e-10 Hessian 3.81386e-10
+mode 2 gradient 4.5444e-10 Hessian 4.14138e-10
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"native_support_refinement" end time: Nov 04 16:18 CST
+"native_support_refinement" time elapsed: 00:00:00
+----------------------------------------------------------
+
+9/9 Testing: native_construction_cache
+9/9 Test: native_construction_cache
+Command: "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/build/native_construction_tests"
+Directory: /home/zdp/ForCodex/GCOPTER/.scratch/native_splines/build
+"native_construction_cache" start time: Nov 04 16:18 CST
+Output:
+----------------------------------------------------------
+Exact construction/cover reuse: nonuniform knots, changed geometry, progress repairs and E2 modes passed
+<end of output>
+Test time =   0.02 sec
+----------------------------------------------------------
+Test Passed.
+"native_construction_cache" end time: Nov 04 16:18 CST
+"native_construction_cache" time elapsed: 00:00:00
+----------------------------------------------------------
+
+End testing: Nov 04 16:18 CST
