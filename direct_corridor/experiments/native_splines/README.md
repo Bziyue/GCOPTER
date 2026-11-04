@@ -18,6 +18,22 @@ Use `OptimizerSettings::reach_bound=1` for the exact bound or `2` to try it only
 after the original triangle bound fails (`NATIVE_REACH_BOUND` in the benchmark).
 Both remain opt-in: extra pruning did not consistently improve generation time,
 union volume and boundary smoothness together. The default remains `0`.
+
+The [E2 certificate-replacement experiment](../../../docs/原生三次走廊E2选择性证书替换实验.md)
+uses `OptimizerSettings::certificate_refinement=1` for exact degree-five
+certificate elevation, or `2` for one de Casteljau bisection. Geometry and queries
+remain cubic. `certificate_fraction` selects a fraction of interval groups using
+barrier pressure times the support-bound gap, divided by added row count. Only
+planes with a tighter bound are replaced. Selection starts in the second
+inflation pass and does not add Newton iterations. The benchmark equivalents are
+`NATIVE_CERTIFICATE_REFINEMENT` and `NATIVE_CERTIFICATE_FRACTION`.
+
+Both E2 modes default to off. The solver rebuilds implication proofs for the
+replacement rows, while the final certificate still covers every original
+plane and the full-section Jacobian. `run_e2.py --blocks 3 --repeats 7` rotates
+configuration order across three serial blocks and retains all 21 timings,
+CPU time, coefficient hashes and certificate audits. It reuses the E1 input
+manifest and enforces a 4 GiB address-space limit and one numerical thread.
 The fourth-round report is
 [`原生三次走廊连续约束与自适应优化实验.md`](../../../docs/原生三次走廊连续约束与自适应优化实验.md).
 The [third-round report](../../../docs/原生三次走廊约束与求解加速.md) covers

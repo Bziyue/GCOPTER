@@ -61,6 +61,9 @@ CubicResult generateCubic(const std::vector<Vec3>& input_seed,const ObstacleInde
      solver.coordinate_sweeps<0||solver.coordinate_sweeps>10||
      solver.projected_pruning<0||solver.projected_pruning>2||
      solver.reach_bound<0||solver.reach_bound>2||
+     solver.certificate_refinement<0||solver.certificate_refinement>2||
+     !(solver.certificate_fraction>=0&&solver.certificate_fraction<=1)||
+     (solver.certificate_refinement&&solver.support_exchange)||
      solver.initial_sweeps<0||solver.initial_sweeps>10||!(solver.initial_fraction>0&&solver.initial_fraction<1)||
      solver.hessian_interval<1||solver.hessian_interval>8||
      !(solver.weak_curvature_ratio>=0&&solver.weak_curvature_ratio<1)||
@@ -124,7 +127,8 @@ CubicResult generateCubic(const std::vector<Vec3>& input_seed,const ObstacleInde
           const auto g=model.geometry();
           cover=mapCover(g,seed,index,bounds,o,cache,result.cover_metrics,stop,reused_separators,std::max(1e-6,solver.separator_reuse_gap),solver.lazy_priorities);
           if(!certify(g,cover).safe())throw Failure{Status::VerificationFailed,"initial full-disk certificate"};
-          CubicProblem test(model,cover,length,o,solver,energy);
+          auto initialization_solver=solver;initialization_solver.certificate_refinement=0;
+          CubicProblem test(model,cover,length,o,initialization_solver,energy);
           if(!energy)++result.optimizer.energy_builds;
           if(!std::isfinite(test.objective(model.x,.003/model.basis.count)))throw Failure{Status::InsufficientClearance,"initial SOC interior"};
           initialized=true;break;
@@ -156,9 +160,10 @@ CubicResult generateCubic(const std::vector<Vec3>& input_seed,const ObstacleInde
         }
         timer=Clock::now();
         auto current=solver;current.progress_spans=known_progress;if(!iteration)current.iterations=o.initial_iterations;
+        if(!iteration)current.certificate_refinement=0;
         current.strict_progress_spans=known_strict;
         current.barrier_begin=iteration?solver.warm_start_stage:0;
-        current.check_gradients=solver.check_gradients&&!iteration;
+        current.check_gradients=solver.check_gradients&&(!iteration||current.certificate_refinement);
         auto working_cover=cover;
         if(solver.support_exchange) {
           working_cover.clear();

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #include "cubic_optimizer.hpp"
+#include "support_refinement.hpp"
 #include "support_barrier.hpp"
 #include "cubic_certificates.hpp"
 #include <Eigen/Eigenvalues>
@@ -230,18 +231,35 @@ CubicProblem::CubicProblem(const CubicModel& m,const std::vector<detail::Support
     auto found=unique.find(key);
     if(found==unique.end()||p.bound<found->second.bound)unique[key]=p;
   }
+  std::vector<detail::SupportPlane> planes;
+  SupportRefinement refinement;
+  if(settings.certificate_refinement&&settings.certificate_fraction>0) {
+    const auto start=Clock::now();
+    planes.reserve(unique.size());for(const auto& entry:unique)planes.push_back(entry.second);
+    refinement=selectSupportRefinement(m.geometry(),planes,settings.certificate_refinement,settings.certificate_fraction);
+    support_selection_ms=ms(start);support_intervals=refinement.intervals;
+    refined_intervals=refinement.selected_intervals;refined_planes=refinement.selected_planes;
+    refinement_extra_rows=refinement.extra_rows;support_gap_sum=refinement.gap_sum;
+  }
   std::map<std::tuple<int,double,double,int>,size_t> group_ids;
-  for(const auto& entry:unique) {
-    const auto& plane=entry.second;
+  auto add_plane=[&](const detail::SupportPlane& plane,auto degree_tag) {
+    constexpr int degree=decltype(degree_tag)::value;
     const auto& span=m.basis.spans[plane.span];
-    Curve<3,Eigen::Vector4d> basis;
-    for(int j=0;j<4;++j)basis[j]=span.extraction.row(j);
-    basis=restrictCurve<3>(basis,plane.begin,plane.end);
-    for(int j=0;j<(plane.begin==plane.end?1:4);++j) {
+    Curve<degree,Eigen::Vector4d> basis;
+    if constexpr(degree==3) {
+      for(int j=0;j<4;++j)basis[j]=span.extraction.row(j);
+      basis=restrictCurve<3>(basis,plane.begin,plane.end);
+    }else {
+      Curve<3,Eigen::Vector4d> cubic;
+      for(int j=0;j<4;++j)cubic[j]=span.extraction.row(j);
+      basis=elevate<3,5>(restrictCurve<3>(cubic,plane.begin,plane.end));
+    }
+    for(int j=0;j<(plane.begin==plane.end?1:degree+1);++j) {
       int local_span=plane.span;
       Eigen::Vector4d weights=basis[j];
-      auto group_key=std::make_tuple(plane.span,plane.begin,plane.end,j);
-      if(settings.merge_shared_supports&&(j==0||j==3)) {
+      // Disjoint interior row IDs prevent cubic/elevated group aliasing.
+      auto group_key=std::make_tuple(plane.span,plane.begin,plane.end,j+(degree==5?4:0));
+      if(settings.merge_shared_supports&&(j==0||j==degree)) {
         const double t=j==0?plane.begin:plane.end;
         // Adjacent cubic spans share this VALUE, with the same three global
         // controls. Give it a single identity, also at subdivision boundaries.
@@ -275,6 +293,18 @@ CubicProblem::CubicProblem(const CubicModel& m,const std::vector<detail::Support
       }
       groups[inserted.first->second].supports.push_back({plane.normal,plane.bound,!settings.working_set});
     }
+  };
+  const auto cubic=std::integral_constant<int,3>{};
+  const auto quintic=std::integral_constant<int,5>{};
+  if(planes.empty())for(const auto& entry:unique)add_plane(entry.second,cubic);
+  else for(size_t i=0;i<planes.size();++i) {
+    const bool selected=!refinement.selected.empty()&&refinement.selected[i];
+    if(selected&&settings.certificate_refinement==2) {
+      auto left=planes[i],right=planes[i];
+      left.end=right.begin=.5*(left.begin+left.end);
+      add_plane(left,cubic);add_plane(right,cubic);
+    }else if(selected)add_plane(planes[i],quintic);
+    else add_plane(planes[i],cubic);
   }
   for(auto& group:groups) {
     if(settings.merge_shared_supports) {
@@ -634,16 +664,36 @@ double CubicProblem::objective(const Eigen::VectorXd& x,double mu,Eigen::VectorX
 void CubicProblem::checkDerivatives(const Eigen::VectorXd& x,OptimizerMetrics& metrics)const {
   const double mu=.003/model.basis.count;
   Eigen::VectorXd g;BandedSPD h;const double f=objective(x,mu,&g,&h);(void)f;
+  CubicProblem reference=*this;reference.settings.reference_assembly=true;
+  Eigen::VectorXd reference_gradient;BandedSPD reference_hessian;
+  const bool compare_reference=!settings.working_set;
+  if(compare_reference) {
+    reference.objective(x,mu,&reference_gradient,&reference_hessian);
+    metrics.gradient_reference_error=std::max(metrics.gradient_reference_error,
+        (g-reference_gradient).norm()/std::max({1.,g.norm(),reference_gradient.norm()}));
+  }
   for(int trial=0;trial<8;++trial) {
     Eigen::VectorXd v(x.size());for(int j=0;j<v.size();++j)v[j]=std::sin((j+1)*(trial+1)*.381);
-    v.normalize();double step=1e-6;
-    while(step>1e-12 && (!std::isfinite(objective(x+step*v,mu))||!std::isfinite(objective(x-step*v,mu))))step*=.1;
-    const double fd=(objective(x+step*v,mu)-objective(x-step*v,mu))/(2*step);
+    v.normalize();
+    // Later inflation passes start close to active cones. Scale the diagnostic
+    // stencil to their two-sided margin and cancel its O(step^2) error.
+    // This checker only runs on untimed benchmark warmups / explicit tests.
+    const double step=std::min(1e-6,.01*std::min(feasibleStep(x,v),feasibleStep(x,-v)));
+    metrics.derivative_min_step=std::min(metrics.derivative_min_step,step);
+    const double wide=(objective(x+step*v,mu)-objective(x-step*v,mu))/(2*step);
+    const double narrow=(objective(x+.5*step*v,mu)-objective(x-.5*step*v,mu))/step;
+    const double fd=(4*narrow-wide)/3;
     metrics.gradient_error=std::max(metrics.gradient_error,std::abs(fd-g.dot(v))/std::max({1.,std::abs(fd),std::abs(g.dot(v))}));
-    Eigen::VectorXd gp,gm;BandedSPD scratch;
+    Eigen::VectorXd gp,gm,hp,hm;BandedSPD scratch;
     objective(x+step*v,mu,&gp,&scratch);objective(x-step*v,mu,&gm,&scratch);
-    const Eigen::VectorXd hv=h.multiply(v),num=(gp-gm)/(2*step);
+    objective(x+.5*step*v,mu,&hp,&scratch);objective(x-.5*step*v,mu,&hm,&scratch);
+    const Eigen::VectorXd hv=h.multiply(v),num=(4*(hp-hm)/step-(gp-gm)/(2*step))/3;
     metrics.hessian_error=std::max(metrics.hessian_error,(num-hv).norm()/std::max({1.,num.norm(),hv.norm()}));
+    if(compare_reference) {
+      const auto expected=reference_hessian.multiply(v);
+      metrics.hessian_reference_error=std::max(metrics.hessian_reference_error,
+          (expected-hv).norm()/std::max({1.,expected.norm(),hv.norm()}));
+    }
   }
 }
 int CubicProblem::activateSupports(const Eigen::VectorXd& x)const {
@@ -713,6 +763,9 @@ void CubicProblem::optimize(Eigen::VectorXd& x,OptimizerMetrics& metrics,const s
     metrics.pruned_supports+=p.redundant;metrics.axis_supports+=!p.redundant&&p.axis>=0;fixed_active+=p.active;
   }
   metrics.pruning_ms+=pruning_ms;
+  metrics.support_selection_ms+=support_selection_ms;metrics.support_gap_sum+=support_gap_sum;
+  metrics.support_intervals+=support_intervals;metrics.refined_intervals+=refined_intervals;
+  metrics.refined_planes+=refined_planes;metrics.refinement_extra_rows+=refinement_extra_rows;
   int retained=0,boundary=0;
   for(const auto& group:groups){
     retained+=group.retained;boundary+=group.boundary_count;

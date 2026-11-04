@@ -2,6 +2,7 @@
 #include "cubic_certificates.hpp"
 #include "obstacle_cover.hpp"
 #include "cubic_generator.hpp"
+#include <ctime>
 #include "corridor_volume.hpp"
 #include <chrono>
 #include <filesystem>
@@ -162,6 +163,8 @@ int main(int argc,char** argv) {
       if(const char* v=std::getenv("NATIVE_POLAR_PRUNING"))solver.polar_pruning=std::stoi(v)!=0;
       if(const char* v=std::getenv("NATIVE_PROJECTED_PRUNING"))solver.projected_pruning=std::stoi(v);
       if(const char* v=std::getenv("NATIVE_REACH_BOUND"))solver.reach_bound=std::stoi(v);
+      if(const char* v=std::getenv("NATIVE_CERTIFICATE_REFINEMENT"))solver.certificate_refinement=std::stoi(v);
+      if(const char* v=std::getenv("NATIVE_CERTIFICATE_FRACTION"))solver.certificate_fraction=std::stod(v);
       if(const char* v=std::getenv("NATIVE_DISTANCE_BARRIER"))solver.distance_barrier=std::stoi(v)!=0;
       if(const char* v=std::getenv("NATIVE_INITIAL_SWEEPS"))solver.initial_sweeps=std::stoi(v);
       if(const char* v=std::getenv("NATIVE_INITIAL_FRACTION"))solver.initial_fraction=std::stod(v);
@@ -218,18 +221,22 @@ int main(int argc,char** argv) {
          <<",\"coordinate_sweeps\":"<<solver.coordinate_sweeps<<",\"polar_pruning\":"<<solver.polar_pruning
          <<",\"projected_pruning\":"<<solver.projected_pruning
          <<",\"reach_bound\":"<<solver.reach_bound
+         <<",\"certificate_refinement\":"<<solver.certificate_refinement<<",\"certificate_fraction\":"<<solver.certificate_fraction
          <<",\"distance_barrier\":"<<solver.distance_barrier<<",\"initial_sweeps\":"<<solver.initial_sweeps<<",\"initial_fraction\":"<<solver.initial_fraction
          <<",\"hessian_interval\":"<<solver.hessian_interval
          <<",\"weak_curvature_ratio\":"<<solver.weak_curvature_ratio
          <<",\"working_set\":"<<solver.working_set<<"}\n";
       for(int rep=-1;rep<repeats;++rep) {
         solver.check_gradients=rep==-1;
+        const auto cpu_start=std::clock();
         auto result=ns::generateCubic(seed,index,bounds,o,solver,method?&base:nullptr);
+        const double cpu_ms=1000.*(std::clock()-cpu_start)/CLOCKS_PER_SEC;
         const auto& m=result.optimizer;const auto& c=result.cover_metrics;
         log<<"{\"kind\":\"generation\",\"model\":\""<<name<<"\",\"repeat\":"<<rep
            <<",\"status\":\""<<result.status<<"\",\"message\":\""<<result.message<<"\""
            <<",\"total_ms\":"<<result.total_ms+(method?baseline_times[rep+1]:0.)
            <<",\"own_ms\":"<<result.total_ms<<",\"h5_initialization_ms\":"<<(method?baseline_times[rep+1]:0.)
+           <<",\"own_cpu_ms\":"<<cpu_ms
            <<",\"initialization_ms\":"<<result.initialization_ms<<",\"refinements\":"<<result.refinements
            <<",\"initialization_attempts\":"<<result.initialization_attempts<<",\"cover_ms\":"<<c.total_ms
            <<",\"query_ms\":"<<c.query_ms<<",\"separation_ms\":"<<c.separation_ms
@@ -241,6 +248,9 @@ int main(int argc,char** argv) {
            <<",\"active_constraints\":"<<m.active_constraints<<",\"final_decrement\":"<<m.final_decrement
            <<",\"merged_supports\":"<<m.merged_supports<<",\"support_groups\":"<<m.support_groups<<",\"pruned_supports\":"<<m.pruned_supports
            <<",\"pruning_ms\":"<<m.pruning_ms
+           <<",\"support_selection_ms\":"<<m.support_selection_ms<<",\"support_gap_sum\":"<<m.support_gap_sum
+           <<",\"support_intervals\":"<<m.support_intervals<<",\"refined_intervals\":"<<m.refined_intervals
+           <<",\"refined_planes\":"<<m.refined_planes<<",\"refinement_extra_rows\":"<<m.refinement_extra_rows
            <<",\"reach_candidates\":"<<m.reach_candidates
            <<",\"exact_reach_evaluations\":"<<m.exact_reach_evaluations
            <<",\"exact_reach_additional\":"<<m.exact_reach_additional
@@ -264,7 +274,9 @@ int main(int argc,char** argv) {
            <<",\"backtracks\":"<<m.backtracks<<",\"regularity_backtracks\":"<<m.regularity_backtracks
            <<",\"regularity_repairs\":"<<m.regularity_repairs
            <<",\"damping_retries\":"<<m.damping_retries<<",\"equality_rank\":"<<m.equality_rank
-           <<",\"initial_scale\":"<<m.initial_scale<<",\"gradient_error\":"<<m.gradient_error<<",\"hessian_error\":"<<m.hessian_error;
+           <<",\"initial_scale\":"<<m.initial_scale<<",\"gradient_error\":"<<m.gradient_error<<",\"hessian_error\":"<<m.hessian_error
+           <<",\"gradient_reference_error\":"<<m.gradient_reference_error<<",\"hessian_reference_error\":"<<m.hessian_reference_error
+           <<",\"derivative_min_step\":"<<m.derivative_min_step;
         log<<",\"optimization_passes\":[";
         for(size_t p=0;p<m.passes.size();++p) {
           const auto& pass=m.passes[p];if(p)log<<',';

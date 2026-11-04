@@ -1,0 +1,1439 @@
+{
+  "purpose": "E1 corridor generation; inputs frozen before expanded measurements",
+  "voxel_resolution": 0.25,
+  "cases": [
+    {
+      "case": 0,
+      "family": "perlin",
+      "group": "development",
+      "source": ".scratch/interactive/rviz/run_1793605002598226995_3712673/request_1",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_db505c46bc24c061128416d4f673259c3be655ecc474b1840790fac39c43fb00.xyz",
+      "seed_sha256": "db505c46bc24c061128416d4f673259c3be655ecc474b1840790fac39c43fb00",
+      "map": ".scratch/native_splines/e1/inputs/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1"
+    },
+    {
+      "case": 1,
+      "family": "perlin",
+      "group": "development",
+      "source": ".scratch/interactive/perlin_final/run_1793605176741410828_3715435/request_10",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_bd82e7f1ab28edfbbf014898b2be7a49c30e1d6f30ec09aaa488134aa9b62cf2.xyz",
+      "seed_sha256": "bd82e7f1ab28edfbbf014898b2be7a49c30e1d6f30ec09aaa488134aa9b62cf2",
+      "map": ".scratch/native_splines/e1/inputs/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1"
+    },
+    {
+      "case": 2,
+      "family": "maze",
+      "group": "development",
+      "source": ".scratch/interactive/maze_connected/run_1793605479006343675_3719882/request_10",
+      "bounds_lower": [
+        -15,
+        -15,
+        0
+      ],
+      "bounds_upper": [
+        15,
+        15,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_d170e52ffa2f83709a066d84ae7a14f08392c73df0a5ecb7962b950c4c247d06.xyz",
+      "seed_sha256": "d170e52ffa2f83709a066d84ae7a14f08392c73df0a5ecb7962b950c4c247d06",
+      "map": ".scratch/native_splines/e1/inputs/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz",
+      "map_sha256": "9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c"
+    },
+    {
+      "case": 3,
+      "family": "perlin",
+      "group": "development",
+      "source": ".scratch/interactive/rviz/run_1793605002598226995_3712673/request_2",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_e2034ad4c38b68bedb80983603b4358364b5bc00ab5cebd93f07269a8353d32c.xyz",
+      "seed_sha256": "e2034ad4c38b68bedb80983603b4358364b5bc00ab5cebd93f07269a8353d32c",
+      "map": ".scratch/native_splines/e1/inputs/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1"
+    },
+    {
+      "case": 4,
+      "family": "perlin",
+      "group": "development",
+      "source": ".scratch/interactive/perlin_final/run_1793605176741410828_3715435/request_5",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_ee1c173245146b51629407d8e03cb1fc80bb3dac7f85cd355f07d000e387654c.xyz",
+      "seed_sha256": "ee1c173245146b51629407d8e03cb1fc80bb3dac7f85cd355f07d000e387654c",
+      "map": ".scratch/native_splines/e1/inputs/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1"
+    },
+    {
+      "case": 5,
+      "family": "maze",
+      "group": "development",
+      "source": ".scratch/interactive/maze_connected/run_1793605479006343675_3719882/request_4",
+      "bounds_lower": [
+        -15,
+        -15,
+        0
+      ],
+      "bounds_upper": [
+        15,
+        15,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_019b73adaac1c31fd85a1244699770d45e18c319cfc976548bc8791b4ef621ff.xyz",
+      "seed_sha256": "019b73adaac1c31fd85a1244699770d45e18c319cfc976548bc8791b4ef621ff",
+      "map": ".scratch/native_splines/e1/inputs/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz",
+      "map_sha256": "9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c"
+    },
+    {
+      "case": 6,
+      "family": "perlin",
+      "group": "development",
+      "source": ".scratch/interactive/polished_rviz/run_1793701774600485813_61028/request_1",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_6d1bf777dbe2008f496213639d78b553fcecf0d30ceca7fdc6d9731d3bcb492c.xyz",
+      "seed_sha256": "6d1bf777dbe2008f496213639d78b553fcecf0d30ceca7fdc6d9731d3bcb492c",
+      "map": ".scratch/native_splines/e1/inputs/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1"
+    },
+    {
+      "case": 7,
+      "family": "perlin",
+      "group": "historical",
+      "source": ".scratch/interactive/fast_shape_rviz/run_1793700074344933248_54907/request_1",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_e1c16961974c16135e002a922e7c4a8516bc291945ccd3d5c53f6aa9a1bd29e1.xyz",
+      "seed_sha256": "e1c16961974c16135e002a922e7c4a8516bc291945ccd3d5c53f6aa9a1bd29e1",
+      "map": ".scratch/native_splines/e1/inputs/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1"
+    },
+    {
+      "case": 8,
+      "family": "maze",
+      "group": "historical",
+      "source": ".scratch/interactive/maze_connected/run_1793605479006343675_3719882/request_1",
+      "bounds_lower": [
+        -15,
+        -15,
+        0
+      ],
+      "bounds_upper": [
+        15,
+        15,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_493c639cdcffc27b68afd383bca4ad24c1f9fb6b56c51a8b2fc595b809c73dfc.xyz",
+      "seed_sha256": "493c639cdcffc27b68afd383bca4ad24c1f9fb6b56c51a8b2fc595b809c73dfc",
+      "map": ".scratch/native_splines/e1/inputs/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz",
+      "map_sha256": "9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c"
+    },
+    {
+      "case": 9,
+      "family": "maze",
+      "group": "historical",
+      "source": ".scratch/interactive/maze_connected/run_1793605479006343675_3719882/request_11",
+      "bounds_lower": [
+        -15,
+        -15,
+        0
+      ],
+      "bounds_upper": [
+        15,
+        15,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_38238be2aefea1561381b8e2029a5e65cf6ac7d52d8036ab5e5ae785265414b4.xyz",
+      "seed_sha256": "38238be2aefea1561381b8e2029a5e65cf6ac7d52d8036ab5e5ae785265414b4",
+      "map": ".scratch/native_splines/e1/inputs/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz",
+      "map_sha256": "9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c"
+    },
+    {
+      "case": 10,
+      "family": "maze",
+      "group": "historical",
+      "source": ".scratch/interactive/maze_connected/run_1793605479006343675_3719882/request_12",
+      "bounds_lower": [
+        -15,
+        -15,
+        0
+      ],
+      "bounds_upper": [
+        15,
+        15,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_6e51d84bf16eb803fa80b99b1907fa60e83858a46c85fd7f02d5fceb43b79819.xyz",
+      "seed_sha256": "6e51d84bf16eb803fa80b99b1907fa60e83858a46c85fd7f02d5fceb43b79819",
+      "map": ".scratch/native_splines/e1/inputs/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz",
+      "map_sha256": "9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c"
+    },
+    {
+      "case": 11,
+      "family": "maze",
+      "group": "historical",
+      "source": ".scratch/interactive/maze_connected/run_1793605479006343675_3719882/request_13",
+      "bounds_lower": [
+        -15,
+        -15,
+        0
+      ],
+      "bounds_upper": [
+        15,
+        15,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_002c49cdc63525c70d73be20e0cb5c3dd23faa4d7e2f82b9051d7d8a01777b26.xyz",
+      "seed_sha256": "002c49cdc63525c70d73be20e0cb5c3dd23faa4d7e2f82b9051d7d8a01777b26",
+      "map": ".scratch/native_splines/e1/inputs/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz",
+      "map_sha256": "9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c"
+    },
+    {
+      "case": 12,
+      "family": "maze",
+      "group": "historical",
+      "source": ".scratch/interactive/maze_connected/run_1793605479006343675_3719882/request_14",
+      "bounds_lower": [
+        -15,
+        -15,
+        0
+      ],
+      "bounds_upper": [
+        15,
+        15,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_9b580bfd013d55b7e642648c7a2a4f6ce51b0e8edd6286b4b16f082a47a1e5e0.xyz",
+      "seed_sha256": "9b580bfd013d55b7e642648c7a2a4f6ce51b0e8edd6286b4b16f082a47a1e5e0",
+      "map": ".scratch/native_splines/e1/inputs/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz",
+      "map_sha256": "9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c"
+    },
+    {
+      "case": 13,
+      "family": "maze",
+      "group": "historical",
+      "source": ".scratch/interactive/maze_connected/run_1793605479006343675_3719882/request_2",
+      "bounds_lower": [
+        -15,
+        -15,
+        0
+      ],
+      "bounds_upper": [
+        15,
+        15,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_51e72d7b673e3ba3478c213086dd0a18d6b707d955546f56a26d3103a7ec52a2.xyz",
+      "seed_sha256": "51e72d7b673e3ba3478c213086dd0a18d6b707d955546f56a26d3103a7ec52a2",
+      "map": ".scratch/native_splines/e1/inputs/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz",
+      "map_sha256": "9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c"
+    },
+    {
+      "case": 14,
+      "family": "maze",
+      "group": "historical",
+      "source": ".scratch/interactive/maze_connected/run_1793605479006343675_3719882/request_3",
+      "bounds_lower": [
+        -15,
+        -15,
+        0
+      ],
+      "bounds_upper": [
+        15,
+        15,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_7e2495d4ee840ad89ee2172cc98c095d6492d7a51b85e14510f4557cc0d64ca3.xyz",
+      "seed_sha256": "7e2495d4ee840ad89ee2172cc98c095d6492d7a51b85e14510f4557cc0d64ca3",
+      "map": ".scratch/native_splines/e1/inputs/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz",
+      "map_sha256": "9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c"
+    },
+    {
+      "case": 15,
+      "family": "maze",
+      "group": "historical",
+      "source": ".scratch/interactive/maze_connected/run_1793605479006343675_3719882/request_5",
+      "bounds_lower": [
+        -15,
+        -15,
+        0
+      ],
+      "bounds_upper": [
+        15,
+        15,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_4d7cab13a7a14ff28e9bc64cadcbd51c2e12dd58ab6dfa47ae5e912609a7c7f6.xyz",
+      "seed_sha256": "4d7cab13a7a14ff28e9bc64cadcbd51c2e12dd58ab6dfa47ae5e912609a7c7f6",
+      "map": ".scratch/native_splines/e1/inputs/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz",
+      "map_sha256": "9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c"
+    },
+    {
+      "case": 16,
+      "family": "maze",
+      "group": "historical",
+      "source": ".scratch/interactive/maze_connected/run_1793605479006343675_3719882/request_6",
+      "bounds_lower": [
+        -15,
+        -15,
+        0
+      ],
+      "bounds_upper": [
+        15,
+        15,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_f0ec3822e309a1afcf2c32f175dfc978e4eb15e6451c26c0f0e94d468eafa95c.xyz",
+      "seed_sha256": "f0ec3822e309a1afcf2c32f175dfc978e4eb15e6451c26c0f0e94d468eafa95c",
+      "map": ".scratch/native_splines/e1/inputs/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz",
+      "map_sha256": "9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c"
+    },
+    {
+      "case": 17,
+      "family": "maze",
+      "group": "historical",
+      "source": ".scratch/interactive/maze_connected/run_1793605479006343675_3719882/request_9",
+      "bounds_lower": [
+        -15,
+        -15,
+        0
+      ],
+      "bounds_upper": [
+        15,
+        15,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_0c7e3fac1b454bded574e907adafd40767901781635015a584c66954d26efc1d.xyz",
+      "seed_sha256": "0c7e3fac1b454bded574e907adafd40767901781635015a584c66954d26efc1d",
+      "map": ".scratch/native_splines/e1/inputs/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz",
+      "map_sha256": "9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c"
+    },
+    {
+      "case": 18,
+      "family": "maze",
+      "group": "historical",
+      "source": ".scratch/interactive/maze_final/run_1793605043763501559_3713399/request_1",
+      "bounds_lower": [
+        -15,
+        -15,
+        0
+      ],
+      "bounds_upper": [
+        15,
+        15,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_95e7ea0ab6ad47d813a96afe7d70b737ff529b7537ea1ac838f2ac8916f0666d.xyz",
+      "seed_sha256": "95e7ea0ab6ad47d813a96afe7d70b737ff529b7537ea1ac838f2ac8916f0666d",
+      "map": ".scratch/native_splines/e1/inputs/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz",
+      "map_sha256": "9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c"
+    },
+    {
+      "case": 19,
+      "family": "maze",
+      "group": "historical",
+      "source": ".scratch/interactive/maze_final/run_1793605043763501559_3713399/request_2",
+      "bounds_lower": [
+        -15,
+        -15,
+        0
+      ],
+      "bounds_upper": [
+        15,
+        15,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_a6897915cb1775930edc49c7767ee6790ad517b96780184309c760c748ef7144.xyz",
+      "seed_sha256": "a6897915cb1775930edc49c7767ee6790ad517b96780184309c760c748ef7144",
+      "map": ".scratch/native_splines/e1/inputs/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz",
+      "map_sha256": "9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c"
+    },
+    {
+      "case": 20,
+      "family": "maze",
+      "group": "historical",
+      "source": ".scratch/interactive/maze_final/run_1793605043763501559_3713399/request_5",
+      "bounds_lower": [
+        -15,
+        -15,
+        0
+      ],
+      "bounds_upper": [
+        15,
+        15,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_6d1a517d4fb74caa4acf8943ffb55a3423d0b4c0fedf726c37556e7ed9c6af25.xyz",
+      "seed_sha256": "6d1a517d4fb74caa4acf8943ffb55a3423d0b4c0fedf726c37556e7ed9c6af25",
+      "map": ".scratch/native_splines/e1/inputs/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz",
+      "map_sha256": "9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c"
+    },
+    {
+      "case": 21,
+      "family": "maze",
+      "group": "historical",
+      "source": ".scratch/interactive/maze_final/run_1793605043763501559_3713399/request_6",
+      "bounds_lower": [
+        -15,
+        -15,
+        0
+      ],
+      "bounds_upper": [
+        15,
+        15,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_2b01fe9f11b4b9402ed38a0901b508e3ee927ce8535c19b6541ebe7d37bf33c9.xyz",
+      "seed_sha256": "2b01fe9f11b4b9402ed38a0901b508e3ee927ce8535c19b6541ebe7d37bf33c9",
+      "map": ".scratch/native_splines/e1/inputs/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz",
+      "map_sha256": "9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c"
+    },
+    {
+      "case": 22,
+      "family": "perlin",
+      "group": "historical",
+      "source": ".scratch/interactive/perlin/run_1793604961095199726_3710873/request_1",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_0689e6ff4d1c60aef2f0efe18330455e29112aa1c100eeb62e466b762a0dc420.xyz",
+      "seed_sha256": "0689e6ff4d1c60aef2f0efe18330455e29112aa1c100eeb62e466b762a0dc420",
+      "map": ".scratch/native_splines/e1/inputs/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1"
+    },
+    {
+      "case": 23,
+      "family": "perlin",
+      "group": "historical",
+      "source": ".scratch/interactive/perlin/run_1793604961095199726_3710873/request_2",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_6875b2460d337b4b1b271a34e6ca32e091f11f7990b2aee36fc47ba1eef4b920.xyz",
+      "seed_sha256": "6875b2460d337b4b1b271a34e6ca32e091f11f7990b2aee36fc47ba1eef4b920",
+      "map": ".scratch/native_splines/e1/inputs/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1"
+    },
+    {
+      "case": 24,
+      "family": "perlin",
+      "group": "historical",
+      "source": ".scratch/interactive/perlin/run_1793604961095199726_3710873/request_3",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_d408d0496b440ad1374190d1200202466dc382bfe02ab860b558d00fd72ff146.xyz",
+      "seed_sha256": "d408d0496b440ad1374190d1200202466dc382bfe02ab860b558d00fd72ff146",
+      "map": ".scratch/native_splines/e1/inputs/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1"
+    },
+    {
+      "case": 25,
+      "family": "perlin",
+      "group": "historical",
+      "source": ".scratch/interactive/perlin/run_1793604961095199726_3710873/request_4",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_872ec9dd851bd1bc39e366057b2256320d3be4232796c43dd6be214ec3febe42.xyz",
+      "seed_sha256": "872ec9dd851bd1bc39e366057b2256320d3be4232796c43dd6be214ec3febe42",
+      "map": ".scratch/native_splines/e1/inputs/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1"
+    },
+    {
+      "case": 26,
+      "family": "perlin",
+      "group": "historical",
+      "source": ".scratch/interactive/perlin/run_1793604961095199726_3710873/request_5",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_dfcaa2e8967602318476ff3feb24c41817ea703f3aa1ea344a0671f4e73e8a59.xyz",
+      "seed_sha256": "dfcaa2e8967602318476ff3feb24c41817ea703f3aa1ea344a0671f4e73e8a59",
+      "map": ".scratch/native_splines/e1/inputs/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1"
+    },
+    {
+      "case": 27,
+      "family": "perlin",
+      "group": "historical",
+      "source": ".scratch/interactive/perlin/run_1793604961095199726_3710873/request_6",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_ac1808c5525b2ba9b7592a9944cde3a9cfab485b20eb9b01c5039d27a832f1ba.xyz",
+      "seed_sha256": "ac1808c5525b2ba9b7592a9944cde3a9cfab485b20eb9b01c5039d27a832f1ba",
+      "map": ".scratch/native_splines/e1/inputs/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1"
+    },
+    {
+      "case": 28,
+      "family": "perlin",
+      "group": "historical",
+      "source": ".scratch/interactive/perlin_final/run_1793605176741410828_3715435/request_1",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_26504f0d7b478c9fc9339b598305859bbae757356a9729ff1a9fffa04905a84a.xyz",
+      "seed_sha256": "26504f0d7b478c9fc9339b598305859bbae757356a9729ff1a9fffa04905a84a",
+      "map": ".scratch/native_splines/e1/inputs/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1"
+    },
+    {
+      "case": 29,
+      "family": "perlin",
+      "group": "historical",
+      "source": ".scratch/interactive/perlin_final/run_1793605176741410828_3715435/request_11",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_4334fc7a28710bea0448cc8e50ba89b8932a924a3cc490e7273c123a0070871f.xyz",
+      "seed_sha256": "4334fc7a28710bea0448cc8e50ba89b8932a924a3cc490e7273c123a0070871f",
+      "map": ".scratch/native_splines/e1/inputs/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1"
+    },
+    {
+      "case": 30,
+      "family": "perlin",
+      "group": "historical",
+      "source": ".scratch/interactive/perlin_final/run_1793605176741410828_3715435/request_12",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_182703328af4cb4fd9c508dfbf76a66d3e181e3a4dd5646460d159766ac7604e.xyz",
+      "seed_sha256": "182703328af4cb4fd9c508dfbf76a66d3e181e3a4dd5646460d159766ac7604e",
+      "map": ".scratch/native_splines/e1/inputs/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1"
+    },
+    {
+      "case": 31,
+      "family": "perlin",
+      "group": "historical",
+      "source": ".scratch/interactive/perlin_final/run_1793605176741410828_3715435/request_2",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_3415a73175b3ea764780ebd0ec440b27def118d01ef004c563fc793ccbe20331.xyz",
+      "seed_sha256": "3415a73175b3ea764780ebd0ec440b27def118d01ef004c563fc793ccbe20331",
+      "map": ".scratch/native_splines/e1/inputs/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1"
+    },
+    {
+      "case": 32,
+      "family": "perlin",
+      "group": "historical",
+      "source": ".scratch/interactive/perlin_final/run_1793605176741410828_3715435/request_3",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_1eb0703f187eec8bba4c5067246b7b45e1e8b0657324d1574df79f39693e7436.xyz",
+      "seed_sha256": "1eb0703f187eec8bba4c5067246b7b45e1e8b0657324d1574df79f39693e7436",
+      "map": ".scratch/native_splines/e1/inputs/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1"
+    },
+    {
+      "case": 33,
+      "family": "perlin",
+      "group": "historical",
+      "source": ".scratch/interactive/perlin_final/run_1793605176741410828_3715435/request_4",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_4d9ba1195da8ec9571eefb106f6e65eb146592c133b9cf1f4a92402315b992e2.xyz",
+      "seed_sha256": "4d9ba1195da8ec9571eefb106f6e65eb146592c133b9cf1f4a92402315b992e2",
+      "map": ".scratch/native_splines/e1/inputs/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1"
+    },
+    {
+      "case": 34,
+      "family": "perlin",
+      "group": "historical",
+      "source": ".scratch/interactive/perlin_final/run_1793605176741410828_3715435/request_6",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_8f4ca46b14eab14810a524a7574df2e51ec9a230647793a904df630d7dce78cc.xyz",
+      "seed_sha256": "8f4ca46b14eab14810a524a7574df2e51ec9a230647793a904df630d7dce78cc",
+      "map": ".scratch/native_splines/e1/inputs/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1"
+    },
+    {
+      "case": 35,
+      "family": "perlin",
+      "group": "historical",
+      "source": ".scratch/interactive/perlin_final/run_1793605176741410828_3715435/request_7",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_86fc43e3043cc6129b4f5aed8f34d70c02b433fe83194f0bfaae4f322da1865d.xyz",
+      "seed_sha256": "86fc43e3043cc6129b4f5aed8f34d70c02b433fe83194f0bfaae4f322da1865d",
+      "map": ".scratch/native_splines/e1/inputs/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1"
+    },
+    {
+      "case": 36,
+      "family": "perlin",
+      "group": "historical",
+      "source": ".scratch/interactive/perlin_final/run_1793605176741410828_3715435/request_8",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_18141014243e0c685c6d3d09ec04d33d79feb11f33b7379b95650bee073a9697.xyz",
+      "seed_sha256": "18141014243e0c685c6d3d09ec04d33d79feb11f33b7379b95650bee073a9697",
+      "map": ".scratch/native_splines/e1/inputs/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1"
+    },
+    {
+      "case": 37,
+      "family": "perlin",
+      "group": "historical",
+      "source": ".scratch/interactive/perlin_final/run_1793605176741410828_3715435/request_9",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_399f21f3e22101929302edefd2aa8a349eca022d29ea1c382ccf74a16219b44f.xyz",
+      "seed_sha256": "399f21f3e22101929302edefd2aa8a349eca022d29ea1c382ccf74a16219b44f",
+      "map": ".scratch/native_splines/e1/inputs/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1"
+    },
+    {
+      "case": 38,
+      "family": "perlin",
+      "group": "historical",
+      "source": ".scratch/interactive/polished_rviz/run_1793700953176999996_57475/request_2",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_a9a71eda54011045401846ed9d8f481fa1a477e1b29402604662a7864c8da487.xyz",
+      "seed_sha256": "a9a71eda54011045401846ed9d8f481fa1a477e1b29402604662a7864c8da487",
+      "map": ".scratch/native_splines/e1/inputs/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1"
+    },
+    {
+      "case": 39,
+      "family": "perlin",
+      "group": "historical",
+      "source": ".scratch/interactive/polished_rviz/run_1793701774600485813_61028/request_2",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_9722be485482c55bbedd4ff3ec2b55b75177e8c18093c4f683467beebe052417.xyz",
+      "seed_sha256": "9722be485482c55bbedd4ff3ec2b55b75177e8c18093c4f683467beebe052417",
+      "map": ".scratch/native_splines/e1/inputs/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1"
+    },
+    {
+      "case": 40,
+      "family": "perlin",
+      "group": "historical",
+      "source": ".scratch/interactive/polished_rviz/run_1793701774600485813_61028/request_3",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_2de0729c3bdb35e29e8d4ac2c3583109c966ae0bb88c7874de047fe8944581ad.xyz",
+      "seed_sha256": "2de0729c3bdb35e29e8d4ac2c3583109c966ae0bb88c7874de047fe8944581ad",
+      "map": ".scratch/native_splines/e1/inputs/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1"
+    },
+    {
+      "case": 41,
+      "family": "perlin",
+      "group": "historical",
+      "source": ".scratch/interactive/polished_rviz/run_1793701774600485813_61028/request_4",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_1028d98ce2283e9d12b47e82b5fc00e707db69f610399a89df7d8bf6738412e7.xyz",
+      "seed_sha256": "1028d98ce2283e9d12b47e82b5fc00e707db69f610399a89df7d8bf6738412e7",
+      "map": ".scratch/native_splines/e1/inputs/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1"
+    },
+    {
+      "case": 42,
+      "family": "maze",
+      "group": "historical",
+      "source": ".scratch/interactive/smooth_maze/run_1793707579689468774_73496/request_1",
+      "bounds_lower": [
+        -15,
+        -15,
+        0
+      ],
+      "bounds_upper": [
+        15,
+        15,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_7afc3a1e5b6d739b55b5640bd409a30c9900c199f30b7c6f304d45dd3ace8866.xyz",
+      "seed_sha256": "7afc3a1e5b6d739b55b5640bd409a30c9900c199f30b7c6f304d45dd3ace8866",
+      "map": ".scratch/native_splines/e1/inputs/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz",
+      "map_sha256": "9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c"
+    },
+    {
+      "case": 43,
+      "family": "maze",
+      "group": "historical",
+      "source": ".scratch/interactive/smooth_maze/run_1793707579689468774_73496/request_2",
+      "bounds_lower": [
+        -15,
+        -15,
+        0
+      ],
+      "bounds_upper": [
+        15,
+        15,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_653ef842495f5f55d98c2c556e92b3e5d2dcac5afe7627de40b42580c705c271.xyz",
+      "seed_sha256": "653ef842495f5f55d98c2c556e92b3e5d2dcac5afe7627de40b42580c705c271",
+      "map": ".scratch/native_splines/e1/inputs/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz",
+      "map_sha256": "9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c"
+    },
+    {
+      "case": 44,
+      "family": "maze",
+      "group": "historical",
+      "source": ".scratch/interactive/smooth_maze/run_1793707579689468774_73496/request_3",
+      "bounds_lower": [
+        -15,
+        -15,
+        0
+      ],
+      "bounds_upper": [
+        15,
+        15,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_caf54489a1379d712e4a4ea88f0dd2fb72b2503a6ca6eaff33657953cefa92a5.xyz",
+      "seed_sha256": "caf54489a1379d712e4a4ea88f0dd2fb72b2503a6ca6eaff33657953cefa92a5",
+      "map": ".scratch/native_splines/e1/inputs/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz",
+      "map_sha256": "9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c"
+    },
+    {
+      "case": 45,
+      "family": "maze",
+      "group": "historical",
+      "source": ".scratch/interactive/smooth_maze/run_1793707733801116057_73997/request_1",
+      "bounds_lower": [
+        -15,
+        -15,
+        0
+      ],
+      "bounds_upper": [
+        15,
+        15,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_799b45d8ce79143761ec94f6a6b3b7fe21f26fa5361c85f0860faaee2f717605.xyz",
+      "seed_sha256": "799b45d8ce79143761ec94f6a6b3b7fe21f26fa5361c85f0860faaee2f717605",
+      "map": ".scratch/native_splines/e1/inputs/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz",
+      "map_sha256": "9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c"
+    },
+    {
+      "case": 46,
+      "family": "maze",
+      "group": "historical",
+      "source": ".scratch/interactive/smooth_maze/run_1793707733801116057_73997/request_2",
+      "bounds_lower": [
+        -15,
+        -15,
+        0
+      ],
+      "bounds_upper": [
+        15,
+        15,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_151d29c16af5df8a7ae015fbb12014d54d390692b4ba069f219e07e81d98863a.xyz",
+      "seed_sha256": "151d29c16af5df8a7ae015fbb12014d54d390692b4ba069f219e07e81d98863a",
+      "map": ".scratch/native_splines/e1/inputs/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz",
+      "map_sha256": "9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c"
+    },
+    {
+      "case": 47,
+      "family": "perlin",
+      "group": "historical",
+      "source": ".scratch/interactive/smooth_rviz/run_1793707479970900635_73229/request_1",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_810772cb222b769973bf2b13ebf240047eae7b736b8a79b56ae66fab3aaa61da.xyz",
+      "seed_sha256": "810772cb222b769973bf2b13ebf240047eae7b736b8a79b56ae66fab3aaa61da",
+      "map": ".scratch/native_splines/e1/inputs/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1"
+    },
+    {
+      "case": 48,
+      "family": "perlin",
+      "group": "historical",
+      "source": ".scratch/interactive/smooth_rviz/run_1793707479970900635_73229/request_2",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_a5aab2ca5712775bbaaa81772023b41894446d7dca90f72934e8d6965a9020f2.xyz",
+      "seed_sha256": "a5aab2ca5712775bbaaa81772023b41894446d7dca90f72934e8d6965a9020f2",
+      "map": ".scratch/native_splines/e1/inputs/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1"
+    },
+    {
+      "case": 49,
+      "family": "perlin",
+      "group": "historical",
+      "source": ".scratch/interactive/smooth_rviz/run_1793707479970900635_73229/request_3",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_55ce91e763b967c3a1018229e3825ad9943a9b7b19f18a8b42d85a7c08be42d5.xyz",
+      "seed_sha256": "55ce91e763b967c3a1018229e3825ad9943a9b7b19f18a8b42d85a7c08be42d5",
+      "map": ".scratch/native_splines/e1/inputs/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1"
+    },
+    {
+      "case": 50,
+      "family": "perlin",
+      "group": "historical",
+      "source": ".scratch/interactive/smooth_rviz/run_1793707679920045645_73748/request_1",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_14044d7a7ded4f02ada1903bbad7b0085aa84cad98c714c9a85b394d4ff45546.xyz",
+      "seed_sha256": "14044d7a7ded4f02ada1903bbad7b0085aa84cad98c714c9a85b394d4ff45546",
+      "map": ".scratch/native_splines/e1/inputs/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1"
+    },
+    {
+      "case": 51,
+      "family": "slalom",
+      "group": "independent",
+      "source": "procedural/slalom/seed=1104",
+      "bounds_lower": [
+        -11.0,
+        -7.0,
+        0.0
+      ],
+      "bounds_upper": [
+        11.0,
+        7.0,
+        7.0
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_78dda0aab0b66b17b43d354e05f6f1ee08d89143d69a1408d3f5633aa12bc1e5.xyz",
+      "seed_sha256": "78dda0aab0b66b17b43d354e05f6f1ee08d89143d69a1408d3f5633aa12bc1e5",
+      "map": ".scratch/native_splines/e1/inputs/map_0473ffd4fa132de3ec74d605bdbe5b309adda9c06cc122142b62c6c3d6360dc7.xyz",
+      "map_sha256": "0473ffd4fa132de3ec74d605bdbe5b309adda9c06cc122142b62c6c3d6360dc7"
+    },
+    {
+      "case": 52,
+      "family": "slalom",
+      "group": "independent",
+      "source": "procedural/slalom/seed=1105",
+      "bounds_lower": [
+        -11.0,
+        -7.0,
+        0.0
+      ],
+      "bounds_upper": [
+        11.0,
+        7.0,
+        7.0
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_82b9452432e033cf84061e106e3db0a223ea760cc2ed6dc6c66080d82a77137e.xyz",
+      "seed_sha256": "82b9452432e033cf84061e106e3db0a223ea760cc2ed6dc6c66080d82a77137e",
+      "map": ".scratch/native_splines/e1/inputs/map_799bb1bd8f1a9a0321d1e6e9e77d07204c6c90606116e46cf9d6dbc3165bd425.xyz",
+      "map_sha256": "799bb1bd8f1a9a0321d1e6e9e77d07204c6c90606116e46cf9d6dbc3165bd425"
+    },
+    {
+      "case": 53,
+      "family": "slalom",
+      "group": "independent",
+      "source": "procedural/slalom/seed=1106",
+      "bounds_lower": [
+        -11.0,
+        -7.0,
+        0.0
+      ],
+      "bounds_upper": [
+        11.0,
+        7.0,
+        7.0
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_0d03f419670dbe3ea73cea06a13627d8df9e9f33e9cfb961799cd87abf2e2ffa.xyz",
+      "seed_sha256": "0d03f419670dbe3ea73cea06a13627d8df9e9f33e9cfb961799cd87abf2e2ffa",
+      "map": ".scratch/native_splines/e1/inputs/map_1695999fc72dc281dd46203a49e1a2b26397ea75d036a0a1099b0c4ae701a853.xyz",
+      "map_sha256": "1695999fc72dc281dd46203a49e1a2b26397ea75d036a0a1099b0c4ae701a853"
+    },
+    {
+      "case": 54,
+      "family": "variable_tube",
+      "group": "independent",
+      "source": "procedural/variable_tube/seed=1104",
+      "bounds_lower": [
+        -11.0,
+        -7.0,
+        0.0
+      ],
+      "bounds_upper": [
+        11.0,
+        7.0,
+        7.0
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_6bd9c45f293dfd937c0f18ade0b469b97649a0cbf2bc99b205040be435f2e921.xyz",
+      "seed_sha256": "6bd9c45f293dfd937c0f18ade0b469b97649a0cbf2bc99b205040be435f2e921",
+      "map": ".scratch/native_splines/e1/inputs/map_dd1703a95b5b492de1c1078854b1d245b635e2a7f037a99d9f264e60a858df7b.xyz",
+      "map_sha256": "dd1703a95b5b492de1c1078854b1d245b635e2a7f037a99d9f264e60a858df7b"
+    },
+    {
+      "case": 55,
+      "family": "variable_tube",
+      "group": "independent",
+      "source": "procedural/variable_tube/seed=1105",
+      "bounds_lower": [
+        -11.0,
+        -7.0,
+        0.0
+      ],
+      "bounds_upper": [
+        11.0,
+        7.0,
+        7.0
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_78905abc7d4367dbf2c9742d84d8bf529320fba8e3c769a1a86fca10e7769cc3.xyz",
+      "seed_sha256": "78905abc7d4367dbf2c9742d84d8bf529320fba8e3c769a1a86fca10e7769cc3",
+      "map": ".scratch/native_splines/e1/inputs/map_e3334af81330890c001e3d986d9b6a092f006b8e30379623a1e0a1fad81170e5.xyz",
+      "map_sha256": "e3334af81330890c001e3d986d9b6a092f006b8e30379623a1e0a1fad81170e5"
+    },
+    {
+      "case": 56,
+      "family": "variable_tube",
+      "group": "independent",
+      "source": "procedural/variable_tube/seed=1106",
+      "bounds_lower": [
+        -11.0,
+        -7.0,
+        0.0
+      ],
+      "bounds_upper": [
+        11.0,
+        7.0,
+        7.0
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_17931ce23dd9e7cbed229070ece0f0294f3fc87f1adad60d2e5d33c3ad47ad42.xyz",
+      "seed_sha256": "17931ce23dd9e7cbed229070ece0f0294f3fc87f1adad60d2e5d33c3ad47ad42",
+      "map": ".scratch/native_splines/e1/inputs/map_b2829cd996abda67c6dc617eb4c7436024538842e18d29dfa5b74bcdbbd78f9d.xyz",
+      "map_sha256": "b2829cd996abda67c6dc617eb4c7436024538842e18d29dfa5b74bcdbbd78f9d"
+    },
+    {
+      "case": 57,
+      "family": "helix",
+      "group": "independent",
+      "source": "procedural/helix/seed=1104",
+      "bounds_lower": [
+        -6.0,
+        -6.0,
+        0.0
+      ],
+      "bounds_upper": [
+        6.0,
+        6.0,
+        8.0
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_b21eca6507d274619a5455e1963573e68aebf664be5089e00cc11726c19c914c.xyz",
+      "seed_sha256": "b21eca6507d274619a5455e1963573e68aebf664be5089e00cc11726c19c914c",
+      "map": ".scratch/native_splines/e1/inputs/map_ee167b4e7c7c9e555fa0e2a8a5ea74c7799383df0ac1f7560216b7919d733c97.xyz",
+      "map_sha256": "ee167b4e7c7c9e555fa0e2a8a5ea74c7799383df0ac1f7560216b7919d733c97"
+    },
+    {
+      "case": 58,
+      "family": "helix",
+      "group": "independent",
+      "source": "procedural/helix/seed=1105",
+      "bounds_lower": [
+        -6.0,
+        -6.0,
+        0.0
+      ],
+      "bounds_upper": [
+        6.0,
+        6.0,
+        8.0
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_d57576cc75de18f6cbc230665003338c183aca90d8c503cf41c3a6e31d1a62a8.xyz",
+      "seed_sha256": "d57576cc75de18f6cbc230665003338c183aca90d8c503cf41c3a6e31d1a62a8",
+      "map": ".scratch/native_splines/e1/inputs/map_96b067191f154933bf55f34439af74e6674908580152416f39d9d1052b95f6cc.xyz",
+      "map_sha256": "96b067191f154933bf55f34439af74e6674908580152416f39d9d1052b95f6cc"
+    },
+    {
+      "case": 59,
+      "family": "helix",
+      "group": "independent",
+      "source": "procedural/helix/seed=1106",
+      "bounds_lower": [
+        -6.0,
+        -6.0,
+        0.0
+      ],
+      "bounds_upper": [
+        6.0,
+        6.0,
+        8.0
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_e95e05981512fb215a14d001a469b666529a99bc15769fa92f08f8105ac5acf8.xyz",
+      "seed_sha256": "e95e05981512fb215a14d001a469b666529a99bc15769fa92f08f8105ac5acf8",
+      "map": ".scratch/native_splines/e1/inputs/map_075d3599f7c685ed3c93dd5ba332c7d556b6c8b5b338febf0f772d0bb1a9cd72.xyz",
+      "map_sha256": "075d3599f7c685ed3c93dd5ba332c7d556b6c8b5b338febf0f772d0bb1a9cd72"
+    },
+    {
+      "case": 60,
+      "family": "maze_turns",
+      "group": "independent",
+      "source": "procedural/maze_turns/seed=1104",
+      "bounds_lower": [
+        -11.0,
+        -7.0,
+        0.0
+      ],
+      "bounds_upper": [
+        11.0,
+        7.0,
+        7.0
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_6b20a8af51e9eb04818a70062e822eb1d2cdf8e57eaa6c3660fdec967d037dba.xyz",
+      "seed_sha256": "6b20a8af51e9eb04818a70062e822eb1d2cdf8e57eaa6c3660fdec967d037dba",
+      "map": ".scratch/native_splines/e1/inputs/map_77ea6b3fac1eb9fc0efe056d468b73e70f66dd17d7935b417f2a4b8d71f52ad3.xyz",
+      "map_sha256": "77ea6b3fac1eb9fc0efe056d468b73e70f66dd17d7935b417f2a4b8d71f52ad3"
+    },
+    {
+      "case": 61,
+      "family": "maze_turns",
+      "group": "independent",
+      "source": "procedural/maze_turns/seed=1105",
+      "bounds_lower": [
+        -11.0,
+        -7.0,
+        0.0
+      ],
+      "bounds_upper": [
+        11.0,
+        7.0,
+        7.0
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_a18ccad22d37da85d7791070f4f366c6c46470b07e8d6d4691b27da192bb0929.xyz",
+      "seed_sha256": "a18ccad22d37da85d7791070f4f366c6c46470b07e8d6d4691b27da192bb0929",
+      "map": ".scratch/native_splines/e1/inputs/map_214df330f54fb63f41b3833cef67c869719bfee56866b14be7f19da6b2cb93cf.xyz",
+      "map_sha256": "214df330f54fb63f41b3833cef67c869719bfee56866b14be7f19da6b2cb93cf"
+    },
+    {
+      "case": 62,
+      "family": "maze_turns",
+      "group": "independent",
+      "source": "procedural/maze_turns/seed=1106",
+      "bounds_lower": [
+        -11.0,
+        -7.0,
+        0.0
+      ],
+      "bounds_upper": [
+        11.0,
+        7.0,
+        7.0
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_c4800702e8f6c64a3b479acec86be112a1dec518e955caad883ea69947ce0a0f.xyz",
+      "seed_sha256": "c4800702e8f6c64a3b479acec86be112a1dec518e955caad883ea69947ce0a0f",
+      "map": ".scratch/native_splines/e1/inputs/map_ef9f5f6ef4a34f054f74dd3c6fc948cbe341aae9c14ac226fa6f0b7b4c3abb7a.xyz",
+      "map_sha256": "ef9f5f6ef4a34f054f74dd3c6fc948cbe341aae9c14ac226fa6f0b7b4c3abb7a"
+    },
+    {
+      "case": 63,
+      "family": "open_straight",
+      "group": "independent",
+      "source": "procedural/open_straight",
+      "bounds_lower": [
+        -10,
+        -7,
+        0
+      ],
+      "bounds_upper": [
+        10,
+        7,
+        8
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_1cace5c3fe5e5efd180eb506f16a3818bf41727473f696a4c61da2980dc9e780.xyz",
+      "seed_sha256": "1cace5c3fe5e5efd180eb506f16a3818bf41727473f696a4c61da2980dc9e780",
+      "map": ".scratch/native_splines/e1/inputs/map_5ed5c1243feed4d9d925bab697c5e0d681ce83e409c29b3abd5a4ec1f2bcf1f9.xyz",
+      "map_sha256": "5ed5c1243feed4d9d925bab697c5e0d681ce83e409c29b3abd5a4ec1f2bcf1f9"
+    },
+    {
+      "case": 64,
+      "family": "open_vertical",
+      "group": "independent",
+      "source": "procedural/open_vertical",
+      "bounds_lower": [
+        -10,
+        -7,
+        0
+      ],
+      "bounds_upper": [
+        10,
+        7,
+        8
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_b0b4aa2c7684f6ad47faea30581556df85a2994469341dd07a9fd046a8928741.xyz",
+      "seed_sha256": "b0b4aa2c7684f6ad47faea30581556df85a2994469341dd07a9fd046a8928741",
+      "map": ".scratch/native_splines/e1/inputs/map_5ed5c1243feed4d9d925bab697c5e0d681ce83e409c29b3abd5a4ec1f2bcf1f9.xyz",
+      "map_sha256": "5ed5c1243feed4d9d925bab697c5e0d681ce83e409c29b3abd5a4ec1f2bcf1f9"
+    },
+    {
+      "case": 65,
+      "family": "backtracking_cusp",
+      "group": "failure_control",
+      "source": "procedural/backtracking_cusp",
+      "bounds_lower": [
+        -10,
+        -7,
+        0
+      ],
+      "bounds_upper": [
+        10,
+        7,
+        8
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_6708825a901eb1fad6c4f2681b465976d515685df90b29f609645136f90bff51.xyz",
+      "seed_sha256": "6708825a901eb1fad6c4f2681b465976d515685df90b29f609645136f90bff51",
+      "map": ".scratch/native_splines/e1/inputs/map_5ed5c1243feed4d9d925bab697c5e0d681ce83e409c29b3abd5a4ec1f2bcf1f9.xyz",
+      "map_sha256": "5ed5c1243feed4d9d925bab697c5e0d681ce83e409c29b3abd5a4ec1f2bcf1f9"
+    },
+    {
+      "case": 66,
+      "family": "narrow_003m",
+      "group": "failure_control",
+      "source": "procedural/narrow_003m",
+      "bounds_lower": [
+        -10,
+        -7,
+        0
+      ],
+      "bounds_upper": [
+        10,
+        7,
+        8
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/e1/inputs/seed_8be7585f02c55ca35bdd4a71f50b67591adf342a4252dc316d8c348099b57430.xyz",
+      "seed_sha256": "8be7585f02c55ca35bdd4a71f50b67591adf342a4252dc316d8c348099b57430",
+      "map": ".scratch/native_splines/e1/inputs/map_10ffa02ab59276cae286d171095dc30dc964e8fd49b8a5801000ff81c0cd3bf5.xyz",
+      "map_sha256": "10ffa02ab59276cae286d171095dc30dc964e8fd49b8a5801000ff81c0cd3bf5"
+    }
+  ],
+  "excluded_inputs": [
+    {
+      "source": ".scratch/interactive/maze_connected/run_1793605479006343675_3719882/request_15/seed.xyz",
+      "reason": "missing map or fewer than two seed points"
+    },
+    {
+      "source": ".scratch/interactive/maze_connected/run_1793605479006343675_3719882/request_16/seed.xyz",
+      "reason": "missing map or fewer than two seed points"
+    },
+    {
+      "source": ".scratch/interactive/maze_connected/run_1793605479006343675_3719882/request_7/seed.xyz",
+      "reason": "missing map or fewer than two seed points"
+    },
+    {
+      "source": ".scratch/interactive/maze_connected/run_1793605479006343675_3719882/request_8/seed.xyz",
+      "reason": "missing map or fewer than two seed points"
+    },
+    {
+      "source": ".scratch/interactive/maze_final/run_1793605043763501559_3713399/request_3/seed.xyz",
+      "reason": "missing map or fewer than two seed points"
+    },
+    {
+      "source": ".scratch/interactive/maze_final/run_1793605043763501559_3713399/request_4/seed.xyz",
+      "reason": "missing map or fewer than two seed points"
+    }
+  ]
+}

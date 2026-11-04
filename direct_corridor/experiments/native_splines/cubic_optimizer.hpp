@@ -22,6 +22,7 @@ struct CubicModel {
 struct OptimizerMetrics {
   double setup_ms=0,assembly_ms=0,solve_ms=0,line_search_ms=0,certificate_ms=0;
   double gradient_error=0,hessian_error=0,initial_scale=1;
+  double gradient_reference_error=0,hessian_reference_error=0,derivative_min_step=1;
   int steps=0,backtracks=0,damping_retries=0,regularity_backtracks=0;
   int regularity_repairs=0;
   int active_constraints=0;
@@ -29,6 +30,8 @@ struct OptimizerMetrics {
   int controls=0,variables=0,constraints=0,hessian_nonzero=0,equality_rank=0;
   int merged_supports=0,support_groups=0,pruned_supports=0;
   double pruning_ms=0;
+  double support_selection_ms=0,support_gap_sum=0;
+  int support_intervals=0,refined_intervals=0,refined_planes=0,refinement_extra_rows=0;
   std::uint64_t reach_candidates=0,exact_reach_evaluations=0,exact_reach_additional=0;
   double initial_inflation_ms=0;
   int hessian_refreshes=0;
@@ -80,6 +83,8 @@ struct OptimizerSettings {
   bool polar_pruning=false;
   int projected_pruning=0; // 0: off, 1: barrier only, 2: barrier and step boundary.
   int reach_bound=0; // 0: original triangle, 1: exact domain, 2: triangle then exact.
+  int certificate_refinement=0; // 0: off, 1: degree-five elevation, 2: one bisection.
+  double certificate_fraction=.1; // Fraction of interval groups; used after the first inflation.
   bool distance_barrier=false;
   int initial_sweeps=0;
   double initial_fraction=.85;
@@ -152,6 +157,8 @@ struct CubicProblem {
   size_t geometric_cuts=0;
   int merged_supports=0;
   double pruning_ms=0;
+  double support_selection_ms=0,support_gap_sum=0;
+  int support_intervals=0,refined_intervals=0,refined_planes=0,refinement_extra_rows=0;
   std::shared_ptr<const CubicEnergy> energy;
   const BandedSPD& quadratic;
   const Eigen::VectorXd& linear;
