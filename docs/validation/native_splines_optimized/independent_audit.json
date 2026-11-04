@@ -1,0 +1,282 @@
+[
+  {
+    "case": 0,
+    "model": "H5-S",
+    "sample_points": 296208,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 2.856614538884122e-11
+  },
+  {
+    "case": 0,
+    "model": "C3-fast",
+    "sample_points": 269280,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 2.729370777022191e-13
+  },
+  {
+    "case": 0,
+    "model": "C3-balanced",
+    "sample_points": 269280,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 3.9778019757489296e-13
+  },
+  {
+    "case": 0,
+    "model": "C3-volume",
+    "sample_points": 269280,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 4.0645445287462276e-13
+  },
+  {
+    "case": 0,
+    "model": "C3-OPT-project-round1",
+    "sample_points": 296208,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 1.5229824033169164e-11
+  },
+  {
+    "case": 1,
+    "model": "H5-S",
+    "sample_points": 521424,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 3.2209212295873906e-11
+  },
+  {
+    "case": 1,
+    "model": "C3-fast",
+    "sample_points": 447984,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 7.629745871663835e-13
+  },
+  {
+    "case": 1,
+    "model": "C3-balanced",
+    "sample_points": 447984,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 6.448120107145242e-13
+  },
+  {
+    "case": 1,
+    "model": "C3-volume",
+    "sample_points": 447984,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 5.36772645370701e-13
+  },
+  {
+    "case": 1,
+    "model": "C3-OPT-project-round1",
+    "sample_points": 521424,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 9.936755972231642e-12
+  },
+  {
+    "case": 2,
+    "model": "H5-S",
+    "sample_points": 286416,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 6.283078810319433e-12
+  },
+  {
+    "case": 2,
+    "model": "C3-fast",
+    "sample_points": 264384,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 2.64573412506364e-13
+  },
+  {
+    "case": 2,
+    "model": "C3-balanced",
+    "sample_points": 264384,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 2.4074429040491517e-13
+  },
+  {
+    "case": 2,
+    "model": "C3-volume",
+    "sample_points": 264384,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 2.0153894234826658e-13
+  },
+  {
+    "case": 2,
+    "model": "C3-OPT-project-round1",
+    "sample_points": 286416,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 3.6030994859677545e-12
+  },
+  {
+    "case": 3,
+    "model": "H5-S",
+    "sample_points": 496944,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 2.6136331187413725e-11
+  },
+  {
+    "case": 3,
+    "model": "C3-fast",
+    "sample_points": 425952,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 6.880050600090088e-13
+  },
+  {
+    "case": 3,
+    "model": "C3-balanced",
+    "sample_points": 425952,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 5.73457428577877e-13
+  },
+  {
+    "case": 3,
+    "model": "C3-volume",
+    "sample_points": 425952,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 6.721860296871176e-13
+  },
+  {
+    "case": 3,
+    "model": "C3-OPT-project-round1",
+    "sample_points": 496944,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 1.5791628224228515e-11
+  },
+  {
+    "case": 4,
+    "model": "H5-S",
+    "sample_points": 274176,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 6.05605223918645e-12
+  },
+  {
+    "case": 4,
+    "model": "C3-fast",
+    "sample_points": 252144,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 2.760570868647316e-13
+  },
+  {
+    "case": 4,
+    "model": "C3-balanced",
+    "sample_points": 252144,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 2.746409214243843e-13
+  },
+  {
+    "case": 4,
+    "model": "C3-volume",
+    "sample_points": 252144,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 2.721796148135098e-13
+  },
+  {
+    "case": 4,
+    "model": "C3-OPT-project-round1",
+    "sample_points": 274176,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 4.5707466655434295e-12
+  },
+  {
+    "case": 5,
+    "model": "H5-S",
+    "sample_points": 203184,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 2.9173823214537042e-12
+  },
+  {
+    "case": 5,
+    "model": "C3-fast",
+    "sample_points": 188496,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 1.417836659469812e-13
+  },
+  {
+    "case": 5,
+    "model": "C3-balanced",
+    "sample_points": 188496,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 2.1170338257682972e-13
+  },
+  {
+    "case": 5,
+    "model": "C3-volume",
+    "sample_points": 188496,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 2.1759456822744876e-13
+  },
+  {
+    "case": 5,
+    "model": "C3-OPT-project-round1",
+    "sample_points": 203184,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 8.450179073441615e-13
+  },
+  {
+    "case": 6,
+    "model": "H5-S",
+    "sample_points": 301104,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 6.080151514579031e-12
+  },
+  {
+    "case": 6,
+    "model": "C3-fast",
+    "sample_points": 276624,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 2.749604483851084e-13
+  },
+  {
+    "case": 6,
+    "model": "C3-balanced",
+    "sample_points": 276624,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 2.7374000580641617e-13
+  },
+  {
+    "case": 6,
+    "model": "C3-volume",
+    "sample_points": 276624,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 4.0804464036402103e-13
+  },
+  {
+    "case": 6,
+    "model": "C3-OPT-project-round1",
+    "sample_points": 301104,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_seed_arc": 2.131206737270738e-12
+  }
+]

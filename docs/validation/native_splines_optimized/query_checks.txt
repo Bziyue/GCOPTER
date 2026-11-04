@@ -1,0 +1,49 @@
+.scratch/native_splines/round2/joint/case_00/C3-balanced.csv
+section_error=3.32091e-12, value_error=2.41474e-14, gradient_error=2.30288e-13, finite_difference_error=1.1833e-07
+native_ms=0.596072, elevated_ms=1.48517
+native_ms=0.587902, elevated_ms=1.45303
+native_ms=0.584852, elevated_ms=1.62128
+native_ms=0.584622, elevated_ms=1.4546
+native_ms=0.582392, elevated_ms=1.45032
+.scratch/native_splines/round2/joint/case_01/C3-balanced.csv
+section_error=8.52325e-12, value_error=3.18079e-14, gradient_error=3.82725e-11, finite_difference_error=2.30055e-08
+native_ms=0.776673, elevated_ms=1.90449
+native_ms=0.813052, elevated_ms=1.83656
+native_ms=0.765983, elevated_ms=1.84937
+native_ms=0.759903, elevated_ms=1.83306
+native_ms=0.761062, elevated_ms=1.83216
+.scratch/native_splines/round2/joint/case_02/C3-balanced.csv
+section_error=1.62136e-12, value_error=9.60343e-15, gradient_error=6.57276e-14, finite_difference_error=3.03048e-09
+native_ms=0.592172, elevated_ms=1.45721
+native_ms=0.584382, elevated_ms=1.47114
+native_ms=0.579442, elevated_ms=1.47019
+native_ms=0.579142, elevated_ms=1.4685
+native_ms=0.572732, elevated_ms=1.45419
+.scratch/native_splines/round2/joint/case_03/C3-balanced.csv
+section_error=9.02884e-12, value_error=5.62883e-14, gradient_error=8.05678e-13, finite_difference_error=1.27091e-08
+native_ms=0.688052, elevated_ms=1.67064
+native_ms=0.738143, elevated_ms=1.6723
+native_ms=0.690722, elevated_ms=1.67271
+native_ms=0.685443, elevated_ms=1.66779
+native_ms=0.683012, elevated_ms=1.69386
+.scratch/native_splines/round2/joint/case_04/C3-balanced.csv
+section_error=2.62529e-12, value_error=3.55826e-14, gradient_error=1.03584e-12, finite_difference_error=1.37679e-08
+native_ms=0.622382, elevated_ms=1.47694
+native_ms=0.620022, elevated_ms=1.48005
+native_ms=0.615332, elevated_ms=1.48586
+native_ms=0.610862, elevated_ms=1.47934
+native_ms=0.603562, elevated_ms=1.47524
+.scratch/native_splines/round2/joint/case_05/C3-balanced.csv
+section_error=1.18911e-12, value_error=9.88098e-15, gradient_error=4.75063e-14, finite_difference_error=5.17236e-09
+native_ms=0.584602, elevated_ms=1.48653
+native_ms=0.578082, elevated_ms=1.4441
+native_ms=0.570362, elevated_ms=1.44667
+native_ms=0.572542, elevated_ms=1.45026
+native_ms=0.562792, elevated_ms=1.4469
+.scratch/native_splines/round2/joint/case_06/C3-balanced.csv
+section_error=4.82325e-12, value_error=3.52496e-14, gradient_error=5.84197e-13, finite_difference_error=1.60863e-08
+native_ms=0.596902, elevated_ms=1.44858
+native_ms=0.596332, elevated_ms=1.44745
+native_ms=0.587572, elevated_ms=1.4403
+native_ms=0.593572, elevated_ms=1.44754
+native_ms=0.592532, elevated_ms=1.43925

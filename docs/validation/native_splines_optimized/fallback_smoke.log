@@ -1,0 +1,4 @@
+hermite rep -1 1.21056ms feasible=0 plane=0.0293432 corridor=0.029899 collision=0
+firi rep -1 0.19428ms feasible=0 plane=0 corridor=0.557143 collision=0
+firi rep 0 0.188321ms feasible=0 plane=0 corridor=0.557143 collision=0
+hermite rep 0 1.18322ms feasible=0 plane=0.0293432 corridor=0.029899 collision=0

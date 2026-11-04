@@ -1,0 +1,857 @@
+{
+  "schema": "native-splines-trajectory-v1",
+  "binary_sha256": "e03b7d674026ee5d76fd338f869badb1ad51fb6f8400fdac553756eb0873d29d",
+  "corridor_time_is_replay_and_audit": true,
+  "trajectory_representation": "common-quintic-minjerk",
+  "repeats": 3,
+  "max_iterations": 800,
+  "constraint": "bezier",
+  "depth": 2,
+  "spacing": 1.0,
+  "penalty_weight": 100000.0,
+  "integration_steps": 16,
+  "cases": [
+    {
+      "case": 0,
+      "request": ".scratch/interactive/rviz/run_1793605002598226995_3712673/request_1",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_db505c46bc24c061128416d4f673259c3be655ecc474b1840790fac39c43fb00.xyz",
+      "seed_sha256": "db505c46bc24c061128416d4f673259c3be655ecc474b1840790fac39c43fb00",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+      "model": "H5-S",
+      "status": "completed",
+      "elapsed_s": 4.219135196002753,
+      "geometry_sha256": "029266fd770a05d14bb6d853cfd18d24c4d4da0a76f78e8f96cdd3f406baa79d",
+      "output": ".scratch/native_splines/round2/trajectory/H5-S/case_00"
+    },
+    {
+      "case": 0,
+      "request": ".scratch/interactive/rviz/run_1793605002598226995_3712673/request_1",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_db505c46bc24c061128416d4f673259c3be655ecc474b1840790fac39c43fb00.xyz",
+      "seed_sha256": "db505c46bc24c061128416d4f673259c3be655ecc474b1840790fac39c43fb00",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+      "model": "C3-fast",
+      "status": "completed",
+      "elapsed_s": 2.2165966620013933,
+      "geometry_sha256": "5e8178d0a44f97c408c4a7578bb6f0c07a5d5ebb6fb2d255091cdd71d4cdbb17",
+      "output": ".scratch/native_splines/round2/trajectory/C3-fast/case_00"
+    },
+    {
+      "case": 0,
+      "request": ".scratch/interactive/rviz/run_1793605002598226995_3712673/request_1",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_db505c46bc24c061128416d4f673259c3be655ecc474b1840790fac39c43fb00.xyz",
+      "seed_sha256": "db505c46bc24c061128416d4f673259c3be655ecc474b1840790fac39c43fb00",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+      "model": "C3-balanced",
+      "status": "completed",
+      "elapsed_s": 2.2661520869987726,
+      "geometry_sha256": "1c980be19ee0594e3d7e178e5afb4bd4ae7dce2ca9939c337407b0b78f9d381e",
+      "output": ".scratch/native_splines/round2/trajectory/C3-balanced/case_00"
+    },
+    {
+      "case": 0,
+      "request": ".scratch/interactive/rviz/run_1793605002598226995_3712673/request_1",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_db505c46bc24c061128416d4f673259c3be655ecc474b1840790fac39c43fb00.xyz",
+      "seed_sha256": "db505c46bc24c061128416d4f673259c3be655ecc474b1840790fac39c43fb00",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+      "model": "C3-volume",
+      "status": "completed",
+      "elapsed_s": 2.266697867999028,
+      "geometry_sha256": "b31e4e6aa226acfef8a23917ff925406945fbc50705cbd7e3079f626a5009b3c",
+      "output": ".scratch/native_splines/round2/trajectory/C3-volume/case_00"
+    },
+    {
+      "case": 0,
+      "request": ".scratch/interactive/rviz/run_1793605002598226995_3712673/request_1",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_db505c46bc24c061128416d4f673259c3be655ecc474b1840790fac39c43fb00.xyz",
+      "seed_sha256": "db505c46bc24c061128416d4f673259c3be655ecc474b1840790fac39c43fb00",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+      "model": "C3-OPT-project-round1",
+      "status": "completed",
+      "elapsed_s": 2.2165054220022284,
+      "geometry_sha256": "85392e2c95fda5b72753817ae4915c1fa05a7562989d4f05ca5a25396f07ac91",
+      "output": ".scratch/native_splines/round2/trajectory/C3-OPT-project-round1/case_00"
+    },
+    {
+      "case": 1,
+      "request": ".scratch/interactive/perlin_final/run_1793605176741410828_3715435/request_10",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_bd82e7f1ab28edfbbf014898b2be7a49c30e1d6f30ec09aaa488134aa9b62cf2.xyz",
+      "seed_sha256": "bd82e7f1ab28edfbbf014898b2be7a49c30e1d6f30ec09aaa488134aa9b62cf2",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+      "model": "H5-S",
+      "status": "completed",
+      "elapsed_s": 7.521641904997523,
+      "geometry_sha256": "b059a9ee76d055e829704f59673d2c6c4797a83bf3761088e8222231aa2f9c45",
+      "output": ".scratch/native_splines/round2/trajectory/H5-S/case_01"
+    },
+    {
+      "case": 1,
+      "request": ".scratch/interactive/perlin_final/run_1793605176741410828_3715435/request_10",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_bd82e7f1ab28edfbbf014898b2be7a49c30e1d6f30ec09aaa488134aa9b62cf2.xyz",
+      "seed_sha256": "bd82e7f1ab28edfbbf014898b2be7a49c30e1d6f30ec09aaa488134aa9b62cf2",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+      "model": "C3-fast",
+      "status": "completed",
+      "elapsed_s": 3.818772374001128,
+      "geometry_sha256": "bbeb538ae67bfd8a287eb6a101282a19f2bbde59c9a82b0e2b34fa14044fbf68",
+      "output": ".scratch/native_splines/round2/trajectory/C3-fast/case_01"
+    },
+    {
+      "case": 1,
+      "request": ".scratch/interactive/perlin_final/run_1793605176741410828_3715435/request_10",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_bd82e7f1ab28edfbbf014898b2be7a49c30e1d6f30ec09aaa488134aa9b62cf2.xyz",
+      "seed_sha256": "bd82e7f1ab28edfbbf014898b2be7a49c30e1d6f30ec09aaa488134aa9b62cf2",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+      "model": "C3-balanced",
+      "status": "completed",
+      "elapsed_s": 3.9189832379997824,
+      "geometry_sha256": "8fff5a591b4c5ddae3390e0b673804f198c546021cb0bd79e2c9242349e6114b",
+      "output": ".scratch/native_splines/round2/trajectory/C3-balanced/case_01"
+    },
+    {
+      "case": 1,
+      "request": ".scratch/interactive/perlin_final/run_1793605176741410828_3715435/request_10",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_bd82e7f1ab28edfbbf014898b2be7a49c30e1d6f30ec09aaa488134aa9b62cf2.xyz",
+      "seed_sha256": "bd82e7f1ab28edfbbf014898b2be7a49c30e1d6f30ec09aaa488134aa9b62cf2",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+      "model": "C3-volume",
+      "status": "completed",
+      "elapsed_s": 3.9682941309984017,
+      "geometry_sha256": "48e60b5a326cc14e9a486b878b958f480a53b20ebc4aa9317aac7037e22a388d",
+      "output": ".scratch/native_splines/round2/trajectory/C3-volume/case_01"
+    },
+    {
+      "case": 1,
+      "request": ".scratch/interactive/perlin_final/run_1793605176741410828_3715435/request_10",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_bd82e7f1ab28edfbbf014898b2be7a49c30e1d6f30ec09aaa488134aa9b62cf2.xyz",
+      "seed_sha256": "bd82e7f1ab28edfbbf014898b2be7a49c30e1d6f30ec09aaa488134aa9b62cf2",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+      "model": "C3-OPT-project-round1",
+      "status": "completed",
+      "elapsed_s": 4.068872666000971,
+      "geometry_sha256": "e5282fe06d08f59efb795a7b7ea33539d470dfd3632351def4fdac513d1ee9a0",
+      "output": ".scratch/native_splines/round2/trajectory/C3-OPT-project-round1/case_01"
+    },
+    {
+      "case": 2,
+      "request": ".scratch/interactive/maze_connected/run_1793605479006343675_3719882/request_10",
+      "bounds_lower": [
+        -15,
+        -15,
+        0
+      ],
+      "bounds_upper": [
+        15,
+        15,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_d170e52ffa2f83709a066d84ae7a14f08392c73df0a5ecb7962b950c4c247d06.xyz",
+      "seed_sha256": "d170e52ffa2f83709a066d84ae7a14f08392c73df0a5ecb7962b950c4c247d06",
+      "map": ".scratch/native_splines/frozen/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz",
+      "map_sha256": "9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c",
+      "model": "H5-S",
+      "status": "completed",
+      "elapsed_s": 3.8681429470016155,
+      "geometry_sha256": "93584b0f58068895d3d34613b67b7c675a27571cd08750bc44f38c6c1c78f185",
+      "output": ".scratch/native_splines/round2/trajectory/H5-S/case_02"
+    },
+    {
+      "case": 2,
+      "request": ".scratch/interactive/maze_connected/run_1793605479006343675_3719882/request_10",
+      "bounds_lower": [
+        -15,
+        -15,
+        0
+      ],
+      "bounds_upper": [
+        15,
+        15,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_d170e52ffa2f83709a066d84ae7a14f08392c73df0a5ecb7962b950c4c247d06.xyz",
+      "seed_sha256": "d170e52ffa2f83709a066d84ae7a14f08392c73df0a5ecb7962b950c4c247d06",
+      "map": ".scratch/native_splines/frozen/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz",
+      "map_sha256": "9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c",
+      "model": "C3-fast",
+      "status": "completed",
+      "elapsed_s": 1.9662931489983748,
+      "geometry_sha256": "2fe9ed58be0a9b36d72d5664c494ee0d44e601f10c00335ec280e2cf88c77138",
+      "output": ".scratch/native_splines/round2/trajectory/C3-fast/case_02"
+    },
+    {
+      "case": 2,
+      "request": ".scratch/interactive/maze_connected/run_1793605479006343675_3719882/request_10",
+      "bounds_lower": [
+        -15,
+        -15,
+        0
+      ],
+      "bounds_upper": [
+        15,
+        15,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_d170e52ffa2f83709a066d84ae7a14f08392c73df0a5ecb7962b950c4c247d06.xyz",
+      "seed_sha256": "d170e52ffa2f83709a066d84ae7a14f08392c73df0a5ecb7962b950c4c247d06",
+      "map": ".scratch/native_splines/frozen/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz",
+      "map_sha256": "9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c",
+      "model": "C3-balanced",
+      "status": "completed",
+      "elapsed_s": 2.0165416059971903,
+      "geometry_sha256": "60e44ed1412d066383afed0a0d397c34ced4de9bffcbc862bd79302cedf534ea",
+      "output": ".scratch/native_splines/round2/trajectory/C3-balanced/case_02"
+    },
+    {
+      "case": 2,
+      "request": ".scratch/interactive/maze_connected/run_1793605479006343675_3719882/request_10",
+      "bounds_lower": [
+        -15,
+        -15,
+        0
+      ],
+      "bounds_upper": [
+        15,
+        15,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_d170e52ffa2f83709a066d84ae7a14f08392c73df0a5ecb7962b950c4c247d06.xyz",
+      "seed_sha256": "d170e52ffa2f83709a066d84ae7a14f08392c73df0a5ecb7962b950c4c247d06",
+      "map": ".scratch/native_splines/frozen/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz",
+      "map_sha256": "9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c",
+      "model": "C3-volume",
+      "status": "completed",
+      "elapsed_s": 2.0165810069993313,
+      "geometry_sha256": "b5c4fd4865eae06a139ce9a33d14a52fc29b1802b0ae65db1286ac0e70dc54d1",
+      "output": ".scratch/native_splines/round2/trajectory/C3-volume/case_02"
+    },
+    {
+      "case": 2,
+      "request": ".scratch/interactive/maze_connected/run_1793605479006343675_3719882/request_10",
+      "bounds_lower": [
+        -15,
+        -15,
+        0
+      ],
+      "bounds_upper": [
+        15,
+        15,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_d170e52ffa2f83709a066d84ae7a14f08392c73df0a5ecb7962b950c4c247d06.xyz",
+      "seed_sha256": "d170e52ffa2f83709a066d84ae7a14f08392c73df0a5ecb7962b950c4c247d06",
+      "map": ".scratch/native_splines/frozen/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz",
+      "map_sha256": "9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c",
+      "model": "C3-OPT-project-round1",
+      "status": "completed",
+      "elapsed_s": 1.9660857179987943,
+      "geometry_sha256": "825dcff8f105407ae9426c69763d1dab4ba457109d8c4cdd4426132df7359c7e",
+      "output": ".scratch/native_splines/round2/trajectory/C3-OPT-project-round1/case_02"
+    },
+    {
+      "case": 3,
+      "request": ".scratch/interactive/rviz/run_1793605002598226995_3712673/request_2",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_e2034ad4c38b68bedb80983603b4358364b5bc00ab5cebd93f07269a8353d32c.xyz",
+      "seed_sha256": "e2034ad4c38b68bedb80983603b4358364b5bc00ab5cebd93f07269a8353d32c",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+      "model": "H5-S",
+      "status": "completed",
+      "elapsed_s": 7.423383769000793,
+      "geometry_sha256": "fe525776e635010d538760b90746f1d0a4661014d3950c4194a1392d7efc0a2d",
+      "output": ".scratch/native_splines/round2/trajectory/H5-S/case_03"
+    },
+    {
+      "case": 3,
+      "request": ".scratch/interactive/rviz/run_1793605002598226995_3712673/request_2",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_e2034ad4c38b68bedb80983603b4358364b5bc00ab5cebd93f07269a8353d32c.xyz",
+      "seed_sha256": "e2034ad4c38b68bedb80983603b4358364b5bc00ab5cebd93f07269a8353d32c",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+      "model": "C3-fast",
+      "status": "completed",
+      "elapsed_s": 3.868576639000821,
+      "geometry_sha256": "84809b7189350652c7c9bc20ffa241452676a346fde1f020f59c1795e39c230b",
+      "output": ".scratch/native_splines/round2/trajectory/C3-fast/case_03"
+    },
+    {
+      "case": 3,
+      "request": ".scratch/interactive/rviz/run_1793605002598226995_3712673/request_2",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_e2034ad4c38b68bedb80983603b4358364b5bc00ab5cebd93f07269a8353d32c.xyz",
+      "seed_sha256": "e2034ad4c38b68bedb80983603b4358364b5bc00ab5cebd93f07269a8353d32c",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+      "model": "C3-balanced",
+      "status": "completed",
+      "elapsed_s": 3.9188289060002717,
+      "geometry_sha256": "8837cabd8aa8dd0cca98d481500f0d228d62e43a46cba6fed851a8b80ffc3972",
+      "output": ".scratch/native_splines/round2/trajectory/C3-balanced/case_03"
+    },
+    {
+      "case": 3,
+      "request": ".scratch/interactive/rviz/run_1793605002598226995_3712673/request_2",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_e2034ad4c38b68bedb80983603b4358364b5bc00ab5cebd93f07269a8353d32c.xyz",
+      "seed_sha256": "e2034ad4c38b68bedb80983603b4358364b5bc00ab5cebd93f07269a8353d32c",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+      "model": "C3-volume",
+      "status": "completed",
+      "elapsed_s": 3.818949813998188,
+      "geometry_sha256": "f9524d41ee827d11a237b8318fe4368c3f741ed3ddfac1b82363a6430bb7279b",
+      "output": ".scratch/native_splines/round2/trajectory/C3-volume/case_03"
+    },
+    {
+      "case": 3,
+      "request": ".scratch/interactive/rviz/run_1793605002598226995_3712673/request_2",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_e2034ad4c38b68bedb80983603b4358364b5bc00ab5cebd93f07269a8353d32c.xyz",
+      "seed_sha256": "e2034ad4c38b68bedb80983603b4358364b5bc00ab5cebd93f07269a8353d32c",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+      "model": "C3-OPT-project-round1",
+      "status": "completed",
+      "elapsed_s": 3.868652279001253,
+      "geometry_sha256": "1e0b7eb36b1533c0ff92582cd0fb687dbacd619007574f4243b8f0afd4622645",
+      "output": ".scratch/native_splines/round2/trajectory/C3-OPT-project-round1/case_03"
+    },
+    {
+      "case": 4,
+      "request": ".scratch/interactive/perlin_final/run_1793605176741410828_3715435/request_5",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_ee1c173245146b51629407d8e03cb1fc80bb3dac7f85cd355f07d000e387654c.xyz",
+      "seed_sha256": "ee1c173245146b51629407d8e03cb1fc80bb3dac7f85cd355f07d000e387654c",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+      "model": "H5-S",
+      "status": "completed",
+      "elapsed_s": 3.91908057800174,
+      "geometry_sha256": "895e49c68802ccd699e82beac5378945adca4ad9e99ba78dbafb4e28e71eb179",
+      "output": ".scratch/native_splines/round2/trajectory/H5-S/case_04"
+    },
+    {
+      "case": 4,
+      "request": ".scratch/interactive/perlin_final/run_1793605176741410828_3715435/request_5",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_ee1c173245146b51629407d8e03cb1fc80bb3dac7f85cd355f07d000e387654c.xyz",
+      "seed_sha256": "ee1c173245146b51629407d8e03cb1fc80bb3dac7f85cd355f07d000e387654c",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+      "model": "C3-fast",
+      "status": "completed",
+      "elapsed_s": 2.066055931001756,
+      "geometry_sha256": "5995c10a5a30811c6e41f5ebf867dfb1d67b1dd5e79124cf01e5802cf2861073",
+      "output": ".scratch/native_splines/round2/trajectory/C3-fast/case_04"
+    },
+    {
+      "case": 4,
+      "request": ".scratch/interactive/perlin_final/run_1793605176741410828_3715435/request_5",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_ee1c173245146b51629407d8e03cb1fc80bb3dac7f85cd355f07d000e387654c.xyz",
+      "seed_sha256": "ee1c173245146b51629407d8e03cb1fc80bb3dac7f85cd355f07d000e387654c",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+      "model": "C3-balanced",
+      "status": "completed",
+      "elapsed_s": 2.1165144500009774,
+      "geometry_sha256": "5b075b9ddd3b5a352f957b5b5b588bc14941d0ec7c73f6c0179a40939ea66011",
+      "output": ".scratch/native_splines/round2/trajectory/C3-balanced/case_04"
+    },
+    {
+      "case": 4,
+      "request": ".scratch/interactive/perlin_final/run_1793605176741410828_3715435/request_5",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_ee1c173245146b51629407d8e03cb1fc80bb3dac7f85cd355f07d000e387654c.xyz",
+      "seed_sha256": "ee1c173245146b51629407d8e03cb1fc80bb3dac7f85cd355f07d000e387654c",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+      "model": "C3-volume",
+      "status": "completed",
+      "elapsed_s": 2.1162752979980723,
+      "geometry_sha256": "c0a7af485cc951cae592f19f699b91f2d1d1037f23daceca7aade184590b36b7",
+      "output": ".scratch/native_splines/round2/trajectory/C3-volume/case_04"
+    },
+    {
+      "case": 4,
+      "request": ".scratch/interactive/perlin_final/run_1793605176741410828_3715435/request_5",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_ee1c173245146b51629407d8e03cb1fc80bb3dac7f85cd355f07d000e387654c.xyz",
+      "seed_sha256": "ee1c173245146b51629407d8e03cb1fc80bb3dac7f85cd355f07d000e387654c",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+      "model": "C3-OPT-project-round1",
+      "status": "completed",
+      "elapsed_s": 2.1167081390012754,
+      "geometry_sha256": "117ab4bcccb4a8b0348cc24f314af600c7187fd393344efefb9d94c909bb58d9",
+      "output": ".scratch/native_splines/round2/trajectory/C3-OPT-project-round1/case_04"
+    },
+    {
+      "case": 5,
+      "request": ".scratch/interactive/maze_connected/run_1793605479006343675_3719882/request_4",
+      "bounds_lower": [
+        -15,
+        -15,
+        0
+      ],
+      "bounds_upper": [
+        15,
+        15,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_019b73adaac1c31fd85a1244699770d45e18c319cfc976548bc8791b4ef621ff.xyz",
+      "seed_sha256": "019b73adaac1c31fd85a1244699770d45e18c319cfc976548bc8791b4ef621ff",
+      "map": ".scratch/native_splines/frozen/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz",
+      "map_sha256": "9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c",
+      "model": "H5-S",
+      "status": "completed",
+      "elapsed_s": 1.866150565998396,
+      "geometry_sha256": "48f5bef56d4bde63ef4fc586c3462992794baa41e093257101c58276c32c6295",
+      "output": ".scratch/native_splines/round2/trajectory/H5-S/case_05"
+    },
+    {
+      "case": 5,
+      "request": ".scratch/interactive/maze_connected/run_1793605479006343675_3719882/request_4",
+      "bounds_lower": [
+        -15,
+        -15,
+        0
+      ],
+      "bounds_upper": [
+        15,
+        15,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_019b73adaac1c31fd85a1244699770d45e18c319cfc976548bc8791b4ef621ff.xyz",
+      "seed_sha256": "019b73adaac1c31fd85a1244699770d45e18c319cfc976548bc8791b4ef621ff",
+      "map": ".scratch/native_splines/frozen/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz",
+      "map_sha256": "9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c",
+      "model": "C3-fast",
+      "status": "completed",
+      "elapsed_s": 1.0151781040003698,
+      "geometry_sha256": "65b938b9982df9c66636d08a4723afb4d23879ffeef2af1256c5f442e84ebf04",
+      "output": ".scratch/native_splines/round2/trajectory/C3-fast/case_05"
+    },
+    {
+      "case": 5,
+      "request": ".scratch/interactive/maze_connected/run_1793605479006343675_3719882/request_4",
+      "bounds_lower": [
+        -15,
+        -15,
+        0
+      ],
+      "bounds_upper": [
+        15,
+        15,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_019b73adaac1c31fd85a1244699770d45e18c319cfc976548bc8791b4ef621ff.xyz",
+      "seed_sha256": "019b73adaac1c31fd85a1244699770d45e18c319cfc976548bc8791b4ef621ff",
+      "map": ".scratch/native_splines/frozen/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz",
+      "map_sha256": "9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c",
+      "model": "C3-balanced",
+      "status": "completed",
+      "elapsed_s": 1.0653579919999174,
+      "geometry_sha256": "b3b97bb09d4db2cfb91ab8ccb2da5c05f47d12db0cd7253ee2409f9bf6ae888d",
+      "output": ".scratch/native_splines/round2/trajectory/C3-balanced/case_05"
+    },
+    {
+      "case": 5,
+      "request": ".scratch/interactive/maze_connected/run_1793605479006343675_3719882/request_4",
+      "bounds_lower": [
+        -15,
+        -15,
+        0
+      ],
+      "bounds_upper": [
+        15,
+        15,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_019b73adaac1c31fd85a1244699770d45e18c319cfc976548bc8791b4ef621ff.xyz",
+      "seed_sha256": "019b73adaac1c31fd85a1244699770d45e18c319cfc976548bc8791b4ef621ff",
+      "map": ".scratch/native_splines/frozen/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz",
+      "map_sha256": "9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c",
+      "model": "C3-volume",
+      "status": "completed",
+      "elapsed_s": 1.1153063169986126,
+      "geometry_sha256": "ea35da0ffb3907634cefbd68eb87b973305c72728348405ad4dc0d2a95247fc6",
+      "output": ".scratch/native_splines/round2/trajectory/C3-volume/case_05"
+    },
+    {
+      "case": 5,
+      "request": ".scratch/interactive/maze_connected/run_1793605479006343675_3719882/request_4",
+      "bounds_lower": [
+        -15,
+        -15,
+        0
+      ],
+      "bounds_upper": [
+        15,
+        15,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_019b73adaac1c31fd85a1244699770d45e18c319cfc976548bc8791b4ef621ff.xyz",
+      "seed_sha256": "019b73adaac1c31fd85a1244699770d45e18c319cfc976548bc8791b4ef621ff",
+      "map": ".scratch/native_splines/frozen/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz",
+      "map_sha256": "9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c",
+      "model": "C3-OPT-project-round1",
+      "status": "completed",
+      "elapsed_s": 1.1153910870016261,
+      "geometry_sha256": "7384e55bb0577b54304ff53022b00eda77f30274058e1d12bc315d099719f1ac",
+      "output": ".scratch/native_splines/round2/trajectory/C3-OPT-project-round1/case_05"
+    },
+    {
+      "case": 6,
+      "request": ".scratch/interactive/polished_rviz/run_1793701774600485813_61028/request_1",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_6d1bf777dbe2008f496213639d78b553fcecf0d30ceca7fdc6d9731d3bcb492c.xyz",
+      "seed_sha256": "6d1bf777dbe2008f496213639d78b553fcecf0d30ceca7fdc6d9731d3bcb492c",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+      "model": "H5-S",
+      "status": "completed",
+      "elapsed_s": 4.369064364000224,
+      "geometry_sha256": "5b9581d54d20a71829e65d30108cdbbb381fb04787d9ff60c9b7b5a4c7377d1c",
+      "output": ".scratch/native_splines/round2/trajectory/H5-S/case_06"
+    },
+    {
+      "case": 6,
+      "request": ".scratch/interactive/polished_rviz/run_1793701774600485813_61028/request_1",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_6d1bf777dbe2008f496213639d78b553fcecf0d30ceca7fdc6d9731d3bcb492c.xyz",
+      "seed_sha256": "6d1bf777dbe2008f496213639d78b553fcecf0d30ceca7fdc6d9731d3bcb492c",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+      "model": "C3-fast",
+      "status": "completed",
+      "elapsed_s": 2.4170278390010935,
+      "geometry_sha256": "d8de1609582b453168d4abde08b2c4e858f2a04c2a665ecbff36da12d0ddec7f",
+      "output": ".scratch/native_splines/round2/trajectory/C3-fast/case_06"
+    },
+    {
+      "case": 6,
+      "request": ".scratch/interactive/polished_rviz/run_1793701774600485813_61028/request_1",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_6d1bf777dbe2008f496213639d78b553fcecf0d30ceca7fdc6d9731d3bcb492c.xyz",
+      "seed_sha256": "6d1bf777dbe2008f496213639d78b553fcecf0d30ceca7fdc6d9731d3bcb492c",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+      "model": "C3-balanced",
+      "status": "completed",
+      "elapsed_s": 2.366895081999246,
+      "geometry_sha256": "4a149bab90263d3914450e43b2eec9a06d0967cd256f3e223065c67c45d8bad2",
+      "output": ".scratch/native_splines/round2/trajectory/C3-balanced/case_06"
+    },
+    {
+      "case": 6,
+      "request": ".scratch/interactive/polished_rviz/run_1793701774600485813_61028/request_1",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_6d1bf777dbe2008f496213639d78b553fcecf0d30ceca7fdc6d9731d3bcb492c.xyz",
+      "seed_sha256": "6d1bf777dbe2008f496213639d78b553fcecf0d30ceca7fdc6d9731d3bcb492c",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+      "model": "C3-volume",
+      "status": "completed",
+      "elapsed_s": 2.4166941689982195,
+      "geometry_sha256": "5addf1af5593e62cfd1ba0793e129f2d3c839256ad9818d6f92db38a299b6355",
+      "output": ".scratch/native_splines/round2/trajectory/C3-volume/case_06"
+    },
+    {
+      "case": 6,
+      "request": ".scratch/interactive/polished_rviz/run_1793701774600485813_61028/request_1",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_6d1bf777dbe2008f496213639d78b553fcecf0d30ceca7fdc6d9731d3bcb492c.xyz",
+      "seed_sha256": "6d1bf777dbe2008f496213639d78b553fcecf0d30ceca7fdc6d9731d3bcb492c",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+      "model": "C3-OPT-project-round1",
+      "status": "completed",
+      "elapsed_s": 2.416984308998508,
+      "geometry_sha256": "f92634986cddda87808de91d2438d3651251f447f73df95ee55c619da8d24d43",
+      "output": ".scratch/native_splines/round2/trajectory/C3-OPT-project-round1/case_06"
+    }
+  ],
+  "profile_enabled": false,
+  "native_cubic_query": true
+}

@@ -1,0 +1,310 @@
+{
+  "schema": "native-splines-run-v1",
+  "baseline": "15c70cdff162ed289aa23f8842bd5877b9b71fac",
+  "phase": "A-and-B-native-plus-projection",
+  "repeats": 1,
+  "samples_per_shift": 8192,
+  "random_shifts": 8,
+  "cases": [
+    {
+      "case": 0,
+      "request": ".scratch/interactive/rviz/run_1793605002598226995_3712673/request_1",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_db505c46bc24c061128416d4f673259c3be655ecc474b1840790fac39c43fb00.xyz",
+      "seed_sha256": "db505c46bc24c061128416d4f673259c3be655ecc474b1840790fac39c43fb00",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+      "status": "completed",
+      "returncode": 0,
+      "elapsed_s": 0.41430343199681374,
+      "command": [
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/build/native_spline_benchmark",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/frozen/seed_db505c46bc24c061128416d4f673259c3be655ecc474b1840790fac39c43fb00.xyz",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/polar_probe/case_00",
+        "-25",
+        "-25",
+        "0",
+        "25",
+        "25",
+        "5",
+        "1",
+        "8192"
+      ],
+      "output": ".scratch/native_splines/polar_probe/case_00"
+    },
+    {
+      "case": 1,
+      "request": ".scratch/interactive/perlin_final/run_1793605176741410828_3715435/request_10",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_bd82e7f1ab28edfbbf014898b2be7a49c30e1d6f30ec09aaa488134aa9b62cf2.xyz",
+      "seed_sha256": "bd82e7f1ab28edfbbf014898b2be7a49c30e1d6f30ec09aaa488134aa9b62cf2",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+      "status": "completed",
+      "returncode": 0,
+      "elapsed_s": 0.714691485001822,
+      "command": [
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/build/native_spline_benchmark",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/frozen/seed_bd82e7f1ab28edfbbf014898b2be7a49c30e1d6f30ec09aaa488134aa9b62cf2.xyz",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/polar_probe/case_01",
+        "-25",
+        "-25",
+        "0",
+        "25",
+        "25",
+        "5",
+        "1",
+        "8192"
+      ],
+      "output": ".scratch/native_splines/polar_probe/case_01"
+    },
+    {
+      "case": 2,
+      "request": ".scratch/interactive/maze_connected/run_1793605479006343675_3719882/request_10",
+      "bounds_lower": [
+        -15,
+        -15,
+        0
+      ],
+      "bounds_upper": [
+        15,
+        15,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_d170e52ffa2f83709a066d84ae7a14f08392c73df0a5ecb7962b950c4c247d06.xyz",
+      "seed_sha256": "d170e52ffa2f83709a066d84ae7a14f08392c73df0a5ecb7962b950c4c247d06",
+      "map": ".scratch/native_splines/frozen/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz",
+      "map_sha256": "9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c",
+      "status": "completed",
+      "returncode": 0,
+      "elapsed_s": 0.414227433000633,
+      "command": [
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/build/native_spline_benchmark",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/frozen/seed_d170e52ffa2f83709a066d84ae7a14f08392c73df0a5ecb7962b950c4c247d06.xyz",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/frozen/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/polar_probe/case_02",
+        "-15",
+        "-15",
+        "0",
+        "15",
+        "15",
+        "5",
+        "1",
+        "8192"
+      ],
+      "output": ".scratch/native_splines/polar_probe/case_02"
+    },
+    {
+      "case": 3,
+      "request": ".scratch/interactive/rviz/run_1793605002598226995_3712673/request_2",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_e2034ad4c38b68bedb80983603b4358364b5bc00ab5cebd93f07269a8353d32c.xyz",
+      "seed_sha256": "e2034ad4c38b68bedb80983603b4358364b5bc00ab5cebd93f07269a8353d32c",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+      "status": "completed",
+      "returncode": 0,
+      "elapsed_s": 0.6144622979991254,
+      "command": [
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/build/native_spline_benchmark",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/frozen/seed_e2034ad4c38b68bedb80983603b4358364b5bc00ab5cebd93f07269a8353d32c.xyz",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/polar_probe/case_03",
+        "-25",
+        "-25",
+        "0",
+        "25",
+        "25",
+        "5",
+        "1",
+        "8192"
+      ],
+      "output": ".scratch/native_splines/polar_probe/case_03"
+    },
+    {
+      "case": 4,
+      "request": ".scratch/interactive/perlin_final/run_1793605176741410828_3715435/request_5",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_ee1c173245146b51629407d8e03cb1fc80bb3dac7f85cd355f07d000e387654c.xyz",
+      "seed_sha256": "ee1c173245146b51629407d8e03cb1fc80bb3dac7f85cd355f07d000e387654c",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+      "status": "completed",
+      "returncode": 0,
+      "elapsed_s": 0.36419253300118726,
+      "command": [
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/build/native_spline_benchmark",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/frozen/seed_ee1c173245146b51629407d8e03cb1fc80bb3dac7f85cd355f07d000e387654c.xyz",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/polar_probe/case_04",
+        "-25",
+        "-25",
+        "0",
+        "25",
+        "25",
+        "5",
+        "1",
+        "8192"
+      ],
+      "output": ".scratch/native_splines/polar_probe/case_04"
+    },
+    {
+      "case": 5,
+      "request": ".scratch/interactive/maze_connected/run_1793605479006343675_3719882/request_4",
+      "bounds_lower": [
+        -15,
+        -15,
+        0
+      ],
+      "bounds_upper": [
+        15,
+        15,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_019b73adaac1c31fd85a1244699770d45e18c319cfc976548bc8791b4ef621ff.xyz",
+      "seed_sha256": "019b73adaac1c31fd85a1244699770d45e18c319cfc976548bc8791b4ef621ff",
+      "map": ".scratch/native_splines/frozen/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz",
+      "map_sha256": "9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c",
+      "status": "completed",
+      "returncode": 0,
+      "elapsed_s": 0.3140731749990664,
+      "command": [
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/build/native_spline_benchmark",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/frozen/seed_019b73adaac1c31fd85a1244699770d45e18c319cfc976548bc8791b4ef621ff.xyz",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/frozen/map_9de9a01fa769f512f7b854ed558066faff332408907bff01298552e455632f2c.xyz",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/polar_probe/case_05",
+        "-15",
+        "-15",
+        "0",
+        "15",
+        "15",
+        "5",
+        "1",
+        "8192"
+      ],
+      "output": ".scratch/native_splines/polar_probe/case_05"
+    },
+    {
+      "case": 6,
+      "request": ".scratch/interactive/polished_rviz/run_1793701774600485813_61028/request_1",
+      "bounds_lower": [
+        -25,
+        -25,
+        0
+      ],
+      "bounds_upper": [
+        25,
+        25,
+        5
+      ],
+      "resolution": 0.25,
+      "seed": ".scratch/native_splines/frozen/seed_6d1bf777dbe2008f496213639d78b553fcecf0d30ceca7fdc6d9731d3bcb492c.xyz",
+      "seed_sha256": "6d1bf777dbe2008f496213639d78b553fcecf0d30ceca7fdc6d9731d3bcb492c",
+      "map": ".scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+      "map_sha256": "4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1",
+      "status": "completed",
+      "returncode": 0,
+      "elapsed_s": 0.3640829930009204,
+      "command": [
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/build/native_spline_benchmark",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/frozen/seed_6d1bf777dbe2008f496213639d78b553fcecf0d30ceca7fdc6d9731d3bcb492c.xyz",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/frozen/map_4db492a5d8d958fde4e6d0eef9efed081ba81fe7bb94354ee7a6d1649cd519d1.xyz",
+        "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/polar_probe/case_06",
+        "-25",
+        "-25",
+        "0",
+        "25",
+        "25",
+        "5",
+        "1",
+        "8192"
+      ],
+      "output": ".scratch/native_splines/polar_probe/case_06"
+    }
+  ],
+  "binary_sha256": "c2313975e6f7f48f95b21b662e97f1ce3303ec09d730a2546eb1338ec5e1dddc",
+  "sources_sha256": {
+    "direct_corridor/experiments/native_splines/cubic_optimizer.hpp": "d877c2ac614e8560c7fdddb200e03be63f9e8abf424e17c709c8f0bb1c3bb7fe",
+    "direct_corridor/experiments/native_splines/geometry.hpp": "0853e9cc78e27f369232247749a9914d94fa78da8f0d5c8b364f4dbb08010305",
+    "direct_corridor/experiments/native_splines/compare.py": "5a35cd3250f3c848d1b15288aaef223c174bb62ba733f04e6221fb07600b779e",
+    "direct_corridor/experiments/native_splines/obstacle_cover.hpp": "a99596743fe9510a09fe4406ae2434151d5c0cfefdfd941b26b50f8a79c0fee3",
+    "direct_corridor/experiments/native_splines/CMakeLists.txt": "f9b4ac02155d73b25e93a5aa1b24ab771bbc9c7bb517b38c7ba1cb18787d5d38",
+    "direct_corridor/experiments/native_splines/cubic_generator.hpp": "5026e375435c942e731e1bc6b249ac9b03d9b6980ea0f9bab0c02660b31703e0",
+    "direct_corridor/experiments/native_splines/freeze.py": "5d5734dd7cd3a595fbaaeb107915d8187295f262639db8b5a7fd12459692090f",
+    "direct_corridor/experiments/native_splines/geometry.cpp": "0ac828055e0bc07fa0fd0f6da05c8e3099bc757097e3511391f7fa7d365823a1",
+    "direct_corridor/experiments/native_splines/cubic_optimizer.cpp": "c47243376bee6e811ae1d412c6bbf02d8bf8988c9694f38b9e4950afe24c2bdf",
+    "direct_corridor/experiments/native_splines/benchmark.cpp": "21c78ff2596f48a1a7b214597da43fa96beb31e583c7e606b8817fa8b83f26e2",
+    "direct_corridor/experiments/native_splines/trajectory.py": "b01d479a3ce0fad4e49919543bc6ddd4fc1730fcba33ce1308e3b3979fe97e86",
+    "direct_corridor/experiments/native_splines/cubic_certificates.hpp": "084e59d4c8b6ad7016c12c2fcc15095db23b1829072dccc15fdf5b9b04675530",
+    "direct_corridor/experiments/native_splines/cubic_basis.hpp": "14c5bc20a2a82dfb96a085db27ed7bb7e20eda343d8e575d3444912c556550d3",
+    "direct_corridor/experiments/native_splines/cubic_generator.cpp": "bd7889ad19125b26e48babe36830a48ee344f895e20b17830fe2870e5424b2f8",
+    "direct_corridor/experiments/native_splines/volume.cpp": "0120653387d0e98628d3feb2d91f7bc4820d95c2931455b984b596f5595b5923",
+    "direct_corridor/experiments/native_splines/cubic_query.hpp": "8dfa4fd33633f46534300b002534a0dfcc4c2bd5ff2de9ec0cf44eb7f54dff76",
+    "direct_corridor/experiments/native_splines/run.py": "e1b9c0fec9ab280c84ae4d8d3fd9c4d89238775174d9ede78340d87c49a2bc83",
+    "direct_corridor/experiments/native_splines/banded_spd.hpp": "aa10077832622d85509035fbdb8cdfa2a791c985d91f005fedd88e5488ec6703",
+    "direct_corridor/experiments/native_splines/independent_audit.py": "63e4dde9bb2bed3b7cba54ecb44d5c090d17f99917305019348e96c243821635",
+    "direct_corridor/experiments/native_splines/tests/optimizer.cpp": "e750c0771b6bf9b779bd15b0b9d8c2072d920cbfe340b00331f80c1a0381d47b",
+    "direct_corridor/experiments/native_splines/tests/reference.cpp": "420a8d1ef0628569275883e3800c10f66f0fd5c360d6c89c0f052902a72f584c",
+    "direct_corridor/experiments/native_splines/tests/math.cpp": "7302bbbaf2181dca7b4ccb96d2749c1b7922a4228cfb855fb092980354aab332",
+    "direct_corridor/experiments/native_splines/tests/scenes.cpp": "e58da8a9710746b95590e411d92b001410544e7d0b00a080c1096f593c1bc741",
+    "direct_corridor/experiments/native_splines/tests/query.cpp": "7ded715f929689aac03d5561050bdb404a757fa96bde99e3538be01ec2231769"
+  },
+  "geometry_format": "native_sweep_v3_degree_explicit_bezier",
+  "energy_weights": 0.0001,
+  "native_environment": {
+    "NATIVE_CANDIDATES": "1",
+    "NATIVE_ENERGY": "0.0001",
+    "NATIVE_RADIUS_FRACTION": "0.65",
+    "NATIVE_INITIAL_ITERATIONS": "6",
+    "NATIVE_ITERATIONS": "6",
+    "NATIVE_INFLATIONS": "2",
+    "NATIVE_FRACTION_BOUNDARY": "0.99",
+    "NATIVE_METHOD_COUNT": "1",
+    "NATIVE_POLAR_PRUNING": "1",
+    "NATIVE_GENERATION_ONLY": "1"
+  }
+}

@@ -1,0 +1,5 @@
+{"kind":"volume","model":"C3-OPT-native-round1","baseline":425.88688373565674,"volume":421.67870998382568,"paired_delta":-4.2081737518310547,"paired_ci95":0.10376932275498867,"samples":2097152,"cells":910,"unresolved":0}
+{"kind":"volume","model":"C3-OPT-project-round1","baseline":425.88688373565674,"volume":431.28660678863525,"paired_delta":5.3997230529785156,"paired_ci95":0.16976200178131712,"samples":2097152,"cells":910,"unresolved":0}
+{"kind":"volume","model":"C3-fast","baseline":425.88688373565674,"volume":428.84145736694336,"paired_delta":2.9545736312866211,"paired_ci95":0.082573636798848132,"samples":2097152,"cells":910,"unresolved":0}
+{"kind":"volume","model":"C3-balanced","baseline":425.88688373565674,"volume":429.9974250793457,"paired_delta":4.1105413436889648,"paired_ci95":0.11113386762901756,"samples":2097152,"cells":910,"unresolved":0}
+{"kind":"volume","model":"C3-volume","baseline":425.88688373565674,"volume":434.96322631835938,"paired_delta":9.0763425827026367,"paired_ci95":0.07465312832348138,"samples":2097152,"cells":910,"unresolved":0}

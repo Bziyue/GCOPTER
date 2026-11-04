@@ -10,6 +10,13 @@
 #include <cstring>
 #include "tube_query.hpp"
 #include "refit.hpp"
+#ifdef GCOPTER_NATIVE_SPLINE_EXPERIMENT
+#include "obstacle_cover.hpp"
+#include "cubic_query.hpp"
+using BenchmarkTubeQuery=gcopter::direct::native::BenchmarkQuery;
+#else
+using BenchmarkTubeQuery=tube_query::Query;
+#endif
 
 using Spline = SplineTrajectory::QuinticSplineND<3>;
 using Opt = SplineTrajectory::SplineOptimizer<Spline>;
@@ -31,7 +38,7 @@ struct Cost {
   const Polys* polys=nullptr;
   int steps=16,pieces=1;
   double weight=1e5;
-  tube_query::Query* query=nullptr;
+  BenchmarkTubeQuery* query=nullptr;
   bool ellipse=false;
   bool bezier=false;
   bool keep_tube_integral=false;
@@ -99,7 +106,7 @@ struct ControlPosition {
 };
 struct Run {
   Opt optimizer;
-  std::unique_ptr<tube_query::Query> query;
+  std::unique_ptr<BenchmarkTubeQuery> query;
 
   traj_opt_components::LinearTimeCost time{20};
   Cost cost;
@@ -155,10 +162,30 @@ int main(int argc,char**argv) {try {
   options.max_radius=.5*diagonal+.001;options.max_offset=diagonal+.001;
   const char* shape_env=std::getenv("GCOPTER_SHAPE_MODE");
   const std::string shape_mode=shape_env?shape_env:"baseline";
+#ifndef GCOPTER_NATIVE_SPLINE_EXPERIMENT
   if(shape_mode!="smooth"&&shape_mode!="baseline"&&shape_mode!="hermite-free"&&shape_mode!="cubic-c2"&&shape_mode!="integrated-quintic"&&shape_mode!="fast-quintic"&&shape_mode!="fast-quintic-2"&&shape_mode!="coordinate-6"&&shape_mode!="coordinate-8"&&shape_mode!="boundary-12"&&shape_mode!="boundary-8"&&shape_mode!="boundary-coarse"&&shape_mode!="continuation")
     throw std::runtime_error("invalid shape mode");
+#endif
   gcopter::direct::experiment::ShapeFitMetrics shape_metrics;
   Result direct;
+#ifdef GCOPTER_NATIVE_SPLINE_EXPERIMENT
+  gcopter::direct::native::Geometry native_geometry;
+  options.frame_smoothing=1.5;options.section_smoothing=.2;options.jet_smoothing=.01;
+  options.certify_jacobian=true;options.initial_iterations=8;
+  if(const char* path=std::getenv("GCOPTER_FROZEN_GEOMETRY")) {
+    clock=Clock::now();
+    native_geometry=gcopter::direct::native::Geometry::read(path);
+    const auto& g=native_geometry;
+    gcopter::direct::native::QueryCache cache;gcopter::direct::native::CoverMetrics timing;
+    const std::function<void()> stop=[]{};
+    const auto cover=gcopter::direct::native::mapCover(g,seed,index,bounds,options,cache,timing,stop);
+    if(!gcopter::direct::native::certify(g,cover).safe())throw std::runtime_error("frozen geometry is not certified on this map");
+    direct.corridor=g.quinticAdapter();direct.status=Status::Success;
+    // This is replay/adapter time, not original corridor generation time.
+    direct.metrics.total_ms=ms(clock);shape_metrics.degree=g.degree;
+  } else direct=generate(seed,index,bounds,options);
+  if(!direct)throw std::runtime_error(direct.message);
+#else
   if (shape_mode=="smooth") {
     options.frame_smoothing=1.5;options.section_smoothing=.2;options.jet_smoothing=.01;
     options.certify_jacobian=true;options.initial_iterations=8;
@@ -187,6 +214,7 @@ int main(int argc,char**argv) {try {
     direct.corridor=std::move(fit.corridor);shape_metrics=fit.metrics;
     direct.metrics.total_ms+=shape_metrics.total_ms;
   }
+#endif
   auto firi=generateFiri(seed,points,bounds,radius,.25,true,3);
   int disconnected=0,empty_polys=0;Vec3 interior;
   for(const auto& h:firi.polys)if(!geo_utils::findInterior(h,interior))++empty_polys;
@@ -213,7 +241,13 @@ int main(int argc,char**argv) {try {
     bool ellipse=(rep+order+2)%2;std::string name=ellipse?"hermite":"firi";
     clock=Clock::now();Run run;SplineTrajectory::OptimizerOptions config;config.energy_weight=1;config.integration_steps=steps;
     if(!run.optimizer.prepare(problem,config))throw std::runtime_error("prepare failed");
-    run.query=std::make_unique<tube_query::Query>(direct.corridor,fast,profile,horner);run.cost.query=run.query.get();
+#ifdef GCOPTER_NATIVE_SPLINE_EXPERIMENT
+    const bool native_query=native_geometry.pieces()!=0&&!std::getenv("GCOPTER_QUINTIC_REPLAY");
+    run.query=std::make_unique<BenchmarkTubeQuery>(direct.corridor,native_query?&native_geometry:nullptr,fast,profile,horner);
+#else
+    run.query=std::make_unique<BenchmarkTubeQuery>(direct.corridor,fast,profile,horner);
+#endif
+    run.cost.query=run.query.get();
     flatness::FlatnessMap flat;flat.reset(.61,9.8,.70,.80,.01,.0001);
     run.cost.dynamics.reset(&empty,&ids,.01,limits,weights,&flat);
     run.cost.corridor=&direct.corridor;run.cost.pieces=pieces;run.cost.polys=&firi.polys;run.cost.steps=steps;run.cost.ellipse=ellipse;run.cost.weight=weight;

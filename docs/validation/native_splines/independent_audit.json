@@ -1,0 +1,338 @@
+[
+  {
+    "case": 0,
+    "model": "H5-S",
+    "sample_points": 296208,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_physical": 2.856614538884122e-11
+  },
+  {
+    "case": 0,
+    "model": "C3-I",
+    "sample_points": 296208,
+    "obstacle_penetration_m": 0.00871599927805461,
+    "world_violation_m": 0.03355519964607678,
+    "c2_error_physical": 1.0635516347613073e-11
+  },
+  {
+    "case": 0,
+    "model": "Q5-U",
+    "sample_points": 296208,
+    "obstacle_penetration_m": 0.03280689489355865,
+    "world_violation_m": 0.037818758925580065,
+    "c2_error_physical": 4.3069772900778604e-11
+  },
+  {
+    "case": 0,
+    "model": "C3-OPT-native",
+    "sample_points": 269280,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_physical": 2.7781967105783313e-13
+  },
+  {
+    "case": 0,
+    "model": "C3-OPT-project",
+    "sample_points": 296208,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_physical": 1.5229824033169164e-11
+  },
+  {
+    "case": 0,
+    "model": "C3-NBC-project",
+    "sample_points": 296208,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_physical": 1.1646387097952553e-11
+  },
+  {
+    "case": 1,
+    "model": "H5-S",
+    "sample_points": 521424,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_physical": 3.2209212295873906e-11
+  },
+  {
+    "case": 1,
+    "model": "C3-I",
+    "sample_points": 521424,
+    "obstacle_penetration_m": 0.0309365688758928,
+    "world_violation_m": 0.032190065786153355,
+    "c2_error_physical": 5.112345736347208e-12
+  },
+  {
+    "case": 1,
+    "model": "Q5-U",
+    "sample_points": 521424,
+    "obstacle_penetration_m": 0.092023830688573,
+    "world_violation_m": 0.05784769971331194,
+    "c2_error_physical": 2.404218926239205e-11
+  },
+  {
+    "case": 1,
+    "model": "C3-OPT-native",
+    "sample_points": 447984,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_physical": 5.509665171103654e-13
+  },
+  {
+    "case": 1,
+    "model": "C3-OPT-project",
+    "sample_points": 521424,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_physical": 9.936755972231642e-12
+  },
+  {
+    "case": 1,
+    "model": "C3-NBC-project",
+    "sample_points": 521424,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_physical": 1.0297165387253255e-11
+  },
+  {
+    "case": 2,
+    "model": "H5-S",
+    "sample_points": 286416,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_physical": 6.283078810319433e-12
+  },
+  {
+    "case": 2,
+    "model": "C3-I",
+    "sample_points": 286416,
+    "obstacle_penetration_m": 0.060398116186962614,
+    "world_violation_m": 0.03889852421779949,
+    "c2_error_physical": 1.6455385216140047e-12
+  },
+  {
+    "case": 2,
+    "model": "Q5-U",
+    "sample_points": 286416,
+    "obstacle_penetration_m": 0.10152068527035069,
+    "world_violation_m": 0.08724926144619882,
+    "c2_error_physical": 8.703247299200113e-12
+  },
+  {
+    "case": 2,
+    "model": "C3-OPT-native",
+    "sample_points": 264384,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_physical": 1.9025874886087682e-13
+  },
+  {
+    "case": 2,
+    "model": "C3-OPT-project",
+    "sample_points": 286416,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_physical": 3.6030994859677545e-12
+  },
+  {
+    "case": 2,
+    "model": "C3-NBC-project",
+    "sample_points": 286416,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_physical": 2.212179334064919e-12
+  },
+  {
+    "case": 3,
+    "model": "H5-S",
+    "sample_points": 496944,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_physical": 2.6136331187413725e-11
+  },
+  {
+    "case": 3,
+    "model": "C3-I",
+    "sample_points": 496944,
+    "obstacle_penetration_m": 0.02045473972255002,
+    "world_violation_m": 0.07803901641802158,
+    "c2_error_physical": 6.0105404755996646e-12
+  },
+  {
+    "case": 3,
+    "model": "Q5-U",
+    "sample_points": 496944,
+    "obstacle_penetration_m": 0.05244759890368195,
+    "world_violation_m": 0.09058218327011214,
+    "c2_error_physical": 2.828364050327763e-11
+  },
+  {
+    "case": 3,
+    "model": "C3-OPT-native",
+    "sample_points": 425952,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_physical": 4.774019385103542e-13
+  },
+  {
+    "case": 3,
+    "model": "C3-OPT-project",
+    "sample_points": 496944,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_physical": 1.5791628224228515e-11
+  },
+  {
+    "case": 3,
+    "model": "C3-NBC-project",
+    "sample_points": 496944,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_physical": 1.0759341860106507e-11
+  },
+  {
+    "case": 4,
+    "model": "H5-S",
+    "sample_points": 274176,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_physical": 6.05605223918645e-12
+  },
+  {
+    "case": 4,
+    "model": "C3-I",
+    "sample_points": 274176,
+    "obstacle_penetration_m": 0.04789027914576993,
+    "world_violation_m": 0.009543169773507554,
+    "c2_error_physical": 1.3225501619559786e-12
+  },
+  {
+    "case": 4,
+    "model": "Q5-U",
+    "sample_points": 274176,
+    "obstacle_penetration_m": 0.06824736941412995,
+    "world_violation_m": 0.04199669287640284,
+    "c2_error_physical": 8.420880984180529e-12
+  },
+  {
+    "case": 4,
+    "model": "C3-OPT-native",
+    "sample_points": 252144,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_physical": 2.7631442382730335e-13
+  },
+  {
+    "case": 4,
+    "model": "C3-OPT-project",
+    "sample_points": 274176,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_physical": 4.5707466655434295e-12
+  },
+  {
+    "case": 4,
+    "model": "C3-NBC-project",
+    "sample_points": 274176,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_physical": 2.4262159660136502e-12
+  },
+  {
+    "case": 5,
+    "model": "H5-S",
+    "sample_points": 203184,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_physical": 2.9173823214537042e-12
+  },
+  {
+    "case": 5,
+    "model": "C3-I",
+    "sample_points": 203184,
+    "obstacle_penetration_m": 0.07081029034542408,
+    "world_violation_m": 0.03474982059914833,
+    "c2_error_physical": 5.553736028174657e-13
+  },
+  {
+    "case": 5,
+    "model": "Q5-U",
+    "sample_points": 203184,
+    "obstacle_penetration_m": 0.045293293763034315,
+    "world_violation_m": 0.05054663798469328,
+    "c2_error_physical": 1.8298193273128176e-12
+  },
+  {
+    "case": 5,
+    "model": "C3-OPT-native",
+    "sample_points": 188496,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_physical": 1.9444395350409077e-13
+  },
+  {
+    "case": 5,
+    "model": "C3-OPT-project",
+    "sample_points": 203184,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_physical": 8.450179073441615e-13
+  },
+  {
+    "case": 5,
+    "model": "C3-NBC-project",
+    "sample_points": 203184,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_physical": 5.920994780408926e-13
+  },
+  {
+    "case": 6,
+    "model": "H5-S",
+    "sample_points": 301104,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_physical": 6.080151514579031e-12
+  },
+  {
+    "case": 6,
+    "model": "C3-I",
+    "sample_points": 301104,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.030373203732041665,
+    "c2_error_physical": 1.8467044729169225e-12
+  },
+  {
+    "case": 6,
+    "model": "Q5-U",
+    "sample_points": 301104,
+    "obstacle_penetration_m": 0.0027563953573912503,
+    "world_violation_m": 0.03399143456548259,
+    "c2_error_physical": 7.730951052425499e-12
+  },
+  {
+    "case": 6,
+    "model": "C3-OPT-native",
+    "sample_points": 276624,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_physical": 2.80206942090398e-13
+  },
+  {
+    "case": 6,
+    "model": "C3-OPT-project",
+    "sample_points": 301104,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_physical": 2.131206737270738e-12
+  },
+  {
+    "case": 6,
+    "model": "C3-NBC-project",
+    "sample_points": 301104,
+    "obstacle_penetration_m": 0.0,
+    "world_violation_m": 0.0,
+    "c2_error_physical": 2.745305865836507e-12
+  }
+]

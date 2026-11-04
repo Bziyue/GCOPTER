@@ -1,0 +1,76 @@
+Start testing: Nov 04 00:00 CST
+----------------------------------------------------------
+1/4 Testing: native_spline_math
+1/4 Test: native_spline_math
+Command: "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/build/native_spline_tests"
+Directory: /home/zdp/ForCodex/GCOPTER/.scratch/native_splines/build
+"native_spline_math" start time: Nov 04 00:00 CST
+Output:
+----------------------------------------------------------
+nonuniform extraction, derivatives, C2, subdivision, elevation, energies and full-disk certificates passed
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"native_spline_math" end time: Nov 04 00:00 CST
+"native_spline_math" time elapsed: 00:00:00
+----------------------------------------------------------
+
+2/4 Testing: native_optimizer_math
+2/4 Test: native_optimizer_math
+Command: "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/build/native_optimizer_tests"
+Directory: /home/zdp/ForCodex/GCOPTER/.scratch/native_splines/build
+"native_optimizer_math" start time: Nov 04 00:00 CST
+Output:
+----------------------------------------------------------
+gradient 1.76715e-09, Hv 2.68898e-10
+SUCCESS , 15.1287 ms
+NBC SUCCESS
+<end of output>
+Test time =   0.04 sec
+----------------------------------------------------------
+Test Passed.
+"native_optimizer_math" end time: Nov 04 00:00 CST
+"native_optimizer_math" time elapsed: 00:00:00
+----------------------------------------------------------
+
+3/4 Testing: native_minjerk_reference
+3/4 Test: native_minjerk_reference
+Command: "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/build/native_reference_test"
+Directory: /home/zdp/ForCodex/GCOPTER/.scratch/native_splines/build
+"native_minjerk_reference" start time: Nov 04 00:00 CST
+Output:
+----------------------------------------------------------
+free-jet variational solution agrees with migrated QuinticSplineND<9>: 2.38116e-15
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"native_minjerk_reference" end time: Nov 04 00:00 CST
+"native_minjerk_reference" time elapsed: 00:00:00
+----------------------------------------------------------
+
+4/4 Testing: native_synthetic_scenes
+4/4 Test: native_synthetic_scenes
+Command: "/home/zdp/ForCodex/GCOPTER/.scratch/native_splines/build/native_scene_tests"
+Directory: /home/zdp/ForCodex/GCOPTER/.scratch/native_splines/build
+"native_synthetic_scenes" start time: Nov 04 00:00 CST
+Output:
+----------------------------------------------------------
+straight: SUCCESS, 4.09951 ms, refinements=0
+right_angle: SUCCESS, 14.2631 ms, refinements=0
+u_turn: SUCCESS, 21.9279 ms, refinements=0
+vertical: SUCCESS, 3.9792 ms, refinements=0
+backtracking_cusp: INITIALIZATION_FAILED, 0.418811 ms, refinements=3
+narrow_003m: INITIALIZATION_FAILED, 0.130011 ms, refinements=3
+helix: SUCCESS, 66.4999 ms, refinements=0
+close_nonadjacent_legs: SUCCESS, 17.204 ms, refinements=0
+<end of output>
+Test time =   0.13 sec
+----------------------------------------------------------
+Test Passed.
+"native_synthetic_scenes" end time: Nov 04 00:00 CST
+"native_synthetic_scenes" time elapsed: 00:00:00
+----------------------------------------------------------
+
+End testing: Nov 04 00:00 CST

@@ -1,0 +1,19 @@
+{
+  "native_passed": 4,
+  "common_passed": 8,
+  "generation_binary_sha256": "60a5c05709a9bb178c1ef4191afbe30b49687911374ca5f4df8c969b900fecd2",
+  "main_trajectory_profile": false,
+  "diagnostic_trajectory_profile": true,
+  "post_generation_changes": "Isolated the legacy quintic adapter with its own GeometryAccess friend; added migrated-library verification and report tools. Generator/optimizer algorithm unchanged.",
+  "scipy_deb_sha256": "9bcbbbdac88604653fc6b8fe479d45a9c71b047557007e51772525dd49defaf1",
+  "volume_refinement": {
+    "cases": [
+      2,
+      4,
+      5
+    ],
+    "samples_per_shift": 262144,
+    "replicates": 8
+  },
+  "profile_objective_max_delta": 0
+}

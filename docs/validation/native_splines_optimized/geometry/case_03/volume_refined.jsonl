@@ -1,0 +1,5 @@
+{"kind":"volume","model":"C3-OPT-native-round1","baseline":595.29876708984375,"volume":532.8863525390625,"paired_delta":-62.41241455078125,"paired_ci95":0.80705501339482966,"samples":2097152,"cells":1920,"unresolved":0}
+{"kind":"volume","model":"C3-OPT-project-round1","baseline":595.29876708984375,"volume":660.91827392578125,"paired_delta":65.6195068359375,"paired_ci95":0.54609637769700858,"samples":2097152,"cells":1920,"unresolved":0}
+{"kind":"volume","model":"C3-fast","baseline":595.29876708984375,"volume":599.9871826171875,"paired_delta":4.68841552734375,"paired_ci95":0.53958103027464777,"samples":2097152,"cells":1920,"unresolved":0}
+{"kind":"volume","model":"C3-balanced","baseline":595.29876708984375,"volume":633.724365234375,"paired_delta":38.42559814453125,"paired_ci95":0.72249266958467495,"samples":2097152,"cells":1920,"unresolved":0}
+{"kind":"volume","model":"C3-volume","baseline":595.29876708984375,"volume":624.07379150390625,"paired_delta":28.7750244140625,"paired_ci95":0.47751707858459003,"samples":2097152,"cells":1920,"unresolved":0}

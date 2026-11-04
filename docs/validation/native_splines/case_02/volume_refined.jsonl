@@ -1,0 +1,8 @@
+{"kind":"volume","model":"C3-I","baseline":425.99884271621704,"volume":426.01308345794678,"paired_delta":0.014240741729736328,"paired_ci95":0.050662809673384941,"samples":2097152,"cells":905,"unresolved":0}
+{"kind":"volume","model":"Q5-U","baseline":425.99884271621704,"volume":426.10025405883789,"paired_delta":0.10141134262084961,"paired_ci95":0.064536149473895049,"samples":2097152,"cells":905,"unresolved":0}
+{"kind":"volume","model":"H5-C3-T","baseline":425.99884271621704,"volume":425.99884271621704,"paired_delta":0,"paired_ci95":0,"samples":2097152,"cells":905,"unresolved":0}
+{"kind":"volume","model":"Q5-T","baseline":425.99884271621704,"volume":425.99884271621704,"paired_delta":0,"paired_ci95":0,"samples":2097152,"cells":905,"unresolved":0}
+{"kind":"volume","model":"H5-Z-fixed","baseline":425.99884271621704,"volume":425.13921976089478,"paired_delta":-0.85962295532226562,"paired_ci95":0.11606465811551214,"samples":2097152,"cells":905,"unresolved":0}
+{"kind":"volume","model":"C3-OPT-native","baseline":425.99884271621704,"volume":421.6795825958252,"paired_delta":-4.3192601203918457,"paired_ci95":0.15392180336281819,"samples":2097152,"cells":905,"unresolved":0}
+{"kind":"volume","model":"C3-OPT-project","baseline":425.99884271621704,"volume":431.34559392929077,"paired_delta":5.3467512130737305,"paired_ci95":0.16739047498053569,"samples":2097152,"cells":905,"unresolved":0}
+{"kind":"volume","model":"C3-NBC-project","baseline":425.99884271621704,"volume":428.69465827941895,"paired_delta":2.6958155632019043,"paired_ci95":0.18710690435548993,"samples":2097152,"cells":905,"unresolved":0}
