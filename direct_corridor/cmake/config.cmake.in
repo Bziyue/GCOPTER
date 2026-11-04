@@ -1,4 +1,5 @@
 @PACKAGE_INIT@
 include(CMakeFindDependencyMacro)
 find_dependency(Eigen3 3.3 NO_MODULE)
+find_dependency(SweepCorridor)
 include("${CMAKE_CURRENT_LIST_DIR}/direct_corridorTargets.cmake")

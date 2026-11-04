@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 # ROS integration smoke test: publish the same goal messages as RViz2.
-import json,os,signal,subprocess,time
+import argparse,json,os,signal,subprocess,time
 from pathlib import Path
 import rclpy
 from rclpy.qos import QoSProfile,DurabilityPolicy
 from geometry_msgs.msg import PoseStamped
 from std_msgs.msg import String
 from visualization_msgs.msg import MarkerArray
+parser=argparse.ArgumentParser();parser.add_argument('--degree',type=int,choices=(3,5),default=3)
+degree=parser.parse_args().degree
+mode='c3' if degree==3 else 'smooth'
 root=Path(__file__).resolve().parents[2]
-(root/'.scratch/c3_rviz').mkdir(parents=True,exist_ok=True)
+(root/f'.scratch/sweep_rviz_d{degree}').mkdir(parents=True,exist_ok=True)
 inputs=json.loads((root/'docs/validation/native_splines/frozen_manifest.json').read_text())['inputs']
 rclpy.init();node=rclpy.create_node('c3_demo_smoke')
 q=QoSProfile(depth=1,durability=DurabilityPolicy.TRANSIENT_LOCAL)
@@ -24,8 +27,8 @@ def wait(test,seconds=40):
 try:
  for scene,case in [('perlin',0),('maze',2)]:
   state.clear()
-  with (root/f'.scratch/c3_rviz/{scene}.log').open('w') as log:
-   process=subprocess.Popen([str(root/'gcopter/tools/run_direct_demo.sh'),f'scene:={scene}','rviz:=false','shape_mode:=c3','search_timeout:=3.0',f'output_dir:={root}/.scratch/c3_rviz/{scene}'],stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
+  with (root/f'.scratch/sweep_rviz_d{degree}/{scene}.log').open('w') as log:
+   process=subprocess.Popen([str(root/'gcopter/tools/run_direct_demo.sh'),f'scene:={scene}','rviz:=false',f'shape_mode:={mode}','search_timeout:=3.0',f'output_dir:={root}/.scratch/sweep_rviz_d{degree}/{scene}'],stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
    try:
     wait(lambda:state.get('status')=='WAITING_FOR_START')
     state.pop('metrics',None);state.pop('mesh',None)
@@ -37,9 +40,9 @@ try:
     m=state['metrics'];assert m['status']=='PASS',m
     assert m['bounds_lower']==inputs[case]['bounds_lower']
     wait(lambda:state.get('mesh',0)>0)
-    assert m['representation']=='native_cubic_v3' and not m['trajectory_optimization']
+    assert m['representation']==('native_cubic_v3' if degree==3 else 'quintic_hermite_v2') and not m['trajectory_optimization']
     assert m['corridor_ms']>0 and state['mesh']>0
-    (root/f'.scratch/c3_rviz/{scene}_smoke.json').write_text(json.dumps(state,indent=2))
+    (root/f'.scratch/sweep_rviz_d{degree}/{scene}_smoke.json').write_text(json.dumps(state,indent=2))
     print(scene,m['corridor_ms'],state['mesh'],flush=True)
    finally:
     os.killpg(process.pid,signal.SIGINT);process.wait(timeout=15)

@@ -1,0 +1,4 @@
+-- Found ompl: /home/zdp/ForCodex/GCOPTER/.scratch/ompl/usr/include/ompl-1.6;/usr/include;/usr/include/eigen3;/usr/include/hdf5/openmpi;/usr/lib/x86_64-linux-gnu/openmpi/lib/../../fortran/gfortran-mod-16/openmpi;/usr/lib/x86_64-linux-gnu/openmpi/include;/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/zdp/ForCodex/GCOPTER/.scratch/sweep_corridor/trajectory

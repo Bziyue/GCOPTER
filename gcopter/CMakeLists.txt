@@ -36,7 +36,7 @@ target_link_libraries(global_planning
 target_link_directories(global_planning PRIVATE ${OMPL_LIBRARY_DIRS})
 
 add_executable(direct_corridor_demo src/direct_corridor_demo.cpp)
-target_link_libraries(direct_corridor_demo PRIVATE gcopter::cubic_corridor
+target_link_libraries(direct_corridor_demo PRIVATE gcopter::direct_corridor
   ${OMPL_LIBRARIES} rclcpp::rclcpp ${std_msgs_TARGETS} ${geometry_msgs_TARGETS}
   ${sensor_msgs_TARGETS} ${visualization_msgs_TARGETS} ${nav_msgs_TARGETS})
 target_link_directories(direct_corridor_demo PRIVATE ${OMPL_LIBRARY_DIRS})

@@ -1,0 +1,70 @@
+{
+  "status": "PASS [smooth] request=1\nSearch 3030.0 ms; corridor 47.7 ms; total 3086.5 ms\nMin semiaxis 0.354 m",
+  "mesh": 190368,
+  "metrics": {
+    "request": 1,
+    "map_version": 1,
+    "status": "PASS",
+    "start": [
+      -11.25,
+      11.25,
+      2.5
+    ],
+    "goal": [
+      -8.25,
+      -11.25,
+      2.5
+    ],
+    "bounds_lower": [
+      -15,
+      -15,
+      0
+    ],
+    "bounds_upper": [
+      15,
+      15,
+      5
+    ],
+    "resolution": 0.25,
+    "robot_radius": 0.2,
+    "safety_margin": 0.05,
+    "reference_clearance": 0.2,
+    "control_spacing": 0.4,
+    "min_radius": 0.03,
+    "max_radius": 5.57888553396,
+    "max_offset": 11.1567710679,
+    "local_range": 3,
+    "local_progress": 7,
+    "shape_mode": "smooth",
+    "search_timeout": 3,
+    "search_range": 2,
+    "corridor_budget_ms": 1000,
+    "obstacles": 184320,
+    "map_build_ms": 41.820522,
+    "search_ms": 3030.011187,
+    "corridor_ms": 47.728822,
+    "render_export_ms": 8.610109,
+    "total_ms": 3086.524179,
+    "seed_points": 31,
+    "seed_length": 43.1152289962,
+    "turns_over_30deg": 2,
+    "height_span": 0.899648034101,
+    "representation": "quintic_hermite_v2",
+    "visualization_adapter_ms": 0,
+    "trajectory_optimization": false,
+    "c3_stage_profiled": false,
+    "nodes": 111,
+    "max_center_shift": 1.68220180888,
+    "optimization_ms": 0,
+    "certificate_ms": 0,
+    "smoothing_ms": 0,
+    "mean_jet_fraction": 0.946791986777,
+    "regularity_repairs": 0,
+    "controls": 660,
+    "constraints": 5158,
+    "refinements": 0,
+    "min_axis": 0.354212349774,
+    "median_minor": 1.13674303201,
+    "median_major": 2.24323330726
+  }
+}

@@ -1,0 +1,14 @@
+[ 10%] Building CXX object CMakeFiles/direct_corridor_benchmark.dir/tools/benchmark.cpp.o
+[ 20%] Linking CXX executable direct_corridor_benchmark
+[ 20%] Built target direct_corridor_benchmark
+[ 30%] Building CXX object CMakeFiles/direct_corridor_cli.dir/tools/cli.cpp.o
+[ 40%] Linking CXX executable direct_corridor_cli
+[ 40%] Built target direct_corridor_cli
+[ 50%] Building CXX object CMakeFiles/direct_corridor_node.dir/src/ros2_node.cpp.o
+[ 60%] Linking CXX executable direct_corridor_node
+[ 60%] Built target direct_corridor_node
+[ 70%] Building CXX object SweepCorridor/CMakeFiles/sweep_tests.dir/tests/odr.cpp.o
+[ 80%] Building CXX object SweepCorridor/CMakeFiles/sweep_tests.dir/tests/queries.cpp.o
+[ 90%] Building CXX object SweepCorridor/CMakeFiles/sweep_tests.dir/tests/test.cpp.o
+[100%] Linking CXX executable sweep_tests
+[100%] Built target sweep_tests

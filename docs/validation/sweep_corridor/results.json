@@ -1,0 +1,39 @@
+{
+  "reference_commit": "92da988",
+  "repeats": 7,
+  "cpu": 2,
+  "address_space_limit_bytes": 4294967296,
+  "groups": {
+    "3": {
+      "cases": 67,
+      "baseline_sum_median_ms": 1902.696956,
+      "sweep_sum_median_ms": 1781.222481,
+      "change_pct": -6.384331178800706,
+      "geometry_and_support_exact": true,
+      "timing_metric": "kernel_total_ms",
+      "peak_rss_kib": 33612
+    },
+    "5": {
+      "cases": 7,
+      "baseline_sum_median_ms": 253.84806,
+      "sweep_sum_median_ms": 256.189638,
+      "change_pct": 0.9224328915493851,
+      "geometry_and_support_exact": true,
+      "timing_metric": "wall_ms",
+      "peak_rss_kib": 31644
+    }
+  },
+  "c3_solver_trace_exact": true,
+  "tests": [
+    "multi-translation-unit linkage",
+    "both generators and continuous certificates",
+    "Horner value/first/second derivatives",
+    "constraint gradient/Hessian finite differences",
+    "invalid input and seed collision",
+    "installed package consumer",
+    "ROS Perlin/maze for C3 and H5",
+    "preserved GCOPTER tube query adapter"
+  ],
+  "trajectory": "compiled, optimization not run",
+  "h5_newton_steps_exact": true
+}

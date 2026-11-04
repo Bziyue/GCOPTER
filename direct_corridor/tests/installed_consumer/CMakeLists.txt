@@ -1,5 +1,0 @@
-cmake_minimum_required(VERSION 3.16)
-project(corridor_installed_consumer LANGUAGES CXX)
-find_package(gcopter_direct_corridor REQUIRED)
-add_executable(consumer main.cpp)
-target_link_libraries(consumer PRIVATE gcopter::cubic_corridor)

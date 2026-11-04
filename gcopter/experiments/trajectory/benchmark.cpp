@@ -9,14 +9,7 @@
 #include <cstdint>
 #include <cstring>
 #include "tube_query.hpp"
-#include "refit.hpp"
-#ifdef GCOPTER_NATIVE_SPLINE_EXPERIMENT
-#include "obstacle_cover.hpp"
-#include "cubic_query.hpp"
-using BenchmarkTubeQuery=gcopter::direct::native::BenchmarkQuery;
-#else
 using BenchmarkTubeQuery=tube_query::Query;
-#endif
 
 using Spline = SplineTrajectory::QuinticSplineND<3>;
 using Opt = SplineTrajectory::SplineOptimizer<Spline>;
@@ -156,67 +149,13 @@ int main(int argc,char**argv) {try {
   std::filesystem::path dir=argv[3];std::filesystem::create_directories(dir);
   std::vector<Sphere> spheres;for(auto p:points)spheres.push_back({p,radius});
   auto clock=Clock::now();ObstacleIndex index(std::move(spheres));double index_ms=ms(clock);
-  Options options;options.frame_smoothing=0;options.section_smoothing=0;options.jet_smoothing=0;
-  options.certify_jacobian=false;options.initial_iterations=12;options.control_spacing=.4;options.min_radius=.03;options.budget_ms=10000;
+  Options options;options.control_spacing=.4;options.min_radius=.03;options.budget_ms=10000;
   options.robot_radius=.2;options.safety_margin=.05;options.local_range=3;options.local_progress=7;
   double diagonal=0;for(auto b:expansionBoxes(seed,bounds,3,.252))diagonal=std::max(diagonal,(b.bounds.upper-b.bounds.lower).norm());
   options.max_radius=.5*diagonal+.001;options.max_offset=diagonal+.001;
-  const char* shape_env=std::getenv("GCOPTER_SHAPE_MODE");
-  const std::string shape_mode=shape_env?shape_env:"baseline";
-#ifndef GCOPTER_NATIVE_SPLINE_EXPERIMENT
-  if(shape_mode!="smooth"&&shape_mode!="baseline"&&shape_mode!="hermite-free"&&shape_mode!="cubic-c2"&&shape_mode!="integrated-quintic"&&shape_mode!="fast-quintic"&&shape_mode!="fast-quintic-2"&&shape_mode!="coordinate-6"&&shape_mode!="coordinate-8"&&shape_mode!="boundary-12"&&shape_mode!="boundary-8"&&shape_mode!="boundary-coarse"&&shape_mode!="continuation")
-    throw std::runtime_error("invalid shape mode");
-#endif
-  gcopter::direct::experiment::ShapeFitMetrics shape_metrics;
-  Result direct;
-#ifdef GCOPTER_NATIVE_SPLINE_EXPERIMENT
-  gcopter::direct::native::Geometry native_geometry;
-  options.frame_smoothing=1.5;options.section_smoothing=.2;options.jet_smoothing=.01;
-  options.certify_jacobian=true;options.initial_iterations=8;
-  if(const char* path=std::getenv("GCOPTER_FROZEN_GEOMETRY")) {
-    clock=Clock::now();
-    native_geometry=gcopter::direct::native::Geometry::read(path);
-    const auto& g=native_geometry;
-    gcopter::direct::native::QueryCache cache;gcopter::direct::native::CoverMetrics timing;
-    gcopter::direct::native::Deadline deadline(10000);
-    const gcopter::direct::native::CoverLayout layout(g.breaks,seed,bounds,options);
-    const auto cover=gcopter::direct::native::mapCover(g,index,bounds,options,cache,timing,deadline,layout);
-    if(!gcopter::direct::native::certify(g,cover).safe())throw std::runtime_error("frozen geometry is not certified on this map");
-    direct.corridor=g.quinticAdapter();direct.status=Status::Success;
-    // This is replay/adapter time, not original corridor generation time.
-    direct.metrics.total_ms=ms(clock);shape_metrics.degree=g.degree;
-  } else direct=generate(seed,index,bounds,options);
+  const std::string shape_mode="smooth";
+  auto direct=generate(seed,index,bounds,options);
   if(!direct)throw std::runtime_error(direct.message);
-#else
-  if (shape_mode=="smooth") {
-    options.frame_smoothing=1.5;options.section_smoothing=.2;options.jet_smoothing=.01;
-    options.certify_jacobian=true;options.initial_iterations=8;
-    direct=generate(seed,index,bounds,options);
-  } else if (shape_mode=="continuation")
-    direct=gcopter::direct::experiment::generateCoordinateShape(seed,index,bounds,options,shape_metrics,12,check,true,true);
-  else if (shape_mode=="boundary-coarse") {
-    auto coarse = options; coarse.control_spacing *= 1.25;
-    direct=gcopter::direct::experiment::generateCoordinateShape(seed,index,bounds,coarse,shape_metrics,12,check,true);
-  } else if (shape_mode=="boundary-12"||shape_mode=="boundary-8")
-    direct=gcopter::direct::experiment::generateCoordinateShape(seed,index,bounds,options,shape_metrics,
-        shape_mode=="boundary-12"?12:8,check,true);
-  else if (shape_mode=="coordinate-6"||shape_mode=="coordinate-8")
-    direct=gcopter::direct::experiment::generateCoordinateShape(seed,index,bounds,options,shape_metrics,
-        shape_mode=="coordinate-6"?6:8,check);
-  else if (shape_mode=="fast-quintic"||shape_mode=="fast-quintic-2")
-    direct=gcopter::direct::experiment::generateFastShape(seed,index,bounds,options,shape_metrics,
-        shape_mode=="fast-quintic"?1:2,check);
-  else if (shape_mode=="integrated-quintic")
-    direct=gcopter::direct::experiment::generateIntegratedShape(seed,index,bounds,options,shape_metrics,check);
-  else direct=generate(seed,index,bounds,options);
-  if(!direct)throw std::runtime_error(direct.message);
-  if(shape_mode!="smooth"&&shape_mode!="baseline"&&shape_mode!="integrated-quintic"&&shape_mode!="fast-quintic"&&shape_mode!="fast-quintic-2"&&shape_mode!="coordinate-6"&&shape_mode!="coordinate-8"&&shape_mode!="boundary-12"&&shape_mode!="boundary-8"&&shape_mode!="boundary-coarse"&&shape_mode!="continuation") {
-    auto fit=gcopter::direct::experiment::refitShape(direct.corridor,seed,index,bounds,options,
-        shape_mode=="hermite-free"?5:3,check);
-    direct.corridor=std::move(fit.corridor);shape_metrics=fit.metrics;
-    direct.metrics.total_ms+=shape_metrics.total_ms;
-  }
-#endif
   auto firi=generateFiri(seed,points,bounds,radius,.25,true,3);
   int disconnected=0,empty_polys=0;Vec3 interior;
   for(const auto& h:firi.polys)if(!geo_utils::findInterior(h,interior))++empty_polys;
@@ -243,12 +182,7 @@ int main(int argc,char**argv) {try {
     bool ellipse=(rep+order+2)%2;std::string name=ellipse?"hermite":"firi";
     clock=Clock::now();Run run;SplineTrajectory::OptimizerOptions config;config.energy_weight=1;config.integration_steps=steps;
     if(!run.optimizer.prepare(problem,config))throw std::runtime_error("prepare failed");
-#ifdef GCOPTER_NATIVE_SPLINE_EXPERIMENT
-    const bool native_query=native_geometry.pieces()!=0&&!std::getenv("GCOPTER_QUINTIC_REPLAY");
-    run.query=std::make_unique<BenchmarkTubeQuery>(direct.corridor,native_query?&native_geometry:nullptr,fast,profile,horner);
-#else
     run.query=std::make_unique<BenchmarkTubeQuery>(direct.corridor,fast,profile,horner);
-#endif
     run.cost.query=run.query.get();
     flatness::FlatnessMap flat;flat.reset(.61,9.8,.70,.80,.01,.0001);
     run.cost.dynamics.reset(&empty,&ids,.01,limits,weights,&flat);
@@ -343,7 +277,6 @@ int main(int argc,char**argv) {try {
        <<",\"firi_disconnected_neighbors\":"<<disconnected<<",\"firi_empty_polys\":"<<empty_polys<<",\"firi_seed_outside_m\":"<<seed_outside
        <<",\"inverse_failures\":"<<inverse_failures<<",\"gradient_relative_error\":"<<gradient_error<<",\"sampled_feasible\":"<<(feasible?"true":"false")
        <<",\"shape_mode\":\""<<shape_mode<<"\"";
-    gcopter::direct::experiment::writeShapeMetrics(out,shape_metrics);out<<"}\n";out.flush();
     std::cerr<<name<<" rep "<<rep<<" "<<optimize_ms<<"ms feasible="<<feasible<<" plane="<<max_plane<<" corridor="<<max_corridor<<" collision="<<penetration<<'\n';
   }
 }catch(const std::exception&e){std::cerr<<e.what()<<'\n';return 1;}}

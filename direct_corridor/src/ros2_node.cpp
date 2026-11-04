@@ -35,8 +35,6 @@ class DirectCorridorNode final : public rclcpp::Node {
     options_.safety_margin = declare_parameter<double>("safety_margin", .02);
     options_.control_spacing = declare_parameter<double>("control_spacing", .5);
     options_.max_offset = declare_parameter<double>("max_offset", 1.5);
-    options_.inflation_iterations =
-        declare_parameter<int>("inflation_iterations", 2);
     options_.certificate_depth = declare_parameter<int>("certificate_depth", 9);
     options_.min_radius = declare_parameter<double>("min_radius", .02);
     options_.max_radius = declare_parameter<double>("max_radius", 1.5);
