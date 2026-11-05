@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// GCOPTER mockamap + original Informed RRT* -> native C3 corridor
+// GCOPTER mockamap + original Informed RRT* -> C3 or experimental H3 corridor
 // demo.
 #include <ompl/util/RandomNumbers.h>
 #include <unistd.h>
@@ -15,6 +15,7 @@
 #include <optional>
 #include <future>
 #include "demo_comparison.hpp"
+#include "demo_generation.hpp"
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <sensor_msgs/point_cloud2_iterator.hpp>
@@ -37,8 +38,8 @@ using Marker = visualization_msgs::msg::Marker;
 using Markers = visualization_msgs::msg::MarkerArray;
 namespace {
 namespace sc = SweepCorridor;
-using DisplayCorridor=sc::Corridor;
-using DisplayResult=sc::Result;
+using DisplayCorridor=demo_generation::Corridor;
+using DisplayResult=demo_generation::Result;
 void writeNative(const DisplayCorridor& c,const fs::path& path) {
   std::ofstream f(path);f<<std::setprecision(17)<<"degree,u0,u1,cx,cy,cz,m00,m10,m20,m01,m11,m21\n";
   for(std::size_t i=0;i<c.controls().size();++i){f<<c.degree<<','<<c.knots()[i/(c.degree+1)]<<','<<c.knots()[i/(c.degree+1)+1];
@@ -67,6 +68,9 @@ class DirectDemo final : public rclcpp::Node {
  public:
   DirectDemo() : Node("direct_demo") {
     frame_ = declare_parameter<std::string>("frame", "odom");
+    shape_mode_ = declare_parameter<std::string>("shape_mode", "c3");
+    if (shape_mode_ != "c3" && shape_mode_ != "h3")
+      throw std::invalid_argument("shape_mode must be c3 or h3");
     resolution_ = declare_parameter<double>("resolution", .25);
     const auto b = declare_parameter<std::vector<double>>(
         "bounds", {-25, -25, 0, 25, 25, 5});
@@ -165,9 +169,10 @@ class DirectDemo final : public rclcpp::Node {
           status(map_ ? "WAITING_FOR_START" : "WAITING_FOR_MAP");
         });
     status("WAITING_FOR_MAP");
+    comparisonState("EMPTY");
     RCLCPP_INFO(get_logger(), "session_dir=%s", session_.c_str());
     RCLCPP_INFO(get_logger(), "shape_mode=%s; local_range=%.2f m",
-                "c3", options_.local_range);
+                shape_mode_.c_str(), options_.local_range);
   }
 
   ~DirectDemo() override {if(cancel_)cancel_->store(true);if(job_.valid())job_.wait();}
@@ -240,7 +245,7 @@ class DirectDemo final : public rclcpp::Node {
   void clearOutput() {
     ++epoch_;
     if(cancel_)cancel_->store(true);
-    ready_=false;stored_seed_.clear();stored_corridor_=DisplayCorridor{};stored_firi_={};
+    ready_=false;stored_seed_.clear();stored_corridor_=sc::Corridor{};stored_firi_={};
     comparisonState("EMPTY");
     Markers m;
     Marker clear;
@@ -467,7 +472,7 @@ class DirectDemo final : public rclcpp::Node {
           request_options.max_radius = .5 * diagonal + .001;
           request_options.max_offset = diagonal + .001;
         }
-        result=sc::Generator(request_options).generate(seed,*map_,bounds_);
+        result=demo_generation::generate(shape_mode_=="h3",seed,*map_,bounds_,request_options);
         outcome=result?"PASS":sc::statusName(result.status);
       } else
         outcome = "SEARCH_EDGE_COLLISION";
@@ -477,7 +482,8 @@ class DirectDemo final : public rclcpp::Node {
       try {
         stored_firi_=demo_comparison::buildFiri(seed,*map_,bounds_,request_options);
         firi_ms=stored_firi_.milliseconds;
-        stored_corridor_=result.corridor;stored_seed_=seed;stored_dir_=dir;ready_=bool(result);
+        stored_seed_=seed;stored_dir_=dir;ready_=bool(result)&&shape_mode_=="c3";
+        if(ready_)stored_corridor_=result.corridor.c3();
         publishFiri();
       } catch(const std::exception& e) {RCLCPP_WARN(get_logger(),"FIRI: %s",e.what());}
     }
@@ -625,7 +631,9 @@ class DirectDemo final : public rclcpp::Node {
            << ",\"max_offset\":" << request_options.max_offset
            << ",\"local_range\":" << request_options.local_range
            << ",\"local_progress\":" << request_options.local_progress
-           << ",\"shape_mode\":\"" << "c3" << '"'
+           << ",\"shape_mode\":\"" << shape_mode_ << '"'
+           << ",\"continuity\":" << (shape_mode_=="h3"?1:2)
+           << ",\"jet_updates\":" << result.jet_updates
            << ",\"search_timeout\":" << search_timeout_
            << ",\"search_range\":" << search_range_
            << ",\"corridor_budget_ms\":" << options_.budget_ms
@@ -637,7 +645,7 @@ class DirectDemo final : public rclcpp::Node {
            << ",\"total_ms\":" << total_ms << ",\"seed_points\":" << seed.size()
            << ",\"seed_length\":" << length << ",\"turns_over_30deg\":" << turns
            << ",\"height_span\":" << (seed.empty() ? 0 : highz - lowz)
-           << ",\"representation\":\"" << "native_cubic_v3" << '"'
+           << ",\"representation\":\"" << (shape_mode_=="h3"?"hermite_cubic_v3":"native_cubic_v3") << '"'
            << ",\"visualization_adapter_ms\":" << adapter_ms
            << ",\"trajectory_optimization\":false,\"c3_stage_profiled\":false"
            << ",\"nodes\":" << result.metrics.controls
@@ -655,7 +663,7 @@ class DirectDemo final : public rclcpp::Node {
     metrics.data = metric.str();
     metrics_pub_->publish(metrics);
     std::ostringstream label;
-    label << outcome << " [" << "c3" << "] request=" << id << "\nSearch " << std::fixed
+    label << outcome << " [" << shape_mode_ << "] request=" << id << "\nSearch " << std::fixed
           << std::setprecision(1) << search_ms << " ms; corridor "
           << result.metrics.total_ms << " ms; total " << total_ms << " ms";
     if (result)
@@ -663,11 +671,12 @@ class DirectDemo final : public rclcpp::Node {
     else
       label << "\n" << result.message;
     status(label.str());
-    comparisonState(ready_?"READY":"UNAVAILABLE");
+    comparisonState(result?"READY":"UNAVAILABLE");
   }
   void comparisonState(const char* state) {
     std_msgs::msg::String msg;std::ostringstream out;
     out<<"{\"state\":\""<<state<<"\",\"request\":"<<request_
+       <<",\"shape_mode\":\""<<shape_mode_<<"\",\"optimization_available\":"<<(shape_mode_=="c3"?"true":"false")
        <<",\"busy\":"<<(job_.valid()?"true":"false")<<",\"ready\":"<<(ready_?"true":"false")<<"}";
     msg.data=out.str();comparison_pub_->publish(msg);
   }
@@ -732,7 +741,7 @@ class DirectDemo final : public rclcpp::Node {
   bool ready_=false;
   unsigned long epoch_=0,job_epoch_=0;
   std::vector<Vec3> stored_seed_;
-  DisplayCorridor stored_corridor_;
+  sc::Corridor stored_corridor_;
   demo_comparison::FiriCorridor stored_firi_;
   fs::path stored_dir_;
   std::shared_ptr<std::atomic_bool> cancel_;
@@ -741,7 +750,7 @@ class DirectDemo final : public rclcpp::Node {
   rclcpp::Subscription<std_msgs::msg::Empty>::SharedPtr optimize_sub_;
   rclcpp::Publisher<Markers>::SharedPtr firi_pub_,c3_trajectory_pub_,firi_trajectory_pub_;
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr comparison_pub_;
-  std::string frame_, height_mode_;
+  std::string frame_, height_mode_, shape_mode_;
   double resolution_, height_, reference_clearance_, search_timeout_,
       search_range_, map_ms_ = 0;
   Bounds bounds_;

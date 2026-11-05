@@ -38,7 +38,7 @@ target_link_directories(global_planning PRIVATE ${OMPL_LIBRARY_DIRS})
 add_library(demo_comparison STATIC src/demo_comparison.cpp)
 target_include_directories(demo_comparison PRIVATE tools)
 target_link_libraries(demo_comparison PUBLIC SweepCorridor::SweepCorridor)
-add_executable(direct_corridor_demo src/direct_corridor_demo.cpp)
+add_executable(direct_corridor_demo src/direct_corridor_demo.cpp src/demo_generation.cpp)
 target_link_libraries(direct_corridor_demo PRIVATE demo_comparison SweepCorridor::SweepCorridor
   ${OMPL_LIBRARIES} rclcpp::rclcpp ${std_msgs_TARGETS} ${geometry_msgs_TARGETS}
   ${sensor_msgs_TARGETS} ${visualization_msgs_TARGETS} ${nav_msgs_TARGETS})

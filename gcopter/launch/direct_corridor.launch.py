@@ -1,4 +1,4 @@
-"""Original GCOPTER mockamap + Informed RRT* + native C3 corridor."""
+"""Original GCOPTER mockamap + Informed RRT* + C3/H3 corridor."""
 import os
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
@@ -12,6 +12,9 @@ def setup(context):
     scene = LaunchConfiguration('scene').perform(context)
     if scene not in ('perlin', 'maze'):
         raise ValueError('scene must be perlin or maze')
+    corridor = LaunchConfiguration('corridor').perform(context)
+    if corridor not in ('c3', 'h3'):
+        raise ValueError('corridor must be c3 or h3')
     share = get_package_share_directory('gcopter')
     size = 50 if scene == 'perlin' else 30
     generator = dict(seed=int(LaunchConfiguration('map_seed').perform(context)),
@@ -21,7 +24,7 @@ def setup(context):
         generator.update(type=1, complexity=0.025, fill=0.3, fractal=1, attenuation=0.1)
     else:
         generator.update(type=3, road_width=3.0, maze_type=1, add_wall_x=1, add_wall_y=1)
-    planner = dict(frame='odom', resolution=0.25,
+    planner = dict(frame='odom', resolution=0.25, shape_mode=corridor,
                    bounds=[-size/2, -size/2, 0., size/2, size/2, 5.],
                    height=float(LaunchConfiguration('height').perform(context)),
                    height_mode=LaunchConfiguration('height_mode').perform(context),
@@ -46,6 +49,8 @@ def setup(context):
 def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument('scene', default_value='perlin'),
+        DeclareLaunchArgument('corridor', default_value='c3',
+                              description='c3 (C2) or h3 (C1, generation only)'),
         DeclareLaunchArgument('map_seed', default_value='1024'),
         DeclareLaunchArgument('height', default_value='2.5'),
         DeclareLaunchArgument('height_mode', default_value='fixed'),

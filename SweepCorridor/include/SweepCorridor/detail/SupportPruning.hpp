@@ -5,7 +5,8 @@
 #include <algorithm>
 
 namespace SweepCorridor::internal::cubic {
-inline void pruneProjectedSupports(CubicProblem::Group& group,const Eigen::VectorXd& x,
+template<bool AffineShapeOffset>
+inline void pruneProjectedSupportsImpl(CubicProblem::Group& group,const Eigen::VectorXd& x,
                             double max_offset,double max_radius,std::vector<CubicProblem::Group::Proof>* proofs) {
   struct Point {Eigen::Vector2d projected;Vec3 world;int id;};
   if(group.supports.size()<4)return;
@@ -59,6 +60,9 @@ inline void pruneProjectedSupports(CubicProblem::Group& group,const Eigen::Vecto
       if(!(left>=0&&right>=0&&left+right<=1))continue;
       const Vec3 residual=p.world-left*a.world-right*b.world;
       double reach=0;
+      // Hermite derivative offsets can contribute a fixed shape matrix.
+      // Native B-spline rows have no such term; compile it out on that path.
+      if constexpr(AffineShapeOffset)reach=(shape(group.reference).transpose()*residual).norm();
       for(int k=0;k<group.count;++k) {
         const Eigen::Vector2d v=group.maps[k].transpose()*residual;
         const double norm=v.norm();
@@ -76,5 +80,9 @@ inline void pruneProjectedSupports(CubicProblem::Group& group,const Eigen::Vecto
       }
     }
   }
+}
+inline void pruneProjectedSupports(CubicProblem::Group& group,const Eigen::VectorXd& x,
+    double max_offset,double max_radius,std::vector<CubicProblem::Group::Proof>* proofs) {
+  pruneProjectedSupportsImpl<false>(group,x,max_offset,max_radius,proofs);
 }
 }

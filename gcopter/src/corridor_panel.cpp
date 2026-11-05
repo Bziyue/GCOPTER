@@ -44,10 +44,12 @@ class CorridorPanel final : public rviz_common::Panel {
     auto* layout = new QVBoxLayout(content);
     layout->setContentsMargins(18, 20, 18, 18);
     layout->setSpacing(8);
-    auto* kicker = label("GCOPTER  /  C²", 10, "#71839a");
-    layout->addWidget(kicker);
-    layout->addWidget(label("走廊与轨迹对比", 20, "#172b43", true));
-    layout->addWidget(label("同地图 · 同路径 · 同轨迹初值", 10, "#71839a"));
+    kicker_ = label("GCOPTER  /  C3 · C²", 10, "#71839a");
+    layout->addWidget(kicker_);
+    title_ = label("走廊与轨迹对比", 20, "#172b43", true);
+    subtitle_ = label("同地图 · 同路径 · 同轨迹初值", 10, "#71839a");
+    layout->addWidget(title_);
+    layout->addWidget(subtitle_);
     phase_ = label("正在连接地图…", 12, "#287eac", true);
     phase_->setWordWrap(true);
     layout->addWidget(phase_);
@@ -58,7 +60,8 @@ class CorridorPanel final : public rviz_common::Panel {
     metrics->setContentsMargins(16, 16, 16, 16);
     metrics->setSpacing(10);
     auto* times=new QGridLayout;
-    times->addWidget(label("C3 走廊",10,"#b31f33"),0,0);
+    corridor_name_=label("C3 走廊",10,"#b31f33");
+    times->addWidget(corridor_name_,0,0);
     times->addWidget(label("FIRI 走廊",10,"#126eaa"),0,1);
     duration_=label("—",21,"#b31f33",true);
     firi_duration_=label("—",21,"#126eaa",true);
@@ -74,7 +77,7 @@ class CorridorPanel final : public rviz_common::Panel {
     detail->addWidget(search_, 0, 1);
     detail->addWidget(label("路径长度", 10, "#71839a"), 1, 0);
     detail->addWidget(length_, 1, 1);
-    detail->addWidget(label("C3 最小半轴", 10, "#71839a"), 2, 0);
+    detail->addWidget(label("最小半轴", 10, "#71839a"), 2, 0);
     detail->addWidget(radius_, 2, 1);
     metrics->addLayout(detail);
     layout->addWidget(card);
@@ -194,7 +197,9 @@ class CorridorPanel final : public rviz_common::Panel {
     return widget;
   }
   void addLayer(QVBoxLayout* layout, const QString& title, const QString& display, const char* color) {
-    auto* row = new QHBoxLayout;
+    auto* container = new QWidget;
+    auto* row = new QHBoxLayout(container);
+    row->setContentsMargins(0,0,0,0);
     auto* swatch = new QLabel;
     swatch->setFixedSize(9, 9);
     swatch->setStyleSheet(QString("background:%1; border-radius:4px;").arg(color));
@@ -203,7 +208,7 @@ class CorridorPanel final : public rviz_common::Panel {
     layers_.push_back({display,toggle});
     row->addWidget(swatch);
     row->addWidget(toggle);
-    layout->addLayout(row);
+    layout->addWidget(container);
     connect(toggle, &QCheckBox::toggled, this, [this, display](bool enabled) {
       auto* group = getDisplayContext()->getRootDisplayGroup();
       for (int i = 0; i < group->numDisplays(); ++i)
@@ -223,7 +228,7 @@ class CorridorPanel final : public rviz_common::Panel {
     else if (text.startsWith("GENERATING")) caption = "正在构造走廊…";
     else if (text.startsWith("PASS")) { caption = "✓ 走廊已生成"; color = "#188765"; }
     else if (text.startsWith("INVALID_POINT")) { caption = "请选择有足够净空的位置"; color = "#b66c27"; }
-    else { caption = "C3 未生成，请重新选点"; color = "#ba5347"; }
+    else { caption = "走廊未生成，请重新选点"; color = "#ba5347"; }
     phase_->setText(caption);
     phase_->setStyleSheet("color:" + color + ";");
     phase_->setToolTip(text);
@@ -247,6 +252,20 @@ class CorridorPanel final : public rviz_common::Panel {
   }
   void showComparison(const QByteArray& data) {
     auto m=QJsonDocument::fromJson(data).object();QString state=m["state"].toString();
+    if(m.contains("shape_mode")) {
+      const bool h3=m["shape_mode"].toString()=="h3";
+      kicker_->setText(h3?"GCOPTER  /  H3 · C¹":"GCOPTER  /  C3 · C²");
+      title_->setText(h3?"H3 走廊生成":"走廊与轨迹对比");
+      subtitle_->setText(h3?"同地图 · 同路径 · 与 FIRI 对比":"同地图 · 同路径 · 同轨迹初值");
+      corridor_name_->setText(h3?"H3 走廊":"C3 走廊");
+      optimize_button_->setVisible(!h3);
+      firi_result_->setVisible(!h3);c3_result_->setVisible(!h3);
+      for(const auto& layer:layers_) {
+        if(layer.first=="Corridor surface")layer.second->setText(h3?"H3 走廊":"C3 走廊");
+        if(layer.first=="C3 trajectory"||layer.first=="FIRI trajectory")
+          layer.second->parentWidget()->setVisible(!h3);
+      }
+    }
     optimize_button_->setEnabled(m["ready"].toBool()&&!m["busy"].toBool());
     optimize_button_->setText(m["busy"].toBool()?"正在优化…":"优化两条轨迹");
     if(state=="DONE") {
@@ -272,6 +291,7 @@ class CorridorPanel final : public rviz_common::Panel {
   rclcpp::Publisher<std_msgs::msg::Empty>::SharedPtr optimize_;
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr comparison_;
   QLabel *phase_, *duration_, *search_, *length_, *radius_, *opacity_value_;
+  QLabel *kicker_, *title_, *subtitle_, *corridor_name_;
   QSlider* transparency_;
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr status_, metrics_;
   rclcpp::Publisher<std_msgs::msg::Empty>::SharedPtr reset_;
