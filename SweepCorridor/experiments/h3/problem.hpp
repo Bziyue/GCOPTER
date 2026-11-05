@@ -5,6 +5,8 @@
 
 namespace SweepCorridor::experiments::h3 {
 struct Group : c3::CubicProblem::Group {
+  int span=0;
+  Eigen::Vector4d bernstein;
   struct SingleSupport {
     Vec3 normal,constant;
     Eigen::Vector2d q;
@@ -87,19 +89,22 @@ inline Problem::Problem(const Model& m,const std::vector<internal::detail::Suppo
   if(previous){geometry=previous->geometry;reused_construction=true;}
   else {
     auto data=std::make_shared<Constraints>();
-    struct Rows {c3::Curve<3,Eigen::Vector2d> weights;c3::Curve<3,V9> offsets;std::array<int,4> ids{{-1,-1,-1,-1}};};
+    struct Rows {c3::Curve<3,Eigen::Vector2d> weights;c3::Curve<3,V9> offsets;c3::Curve<3,Eigen::Vector4d> bernstein;std::array<int,4> ids{{-1,-1,-1,-1}};};
     std::map<std::tuple<int,double,double>,Rows> rows;
     std::map<std::tuple<int,double,double,int>,int> ids;
     for(const auto& p:cover){auto inserted=rows.try_emplace(std::make_tuple(p.span,p.begin,p.end));auto& row=inserted.first->second;
       if(inserted.second){
         const c3::Curve<3,Eigen::Vector2d> weights{{{1,0},{1,0},{0,1},{0,1}}};
         row.weights=c3::restrictCurve<3>(weights,p.begin,p.end);row.offsets=c3::restrictCurve<3>(m.offsets(p.span),p.begin,p.end);++basis_cache_misses;
+        c3::Curve<3,Eigen::Vector4d> identity;for(int j=0;j<4;++j)identity[j]=Eigen::Vector4d::Unit(j);
+        row.bernstein=c3::restrictCurve<3>(identity,p.begin,p.end);
       }else ++basis_cache_hits;
       for(int j=0;j<(p.begin==p.end?1:4);++j){
         if(row.ids[j]<0){auto key=std::make_tuple(p.span,p.begin,p.end,j);
           if(j==0||j==3){const double t=j==0?p.begin:p.end;key=t==1?std::make_tuple(p.span+1,0.,0.,0):std::make_tuple(p.span,t,t,0);}
           const auto found=ids.emplace(key,data->groups.size());row.ids[j]=found.first->second;
           if(found.second){Group g;g.reference=row.offsets[j];g.first=6*p.span;g.count=2;
+            g.span=p.span;g.bernstein=row.bernstein[j];
             for(int k=0;k<2;++k){const double w=row.weights[j][k];g.center_weights[k]=w;g.maps[k]=w*m.frames[p.span+k];g.reference.head<3>()+=w*m.reference[p.span+k];}
             // Unsubdivided controls are single-node rows, not 12-variable rows.
             if(row.weights[j][1]==0)g.count=1;

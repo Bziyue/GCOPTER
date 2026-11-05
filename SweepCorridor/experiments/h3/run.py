@@ -8,6 +8,9 @@ p.add_argument('--samples',type=int,default=65536);a=p.parse_args();repo=Path(__
 os.sched_setaffinity(0,{2});resource.setrlimit(resource.RLIMIT_AS,(4*1024**3,4*1024**3))
 for key in ('OPENBLAS_NUM_THREADS','OMP_NUM_THREADS','MKL_NUM_THREADS'):os.environ[key]='1'
 out=Path(a.output).resolve();out.mkdir(parents=True,exist_ok=True);build=Path('.scratch/h3').resolve()
+def executable(mode):
+    if mode=='h3_previous':return build/'previous_benchmark'
+    return build/('baseline_benchmark' if mode=='c3' else ('world' if mode=='h3_world' else 'benchmark'))
 cases=json.loads(Path(a.inputs).read_text())['cases'];ids=None if a.cases=='all' else set(map(int,a.cases.split(',')))
 cases=[r for r in cases if ids is None or r['case'] in ids];hashes={}
 for r in cases:
@@ -19,7 +22,7 @@ manifest=dict(cases=cases,repeats=a.repeats,samples_per_shift=a.samples,shifts=8
               commit=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),
               compiler=subprocess.check_output(['c++','--version'],text=True).splitlines()[0],platform=platform.platform(),
               worktree=subprocess.check_output(['git','status','--short'],text=True),
-              binaries={name:hashlib.sha256((build/name).read_bytes()).hexdigest() for name in ('benchmark','baseline_benchmark','measure','world') if (build/name).exists()},
+              binaries={str(path):hashlib.sha256(path.read_bytes()).hexdigest() for path in {*(executable(m) for m in a.modes.split(',')),build/'measure'}},
               sources={str(path):hashlib.sha256(path.read_bytes()).hexdigest() for folder in ('SweepCorridor/include','SweepCorridor/experiments/h3') for path in Path(folder).rglob('*') if path.is_file() and path.suffix in ('.hpp','.cpp','.py')})
 (out/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n');summary=[]
 for case in cases:
@@ -27,7 +30,7 @@ for case in cases:
     modes=a.modes.split(',');modes=modes if case['case']%2==0 else modes[::-1]
     for mode in modes:
         target=out/f"case_{case['case']:02d}"/mode;target.mkdir(parents=True,exist_ok=True)
-        binary=build/('baseline_benchmark' if mode=='c3' else ('world' if mode=='h3_world' else 'benchmark'))
+        binary=executable(mode)
         command=[str(binary),case['seed'],case['map'],str(target),*map(str,case['bounds_lower']+case['bounds_upper']),str(a.repeats)]
         env=os.environ.copy();env['H3_MODE']=mode
         with (target/'process.log').open('w') as log:process=subprocess.run(command,stdout=log,stderr=subprocess.STDOUT,timeout=180,env=env)
@@ -49,5 +52,9 @@ for case in cases:
             base=Path(records['c3']['output'])/file
             data=json.loads(subprocess.check_output([str(build/'measure'),str(base),str(target/file),case['seed'],str(a.samples)],text=True,timeout=180))
             assert data['unresolved']==0;r[key]=data
+        if mode=='h3_new' and records.get('h3_previous',{}).get('success'):
+            previous=Path(records['h3_previous']['output'])/'corridor.csv'
+            data=json.loads(subprocess.check_output([str(build/'measure'),str(previous),str(target/'corridor.csv'),case['seed'],str(a.samples)],text=True,timeout=180))
+            assert data['unresolved']==0;r['union_vs_previous']=data
         (out/'summary.json').write_text(json.dumps(summary,indent=2)+'\n')
         print('union',case['case'],mode,100*r['union']['paired_delta']/r['union']['baseline'],'%',flush=True)

@@ -634,6 +634,7 @@ class DirectDemo final : public rclcpp::Node {
            << ",\"shape_mode\":\"" << shape_mode_ << '"'
            << ",\"continuity\":" << (shape_mode_=="h3"?1:2)
            << ",\"jet_updates\":" << result.jet_updates
+           << ",\"joint_steps\":" << result.joint_steps
            << ",\"search_timeout\":" << search_timeout_
            << ",\"search_range\":" << search_range_
            << ",\"corridor_budget_ms\":" << options_.budget_ms

@@ -2,6 +2,8 @@
 #pragma once
 #include "solve.hpp"
 #include "jets.hpp"
+#include "volume_jets.hpp"
+#include "joint_jets.hpp"
 namespace SweepCorridor::experiments::h3 {
 using c3::QueryCache;using c3::CoverLayout;using c3::mapCover;using c3::certify;
 using c3::Failure;using c3::DeadlineExceeded;
@@ -55,6 +57,7 @@ inline Result generate(const std::vector<Vec3>& input_seed,const ObstacleIndex& 
       timer.restart();auto energy=std::make_shared<Energy>(model,length,solver);
       result.optimizer.setup_ms+=timer.elapsed();++result.optimizer.energy_builds;
       std::unique_ptr<Problem> initial_problem;
+      std::shared_ptr<const Problem::Constraints> final_constraints;
       for(int attempt=0;attempt<2;++attempt) {
         ++result.initialization_attempts;deadline.check();
         if(attempt) {
@@ -83,12 +86,15 @@ inline Result generate(const std::vector<Vec3>& input_seed,const ObstacleIndex& 
         if(iteration)cover=mapCover(model.geometry(),index,bounds,o,cache,result.cover_metrics,deadline,layout,solver.profile);
         timer.restart();
         Problem problem(model,cover,length,o,solver,energy,initial_problem.get(),true);
+        final_constraints=problem.geometry;
         initial_problem.reset();result.optimizer.setup_ms+=timer.elapsed();
         auto candidate=model.x;
         problem.optimize(candidate,result.optimizer,deadline,0,early_jets?1:3);
         model.x=std::move(candidate);
         if(refresh_jets){
           updateJets(model,cover,jm,deadline,solver.profile);
+          if(solver.volume_jet_steps)optimizeVolumeJets(model,cover,length,solver,jm,deadline);
+          if(solver.joint_jet_steps&&!solver.joint_final_only)optimizeJointJets(model,cover,length,o,solver,jm,deadline,solver.reuse_joint_supports?problem.geometry.get():nullptr);
           if(early_jets){
             timer.restart();energy=std::make_shared<Energy>(model,length,solver);
             Problem corrector(model,cover,length,o,solver,energy);
@@ -100,6 +106,7 @@ inline Result generate(const std::vector<Vec3>& input_seed,const ObstacleIndex& 
             result.optimizer.setup_ms+=timer.elapsed();++result.optimizer.energy_builds;}
         }
       }
+      if(solver.joint_jet_steps&&solver.joint_final_only)optimizeJointJets(model,cover,length,o,solver,jm,deadline,solver.reuse_joint_supports?final_constraints.get():nullptr);
       if(solver.polish){
         timer.restart();energy=std::make_shared<Energy>(model,length,solver);
         Problem final_problem(model,cover,length,o,solver,energy);

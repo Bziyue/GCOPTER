@@ -1,0 +1,38 @@
+[
+  {
+    "case": 0,
+    "cached_ms": 24.316867,
+    "rebuilt_ms": 24.613808,
+    "halving_ms": 25.08699,
+    "max_coefficient_delta": 2.024509004883157e-09,
+    "analytic_volume": 452.94707437489353,
+    "halving_volume": 449.87640309800315
+  },
+  {
+    "case": 2,
+    "cached_ms": 30.359294,
+    "rebuilt_ms": 30.995746,
+    "halving_ms": 31.171747,
+    "max_coefficient_delta": 6.4061076443522325e-09,
+    "analytic_volume": 439.61642156554376,
+    "halving_volume": 436.7159563435338
+  },
+  {
+    "case": 67,
+    "cached_ms": 27.003194,
+    "rebuilt_ms": 27.392775,
+    "halving_ms": 28.215008,
+    "max_coefficient_delta": 3.1333753369722217e-09,
+    "analytic_volume": 611.9489442925752,
+    "halving_volume": 606.4634253880538
+  },
+  {
+    "case": 68,
+    "cached_ms": 17.206467,
+    "rebuilt_ms": 17.528689,
+    "halving_ms": 17.766649,
+    "max_coefficient_delta": 6.323689305531843e-08,
+    "analytic_volume": 390.9307301474807,
+    "halving_volume": 389.02856190276947
+  }
+]

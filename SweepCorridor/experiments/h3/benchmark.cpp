@@ -34,13 +34,45 @@ int main(int argc,char** argv){try{
   const double length=seedLength(seed);
   for(int repeat=-1;repeat<std::stoi(argv[10]);++repeat){
 #ifndef H3_BASELINE
-    const std::string mode=std::getenv("H3_MODE")?std::getenv("H3_MODE"):"h3_jets";
+    const std::string mode=std::getenv("H3_MODE")?std::getenv("H3_MODE"):"h3_new";
     sc::experiments::h3::OptimizerSettings h3_solver(solver);
+    // Named ablations retain their original settings as the demo default evolves.
+    if(mode.rfind("h3_new",0)!=0){
+      h3_solver.volume_jet_energy=1;h3_solver.joint_jet_steps=0;
+      h3_solver.joint_final_only=false;h3_solver.joint_sweeps=1;}
     if(mode=="h3")h3_solver.jet_schedule=sc::experiments::h3::JetSchedule::Frozen;
     if(mode=="h3_mid")h3_solver.jet_schedule=sc::experiments::h3::JetSchedule::BeforeTightening;
     if(mode=="h3_polish")h3_solver.polish=true;
     if(mode=="h3_more")h3_solver.iterations=12;
     if(mode=="h3_three"){h3_solver.inflation_iterations=3;h3_solver.iterations=4;h3_solver.corrector_iterations=2;}
+    if(mode=="h3_volume"||mode=="h3_vmid"||mode=="h3_vreg")h3_solver.volume_jet_steps=2;
+    if(mode=="h3_vmid")h3_solver.jet_schedule=sc::experiments::h3::JetSchedule::BeforeTightening;
+    if(mode=="h3_vreg")h3_solver.volume_jet_energy=10;
+    if(mode=="h3_joint"||mode=="h3_joint4"||mode=="h3_jointreg")h3_solver.joint_jet_steps=2;
+    if(mode=="h3_joint4")h3_solver.joint_jet_steps=4;
+    if(mode=="h3_jointreg")h3_solver.volume_jet_energy=10;
+    if(mode=="h3_final"||mode=="h3_final4"||mode=="h3_relaxed_joint"){
+      h3_solver.joint_jet_steps=2;h3_solver.joint_final_only=true;}
+    if(mode=="h3_final4")h3_solver.joint_jet_steps=4;
+    if(mode=="h3_relaxed"||mode=="h3_relaxed_joint")h3_solver.bending_weight=.25;
+    if(mode=="h3_relaxed1")h3_solver.bending_weight=.1;
+    if(mode=="h3_two"||mode=="h3_two_half"||mode=="h3_two_soft"||mode=="h3_four"){
+      h3_solver.joint_final_only=true;h3_solver.joint_jet_steps=2;h3_solver.joint_sweeps=2;}
+    if(mode=="h3_four"){h3_solver.joint_jet_steps=1;h3_solver.joint_sweeps=4;}
+    if(mode=="h3_two_half"||mode=="h3_two_soft")h3_solver.bending_weight=.5;
+    if(mode=="h3_two_soft")h3_solver.volume_jet_energy=3;
+    if(mode=="h3_balanced"||mode=="h3_balanced6"||mode=="h3_balanced2"){
+      h3_solver.joint_final_only=true;h3_solver.joint_jet_steps=2;h3_solver.bending_weight=.5;h3_solver.volume_jet_energy=3;}
+    if(mode=="h3_balanced6")h3_solver.iterations=6;
+    if(mode=="h3_balanced2")h3_solver.corrector_iterations=2;
+    if(mode=="h3_half")h3_solver.bending_weight=.5;
+    if(mode=="h3_halving"){h3_solver.joint_final_only=true;h3_solver.joint_jet_steps=2;h3_solver.joint_fast_line=false;}
+    if(mode=="h3_rebuild"){h3_solver.joint_final_only=true;h3_solver.joint_jet_steps=2;h3_solver.bending_weight=.5;h3_solver.volume_jet_energy=3;h3_solver.corrector_iterations=2;h3_solver.reuse_joint_supports=false;}
+    if(mode=="h3_two_reg3"||mode=="h3_final_reg3"){
+      h3_solver.joint_final_only=true;h3_solver.joint_jet_steps=2;h3_solver.volume_jet_energy=3;
+      h3_solver.joint_sweeps=mode=="h3_two_reg3"?2:1;}
+    if(mode=="h3_new_rebuild")h3_solver.reuse_joint_supports=false;
+    if(mode=="h3_new_halving")h3_solver.joint_fast_line=false;
 #endif
     const auto start=c3::Clock::now();auto r=
 #ifdef H3_BASELINE
@@ -59,6 +91,9 @@ const double total=c3::elapsedMs(start);
        <<",\"solve_ms\":"<<r.optimizer.solve_ms<<",\"line_ms\":"<<r.optimizer.line_search_ms<<",\"certificate_ms\":"<<r.optimizer.certificate_ms;
 #ifndef H3_BASELINE
     log<<",\"jet_ms\":"<<r.jets.milliseconds<<",\"jet_accepted\":"<<r.jets.accepted<<",\"jet_rejected\":"<<r.jets.rejected<<",\"jet_fraction\":"<<(r.jets.accepted?r.jets.fraction_sum/r.jets.accepted:0);
+    log<<",\"joint_setup_ms\":"<<r.jets.joint_setup_ms<<",\"joint_assembly_ms\":"<<r.jets.joint_assembly_ms<<",\"joint_solve_ms\":"<<r.jets.joint_solve_ms
+       <<",\"joint_refresh_ms\":"<<r.jets.joint_refresh_ms<<",\"joint_line_ms\":"<<r.jets.joint_line_ms<<",\"joint_steps\":"<<r.jets.joint_steps
+       <<",\"joint_backtracks\":"<<r.jets.joint_backtracks<<",\"joint_groups\":"<<r.jets.joint_groups<<",\"joint_supports\":"<<r.jets.joint_supports;
 #endif
     if(r.status==sc::Status::Success){const auto cert=c3::certify(r.corridor,r.cover);
       const double begin=anchorParameter(r.corridor,seed.front(),0),end=anchorParameter(r.corridor,seed.back(),1);

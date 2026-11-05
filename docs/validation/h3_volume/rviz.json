@@ -1,0 +1,188 @@
+{
+  "purpose": "ROS goal-message integration and exact offline replay; not a performance benchmark",
+  "cpu": 2,
+  "address_space_limit_bytes": 4294967296,
+  "trajectory_optimization": false,
+  "h3": [
+    {
+      "scene": "perlin",
+      "source": ".scratch/sweep_rviz_h3/perlin/run_1793847300255612025_1721302/request_1",
+      "max_coefficient_error": 0.0,
+      "joint_steps": 440,
+      "corridor_ms": 25.630345,
+      "smoke": {
+        "comparison": {
+          "state": "READY",
+          "request": 1,
+          "shape_mode": "h3",
+          "optimization_available": false,
+          "busy": false,
+          "ready": false
+        },
+        "status": "PASS [h3] request=1\nSearch 3033.7 ms; corridor 25.6 ms; total 3105.2 ms\nMin semiaxis 0.227 m",
+        "firi_mesh": 2460,
+        "c3_points": 0,
+        "firi_points": 0,
+        "mesh": 188640,
+        "metrics": {
+          "request": 1,
+          "map_version": 1,
+          "status": "PASS",
+          "start": [
+            19.785017013549805,
+            -1.6015737056732178,
+            2.5
+          ],
+          "goal": [
+            -22.8094482421875,
+            -0.8623595237731934,
+            2.5
+          ],
+          "bounds_lower": [
+            -25,
+            -25,
+            0
+          ],
+          "bounds_upper": [
+            25,
+            25,
+            5
+          ],
+          "resolution": 0.25,
+          "robot_radius": 0.2,
+          "safety_margin": 0.05,
+          "reference_clearance": 0.2,
+          "control_spacing": 0.4,
+          "min_radius": 0.03,
+          "max_radius": 5.49229646359,
+          "max_offset": 10.9835929272,
+          "local_range": 3,
+          "local_progress": 7,
+          "shape_mode": "h3",
+          "continuity": 1,
+          "jet_updates": 220,
+          "joint_steps": 440,
+          "search_timeout": 3,
+          "search_range": 2,
+          "corridor_budget_ms": 1000,
+          "obstacles": 239999,
+          "map_build_ms": 45.221114,
+          "search_ms": 3033.692584,
+          "corridor_ms": 25.630345,
+          "firi_ms": 30.098039,
+          "firi_ready": true,
+          "render_export_ms": 10.611892,
+          "total_ms": 3105.161005,
+          "seed_points": 31,
+          "seed_length": 43.5021144191,
+          "turns_over_30deg": 0,
+          "height_span": 2.56814879193,
+          "representation": "hermite_cubic_v3",
+          "visualization_adapter_ms": 0,
+          "trajectory_optimization": false,
+          "c3_stage_profiled": false,
+          "nodes": 110,
+          "regularity_repairs": 0,
+          "controls": 110,
+          "constraints": 8333,
+          "refinements": 0,
+          "min_axis": 0.226531076181,
+          "median_minor": 1.43808458829,
+          "median_major": 2.2031870944
+        }
+      }
+    },
+    {
+      "scene": "maze",
+      "source": ".scratch/sweep_rviz_h3/maze/run_1793847304720419786_1721503/request_1",
+      "max_coefficient_error": 0.0,
+      "joint_steps": 436,
+      "corridor_ms": 32.679367,
+      "smoke": {
+        "comparison": {
+          "state": "READY",
+          "request": 1,
+          "shape_mode": "h3",
+          "optimization_available": false,
+          "busy": false,
+          "ready": false
+        },
+        "status": "PASS [h3] request=1\nSearch 3031.4 ms; corridor 32.7 ms; total 3109.9 ms\nMin semiaxis 0.892 m",
+        "firi_mesh": 1682,
+        "c3_points": 0,
+        "firi_points": 0,
+        "mesh": 186912,
+        "metrics": {
+          "request": 1,
+          "map_version": 1,
+          "status": "PASS",
+          "start": [
+            -11.25,
+            11.25,
+            2.5
+          ],
+          "goal": [
+            -8.25,
+            -11.25,
+            2.5
+          ],
+          "bounds_lower": [
+            -15,
+            -15,
+            0
+          ],
+          "bounds_upper": [
+            15,
+            15,
+            5
+          ],
+          "resolution": 0.25,
+          "robot_radius": 0.2,
+          "safety_margin": 0.05,
+          "reference_clearance": 0.2,
+          "control_spacing": 0.4,
+          "min_radius": 0.03,
+          "max_radius": 5.57888553396,
+          "max_offset": 11.1567710679,
+          "local_range": 3,
+          "local_progress": 7,
+          "shape_mode": "h3",
+          "continuity": 1,
+          "jet_updates": 217,
+          "joint_steps": 436,
+          "search_timeout": 3,
+          "search_range": 2,
+          "corridor_budget_ms": 1000,
+          "obstacles": 184320,
+          "map_build_ms": 42.082484,
+          "search_ms": 3031.428647,
+          "corridor_ms": 32.679367,
+          "firi_ms": 32.787337,
+          "firi_ready": true,
+          "render_export_ms": 9.373337,
+          "total_ms": 3109.907058,
+          "seed_points": 31,
+          "seed_length": 43.1152289962,
+          "turns_over_30deg": 2,
+          "height_span": 0.899648034101,
+          "representation": "hermite_cubic_v3",
+          "visualization_adapter_ms": 0,
+          "trajectory_optimization": false,
+          "c3_stage_profiled": false,
+          "nodes": 109,
+          "regularity_repairs": 0,
+          "controls": 109,
+          "constraints": 8948,
+          "refinements": 0,
+          "min_axis": 0.89196570827,
+          "median_minor": 1.13815000488,
+          "median_major": 2.25048267706
+        }
+      }
+    }
+  ],
+  "binaries": {
+    ".scratch/h3/benchmark": "65176f9a61dd3adccd2b7ae32b1460b76b37b5ef141e7b29322b2284aca3457c",
+    "install/gcopter/lib/gcopter/direct_corridor_demo": "21e1d307609735274024078bcc2c8da1d9071b4d0f824ca28392c132753024fb"
+  }
+}

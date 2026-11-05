@@ -1,0 +1,15 @@
+{
+  "docs/validation/h3_volume/rviz.json": "a6a8810cdefd9e3a35e542e36af622ab86f9c94ccc1fde7a35eb9aaa58760d1d",
+  "docs/validation/h3_volume/geometry.tar.gz": "3644322d9a2b2822a96b6a7bb95fd80963eb93a4d6958b0a97470ea215c64726",
+  "docs/validation/h3_volume/code_verification.json": "06a4610b8499609b9cf337b532bbca5458f3fa7847e1024414356e51360aa3e2",
+  "docs/validation/h3_volume/tradeoff.png": "5ebe9e49cecd39cf74dd78c0302d4b286c26d0b30719c6cf128aa04284a3ab3b",
+  "docs/validation/h3_volume/case68_area.png": "b64270244b3ed50e74cb9c275ee0f539f3c6ee85ef0aad75406e92876fe1bd88",
+  "docs/validation/h3_volume/inputs.tar.gz": "43e4e51e5418886c86a240820544cf72945a5e6673d108eb75cac459b6a104a0",
+  "docs/validation/h3_volume/results.json.gz": "74a91d1f68ccb6fcff1c7a3dd242cc55986dd5e9e3a7e58d5880a487b91ece63",
+  "docs/validation/h3_volume/case2_geometry.png": "c878f0855071a60b51e66a7f588e1a77a0f7c867b1907a5e6464c086e5bca45d",
+  "docs/validation/h3_volume/case68_geometry.png": "ce809a9258f0324ae9539fce7fb6c2274a064f1b7265239e0706f6b72aba854d",
+  "docs/validation/h3_volume/paired.csv": "75b8e01858b15c2eb7abfa1db103ab684fa9c41005f568214f5e443b5813aaca",
+  "docs/validation/h3_volume/aggregate.json": "a7940190505d54b06be8fd1d1ca4a07d264e5641c78077c8ad76827aeff80318",
+  "docs/validation/h3_volume/inputs.json": "de899976d0119b6121efece566d41740cf553bd26108fd65f0f3be4c1dce7869",
+  "docs/validation/h3_volume/ablation.json": "0c41ce896ae09fec9a6324d13dce9923c57723c6b183d27295be9197ddc12fbe"
+}

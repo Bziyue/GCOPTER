@@ -34,6 +34,7 @@ struct Result {
   Corridor corridor;
   sc::Metrics metrics;
   int jet_updates = 0;
+  int joint_steps = 0;
   explicit operator bool() const { return status == sc::Status::Success; }
 };
 Result generate(bool h3, const std::vector<sc::Vec3>& seed,

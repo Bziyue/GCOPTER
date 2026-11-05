@@ -2,7 +2,7 @@
 
 从 `ros2@7d4fc603607f131a1d282247c3e523c11da5d06e` 建立的独立实验。主库及 RViz2 默认使用 C3，RViz2 可通过 `corridor:=h3` 切换到 H3。实验程序输出相同的四控制点三次 Bézier 几何格式，但几何连续性约定为 **C¹**。
 
-H3 每个节点有三个中心偏移和三个对称形状变量。世界坐标中的九通道一阶导数由相邻段共享，在节点优化期间固定，在外层通过自然三次导数提议和连续安全限制更新。初始化精确复用未优化的 C3 小截面参考；不调用 C3 的走廊膨胀器，初始化成本包含在总耗时中。
+H3 每个节点有三个中心偏移和三个对称形状变量。世界坐标中的九通道一阶导数由相邻段共享。主膨胀采用六维块三对角求解，之后通过正反两次局部扫描，联合优化节点值与共享导数。每个局部问题有 15 个变量，只改变相邻两段。初始化精确复用未优化的 C3 小截面参考；不调用 C3 的走廊膨胀器，初始化成本包含在总耗时中。
 
 实现重点：
 
@@ -11,6 +11,8 @@ H3 每个节点有三个中心偏移和三个对称形状变量。世界坐标�
 - `problem.hpp`：单节点支撑约束直接在六维空间组装，细分约束只耦合两个节点；三组导数控制量只保留一组可变进度约束。
 - `anchors.hpp` / `solve.hpp`：十二维局部反求梯度、自由端面主动集、体积秩一修正、可行线搜索。
 - `jets.hpp`：共享导数提议，只更新相邻两段，复用原支持平面并重新认证这两段的全截面 Jacobian。
+- `joint_jets.hpp`：节点值与共享导数的局部联合体积优化；复用完整支持分组，闭式弯曲能量和精确三次体积线搜索。
+- `volume_jets.hpp`：Hermite 局部基函数和仅释放导数的诊断方案。
 - `generator.hpp`：种子输入、覆盖构造、两轮膨胀和导数更新。
 
 障碍 BVH、分离面、查询缓存、连续支持与 Jacobian 认证直接复用主库。共享冗余界新增一个编译期分支，H3 的固定形状导数偏置必须计入可达域证明；原生 C3 不执行该分支。
@@ -34,14 +36,16 @@ python3 SweepCorridor/experiments/h3/run.py \
 |---|---|---|
 | `c3` | 冻结提交中的原生 C² C3 | 主基线 |
 | `h3` | 固定初始共享导数，28 步 | 诊断导数冻结的形状损失 |
-| `h3_jets` | 每轮膨胀后更新，28 步 | H3 默认候选 |
+| `h3_jets` | 每轮膨胀后更新，28 步 | 旧 H3 的算法配置 |
+| `h3_previous` | 从 `d1e0ad6` 重建的旧 H3 | 冻结代码对照（先构建 `--targets previous`） |
+| `h3_new` | 28 步主膨胀 + 正反两次扫描，每节点每次最多 2 步 | 当前 H3 默认 |
 | `h3_world` | 更新导数，采用九维世界 Hessian 回传 | 六维组装的独立消融（先构建 `--targets world`） |
 | `h3_mid` | 收紧障碍参数前及每轮后更新，28 步 | 平滑性与耗时取舍 |
 | `h3_more` | 两轮，每轮 12+3+3 步 | 迭代预算消融 |
 | `h3_three` | 三轮，每轮 4+2+2 步 | 覆盖刷新预算消融 |
 | `h3_polish` | 默认候选后增加 3 步再膨胀 | 平滑后余量消融 |
 
-`generate()` 默认使用 `AfterPass` 导数更新。实验设置集中在 `OptimizerSettings`，不进入主库配置。阶段计时由 `SWEEP_PROFILE=1` 单独开启，正式速度比较关闭阶段时钟。结果保留每次终止原因；`SUCCESS` 表示得到已认证几何，不能解读成优化器达到收敛阈值。
+`generate()` 默认使用 `AfterPass` 导数更新，最后进行共享导数联合修正。主膨胀正则权重保持原值，局部修正使用三倍弯曲正则。实验设置集中在 `OptimizerSettings`，不进入主库配置。阶段计时由 `SWEEP_PROFILE=1` 单独开启，正式速度比较关闭阶段时钟。结果保留每次终止原因；`SUCCESS` 表示得到已认证几何，不能解读成优化器达到收敛阈值。
 
 数值结果、环境记录与图见 [H3 实验报告](../../../docs/H3三次Hermite走廊实验.md)。本实验只比较走廊生成，不运行轨迹优化。
 
@@ -55,9 +59,9 @@ python3 SweepCorridor/experiments/h3/run.py \
 
 迷宫使用 `scene:=maze`；`map_seed:=2048` 可更换地图。默认固定高度为 2.5 m，通过 `height:=2.0` 调整。顶部 **2D Goal Pose** 依次选起点、终点，再次点选可开始新路径。
 
-H3 入口对应实验的 `h3_jets`：每轮膨胀后更新共享导数。原地图生成器、Informed RRT* 搜索和同输入 FIRI 对照均保留；界面标注 **H3 · C¹**，显示 H3 和 FIRI 各自生成耗时。红色为 H3，蓝色为 FIRI，可在左侧分别切换。H3 模式只生成走廊，隐藏轨迹优化控件。默认 `corridor:=c3` 保持原轨迹演示功能。
+H3 入口对应实验的 `h3_new`：主膨胀后联合优化节点值和共享导数。原地图生成器、Informed RRT* 搜索和同输入 FIRI 对照均保留；界面标注 **H3 · C¹**，显示 H3 和 FIRI 各自生成耗时。红色为 H3，蓝色为 FIRI，可在左侧分别切换。H3 模式只生成走廊，隐藏轨迹优化控件。默认 `corridor:=c3` 保持原轨迹演示功能。
 
-渲染和导出直接读取 H3 的三次 Bézier 系数，不重新拟合，也不转换成 C²。每次输出 `metrics.json` 记录 `shape_mode=h3`、`continuity=1`、`representation=hermite_cubic_v3` 和 `jet_updates`。耗时分开记录路径搜索、走廊生成、FIRI 和渲染导出。
+渲染和导出直接读取 H3 的三次 Bézier 系数，不重新拟合，也不转换成 C²。每次输出 `metrics.json` 记录 `shape_mode=h3`、`continuity=1`、`representation=hermite_cubic_v3`、`jet_updates` 和联合修正接受步数 `joint_steps`。耗时分开记录路径搜索、走廊生成、FIRI 和渲染导出。
 
 ROS 集成测试（Perlin、迷宫各一条点选路径）：
 
@@ -75,4 +79,19 @@ ROS_DOMAIN_ID=95 ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST \
 
 ```bash
 python3 SweepCorridor/experiments/h3/validate.py
+```
+
+上面的脚本复现首轮 H3 实验。当前共享导数体积实验包含 71 条冻结路径，完整复现命令为：
+
+```bash
+python3 SweepCorridor/experiments/h3/validate_volume.py
+python3 SweepCorridor/experiments/h3/analyze_volume.py
+```
+
+输入归档随仓库保存，脚本自动解压并核对 SHA256。结果见 [共享导数体积优化报告](../../../docs/H3共享导数体积优化.md)。命名消融保留独立配置，不随默认值变化；`h3_new_rebuild` 重新构造支持约束，`h3_new_halving` 改用逐次减半线搜索。其他 `h3_*` 模式用于报告中保留的预算、正则和仅导数实验，不接入 ROS 参数。
+
+完成上面的 ROS 集成测试后，可以核对演示与离线生成的全部系数：
+
+```bash
+python3 SweepCorridor/experiments/h3/verify_volume_demo.py
 ```

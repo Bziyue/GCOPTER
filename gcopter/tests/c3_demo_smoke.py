@@ -52,7 +52,7 @@ try:
     assert m['shape_mode']==args.corridor and not m['trajectory_optimization']
     assert m['representation']==('hermite_cubic_v3' if args.corridor=='h3' else 'native_cubic_v3')
     assert m['continuity']==(1 if args.corridor=='h3' else 2)
-    if args.corridor=='h3':assert m['jet_updates']>0
+    if args.corridor=='h3':assert m['jet_updates']>0 and m['joint_steps']>0
     assert m['corridor_ms']>0 and state['mesh']>0
     assert m['firi_ready'] and m['firi_ms']>0
     wait(lambda:state.get('firi_mesh',0)>0 and state.get('comparison',{}).get('state')=='READY')

@@ -13,6 +13,14 @@ struct OptimizerSettings : c3::OptimizerSettings {
   int iterations=8,corrector_iterations=3,inflation_iterations=2;
   JetSchedule jet_schedule=JetSchedule::AfterPass;
   bool polish=false;
+  int volume_jet_steps=0;
+  double volume_jet_energy=3;
+  int joint_jet_steps=2;
+  bool joint_final_only=true;
+  int joint_sweeps=2;
+  bool joint_fast_line=true;
+  bool reuse_joint_supports=true;
+  double bending_weight=1;
   OptimizerSettings(const c3::OptimizerSettings& baseline={}):c3::OptimizerSettings(baseline){}
 };
 using c3::Clock;using c3::StageTimer;using c3::Deadline;
@@ -98,7 +106,7 @@ struct Energy {
         Eigen::Matrix<double,9,12> a;a.leftCols<6>()=-d*m.jacobian(i);a.rightCols<6>()=d*m.jacobian(i+1);
         V9 b=((-4+6*t)*m.jets[i]+(6*t-2)*m.jets[i+1])/(h*length*length);
         b.head<3>()+=d*(m.reference[i+1]-m.reference[i]);
-        const double wc=std::sqrt(settings.center_energy*.5*h*length),wm=std::sqrt(settings.shape_energy*.5*h*length);
+        const double wc=std::sqrt(settings.bending_weight*settings.center_energy*.5*h*length),wm=std::sqrt(settings.bending_weight*settings.shape_energy*.5*h*length);
         a.topRows<3>()*=wc;a.bottomRows<6>()*=wm;b.head<3>()*=wc;b.tail<6>()*=wm;
         const Eigen::Matrix<double,12,12> gram=2*a.transpose()*a;
         linear.segment<12>(6*i).noalias()+=2*a.transpose()*b;

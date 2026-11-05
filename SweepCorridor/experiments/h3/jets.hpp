@@ -3,7 +3,10 @@
 #include "anchors.hpp"
 
 namespace SweepCorridor::experiments::h3 {
-struct JetMetrics {int accepted=0,rejected=0;double milliseconds=0,fraction_sum=0;};
+struct JetMetrics {
+  int accepted=0,rejected=0,joint_steps=0,joint_backtracks=0,joint_groups=0,joint_supports=0;
+  double milliseconds=0,fraction_sum=0,joint_setup_ms=0,joint_assembly_ms=0,joint_solve_ms=0,joint_line_ms=0,joint_refresh_ms=0;
+};
 
 // Nine channels share a scalar tridiagonal factorization. The solution is a
 // proposal only; safety clipping below generally leaves a C1 Hermite spline.
