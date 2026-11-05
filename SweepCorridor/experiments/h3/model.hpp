@@ -21,6 +21,12 @@ struct OptimizerSettings : c3::OptimizerSettings {
   bool joint_fast_line=true;
   bool reuse_joint_supports=true;
   double bending_weight=1;
+  int end_nodes=4,end_steps=4;
+  double end_energy=1;
+  int refresh_rounds=2;
+  bool refresh_shape=true;
+  double joint_budget_fraction=1,refresh_fraction=.05;
+  double joint_budget_share=.99;
   OptimizerSettings(const c3::OptimizerSettings& baseline={}):c3::OptimizerSettings(baseline){}
 };
 using c3::Clock;using c3::StageTimer;using c3::Deadline;
@@ -84,10 +90,13 @@ struct Model {
     return {y.head<3>(),dy.head<3>(),ddy.head<3>(),shape(y),shape(dy),shape(ddy)};
   }
   void cacheQuadrature(){
+    quadrature.resize(basis.count-1);
+    cacheQuadrature(0,basis.count-1);
+  }
+  void cacheQuadrature(int begin,int end){
     constexpr double t[5]={.046910077030668,.230765344947158,.5,.769234655052842,.953089922969332};
     constexpr double w[5]={.118463442528095,.239314335249683,.284444444444444,.239314335249683,.118463442528095};
-    quadrature.resize(basis.count-1);
-    for(int i=0;i<basis.count-1;++i){const double h=basis.breaks[i+1]-basis.breaks[i];
+    for(int i=begin;i<end;++i){const double h=basis.breaks[i+1]-basis.breaks[i];
       for(int q=0;q<5;++q){const double u=t[q],r=1-u;auto& s=quadrature[i][q];
         s.left=r*r*(1+2*u);s.derivative=-6*u*r/h;s.weight=std::acos(-1.)*h*w[q];
         s.offset=h*(u*r*r*jets[i]-u*u*r*jets[i+1]);

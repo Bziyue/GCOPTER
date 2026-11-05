@@ -4,6 +4,8 @@
 #include "jets.hpp"
 #include "volume_jets.hpp"
 #include "joint_jets.hpp"
+#include "end_blocks.hpp"
+#include "local_refinement.hpp"
 namespace SweepCorridor::experiments::h3 {
 using c3::QueryCache;using c3::CoverLayout;using c3::mapCover;using c3::certify;
 using c3::Failure;using c3::DeadlineExceeded;
@@ -21,7 +23,9 @@ inline Result generate(const std::vector<Vec3>& input_seed,const ObstacleIndex& 
      !std::isfinite(o.budget_ms)||!(o.budget_ms>0)||o.max_refinements<0||o.max_refinements>20||
      o.certificate_depth<0||o.certificate_depth>20||
      !std::isfinite(o.robot_radius)||!(o.robot_radius>=0)||!std::isfinite(o.safety_margin)||!(o.safety_margin>=0)||
-     !std::isfinite(o.certificate_margin)||!(o.certificate_margin>=0)||!std::isfinite(o.frame_smoothing)||!(o.frame_smoothing>=0)) {
+     !std::isfinite(o.certificate_margin)||!(o.certificate_margin>=0)||!std::isfinite(o.frame_smoothing)||!(o.frame_smoothing>=0)||
+     (solver.refresh_rounds>0&&(!solver.joint_final_only||solver.joint_jet_steps<=0))||
+     (solver.end_steps>0&&solver.end_nodes<=0)) {
     result.status=Status::InvalidInput;result.message="invalid H3 generator options/bounds";return result;
   }
   std::vector<Vec3> seed;
@@ -106,7 +110,11 @@ inline Result generate(const std::vector<Vec3>& input_seed,const ObstacleIndex& 
             result.optimizer.setup_ms+=timer.elapsed();++result.optimizer.energy_builds;}
         }
       }
-      if(solver.joint_jet_steps&&solver.joint_final_only)optimizeJointJets(model,cover,length,o,solver,jm,deadline,solver.reuse_joint_supports?final_constraints.get():nullptr);
+      JointFeedback feedback;
+      if(solver.joint_jet_steps&&solver.joint_final_only)optimizeJointJets(model,cover,length,o,solver,jm,deadline,solver.reuse_joint_supports?final_constraints.get():nullptr,
+        nullptr,(solver.refresh_rounds||solver.joint_budget_fraction<1||solver.joint_budget_share<1)?&feedback:nullptr);
+      if(solver.refresh_rounds)refineLocal(model,cover,length,index,bounds,o,solver,cache,result.cover_metrics,layout,jm,deadline,feedback);
+      else if(solver.end_steps)optimizeEnds(model,o,length,solver,*final_constraints,jm,deadline);
       if(solver.polish){
         timer.restart();energy=std::make_shared<Energy>(model,length,solver);
         Problem final_problem(model,cover,length,o,solver,energy);

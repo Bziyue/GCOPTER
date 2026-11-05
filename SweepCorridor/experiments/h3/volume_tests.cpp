@@ -72,7 +72,7 @@ int main(){
   assert(std::abs(cc-cb)<1e-11&&(gc-gb).norm()<1e-10&&(hc-hb).norm()<1e-10);
   const h3::V15 search=.002*h3::V15::Random();const auto line=joint.prepareLine(direction,search,volume,.001);
   for(double alpha:{0.,.2,.7,1.})assert(std::abs(line.delta(alpha)-(joint.objective(direction+alpha*search,volume,.001)-ca))<1e-10);
-  h3::OptimizerSettings settings;settings.volume_jet_steps=2;settings.joint_jet_steps=0;
+  h3::OptimizerSettings settings;settings.volume_jet_steps=2;settings.joint_jet_steps=0;settings.refresh_rounds=0;settings.end_steps=0;
   auto result=h3::generate(seed,empty,bounds,options,settings);
   assert(result.status==sc::Status::Success&&c3::certify(result.corridor,result.cover).safe());
   settings.volume_jet_steps=0;settings.joint_jet_steps=2;

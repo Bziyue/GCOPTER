@@ -6,6 +6,16 @@ namespace SweepCorridor::experiments::h3 {
 struct JetMetrics {
   int accepted=0,rejected=0,joint_steps=0,joint_backtracks=0,joint_groups=0,joint_supports=0;
   double milliseconds=0,fraction_sum=0,joint_setup_ms=0,joint_assembly_ms=0,joint_solve_ms=0,joint_line_ms=0,joint_refresh_ms=0;
+  int end_steps=0,end_trials=0;
+  double end_ms=0,end_volume_gain=0;
+  int refresh_attempts=0,refresh_spans=0,refresh_failures=0,refresh_cache_hits=0;
+  double refresh_ms=0,local_setup_ms=0,local_joint_ms=0;
+  int joint_budget_skips=0;
+};
+struct JointFeedback {
+  double volume=0;
+  struct Node {double gain=0,reward=0,decrement=0,pressure=0;};
+  std::vector<Node> nodes;
 };
 
 // Nine channels share a scalar tridiagonal factorization. The solution is a

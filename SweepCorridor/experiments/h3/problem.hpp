@@ -83,22 +83,23 @@ struct Problem {
   void optimize(Eigen::VectorXd& x,OptimizerMetrics& metrics,const Deadline& deadline,int first_stage=0,int last_stage=3)const;
 };
 
-inline Problem::Problem(const Model& m,const std::vector<internal::detail::SupportPlane>& cover,double length,
-    const GeometryOptions& o,const OptimizerSettings& s,std::shared_ptr<const Energy> e,const Problem* previous,bool progress)
-    :model(m),options(o),settings(s),energy(e?std::move(e):std::make_shared<Energy>(m,length,s)),quadratic(energy->quadratic),linear(energy->linear){
-  if(previous){geometry=previous->geometry;reused_construction=true;}
-  else {
-    auto data=std::make_shared<Constraints>();
+struct GroupBuildMetrics {int hits=0,misses=0,reuses=0;};
+// Geometry grouping is independent of energy, pruning and progress cones.
+// Refinement of a few spans reuses this builder without a global Problem.
+inline std::shared_ptr<Problem::Constraints> buildSupportGroups(const Model& m,
+    const std::vector<internal::detail::SupportPlane>& cover,GroupBuildMetrics& metrics,
+    const std::vector<unsigned char>* spans=nullptr) {
+    auto data=std::make_shared<Problem::Constraints>();
     struct Rows {c3::Curve<3,Eigen::Vector2d> weights;c3::Curve<3,V9> offsets;c3::Curve<3,Eigen::Vector4d> bernstein;std::array<int,4> ids{{-1,-1,-1,-1}};};
     std::map<std::tuple<int,double,double>,Rows> rows;
     std::map<std::tuple<int,double,double,int>,int> ids;
-    for(const auto& p:cover){auto inserted=rows.try_emplace(std::make_tuple(p.span,p.begin,p.end));auto& row=inserted.first->second;
+    for(const auto& p:cover){if(spans&&!(*spans)[p.span])continue;auto inserted=rows.try_emplace(std::make_tuple(p.span,p.begin,p.end));auto& row=inserted.first->second;
       if(inserted.second){
         const c3::Curve<3,Eigen::Vector2d> weights{{{1,0},{1,0},{0,1},{0,1}}};
-        row.weights=c3::restrictCurve<3>(weights,p.begin,p.end);row.offsets=c3::restrictCurve<3>(m.offsets(p.span),p.begin,p.end);++basis_cache_misses;
+        row.weights=c3::restrictCurve<3>(weights,p.begin,p.end);row.offsets=c3::restrictCurve<3>(m.offsets(p.span),p.begin,p.end);++metrics.misses;
         c3::Curve<3,Eigen::Vector4d> identity;for(int j=0;j<4;++j)identity[j]=Eigen::Vector4d::Unit(j);
         row.bernstein=c3::restrictCurve<3>(identity,p.begin,p.end);
-      }else ++basis_cache_hits;
+      }else ++metrics.hits;
       for(int j=0;j<(p.begin==p.end?1:4);++j){
         if(row.ids[j]<0){auto key=std::make_tuple(p.span,p.begin,p.end,j);
           if(j==0||j==3){const double t=j==0?p.begin:p.end;key=t==1?std::make_tuple(p.span+1,0.,0.,0):std::make_tuple(p.span,t,t,0);}
@@ -110,7 +111,7 @@ inline Problem::Problem(const Model& m,const std::vector<internal::detail::Suppo
             if(row.weights[j][1]==0)g.count=1;
             else if(row.weights[j][0]==0){g.first+=6;g.count=1;g.center_weights[0]=g.center_weights[1];g.maps[0]=g.maps[1];}
             data->groups.push_back(std::move(g));}
-        }else ++group_lookup_reuses;
+        }else ++metrics.reuses;
         data->groups[row.ids[j]].supports.push_back({p.normal,p.bound});
       }
     }
@@ -122,6 +123,16 @@ inline Problem::Problem(const Model& m,const std::vector<internal::detail::Suppo
       for(size_t i=0;i<supports.size();++i){auto& p=supports[i];p.original_id=i;
         for(int a=0;a<3;++a)if(p.normal[a]!=0&&p.normal[(a+1)%3]==0&&p.normal[(a+2)%3]==0)p.axis=a;}
     }
+    return data;
+}
+
+inline Problem::Problem(const Model& m,const std::vector<internal::detail::SupportPlane>& cover,double length,
+    const GeometryOptions& o,const OptimizerSettings& s,std::shared_ptr<const Energy> e,const Problem* previous,bool progress)
+    :model(m),options(o),settings(s),energy(e?std::move(e):std::make_shared<Energy>(m,length,s)),quadratic(energy->quadratic),linear(energy->linear){
+  if(previous){geometry=previous->geometry;reused_construction=true;}
+  else {
+    GroupBuildMetrics group_metrics;auto data=buildSupportGroups(m,cover,group_metrics);
+    basis_cache_hits+=group_metrics.hits;basis_cache_misses+=group_metrics.misses;group_lookup_reuses+=group_metrics.reuses;
     StageTimer timer(settings.profile);
     for(auto& g:data->groups){c3::pruneProjectedSupportsImpl<true>(g,m.x,o.max_offset,o.max_radius,nullptr);
       g.retained=std::stable_partition(g.supports.begin(),g.supports.end(),[](const auto& p){return !p.redundant;})-g.supports.begin();

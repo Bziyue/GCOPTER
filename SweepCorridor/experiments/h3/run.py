@@ -9,6 +9,7 @@ os.sched_setaffinity(0,{2});resource.setrlimit(resource.RLIMIT_AS,(4*1024**3,4*1
 for key in ('OPENBLAS_NUM_THREADS','OMP_NUM_THREADS','MKL_NUM_THREADS'):os.environ[key]='1'
 out=Path(a.output).resolve();out.mkdir(parents=True,exist_ok=True);build=Path('.scratch/h3').resolve()
 def executable(mode):
+    if mode=='h3_joint_baseline':return build/'joint_benchmark'
     if mode=='h3_previous':return build/'previous_benchmark'
     return build/('baseline_benchmark' if mode=='c3' else ('world' if mode=='h3_world' else 'benchmark'))
 cases=json.loads(Path(a.inputs).read_text())['cases'];ids=None if a.cases=='all' else set(map(int,a.cases.split(',')))
@@ -32,7 +33,7 @@ for case in cases:
         target=out/f"case_{case['case']:02d}"/mode;target.mkdir(parents=True,exist_ok=True)
         binary=executable(mode)
         command=[str(binary),case['seed'],case['map'],str(target),*map(str,case['bounds_lower']+case['bounds_upper']),str(a.repeats)]
-        env=os.environ.copy();env['H3_MODE']=mode
+        env=os.environ.copy();env['H3_MODE']='h3_new' if mode=='h3_joint_baseline' else mode
         with (target/'process.log').open('w') as log:process=subprocess.run(command,stdout=log,stderr=subprocess.STDOUT,timeout=180,env=env)
         rows=[json.loads(line) for line in (target/'rows.jsonl').read_text().splitlines()];runs=[r for r in rows if r.get('repeat',-1)>=0]
         times=sorted(r['wall_ms'] for r in runs)
@@ -56,5 +57,9 @@ for case in cases:
             previous=Path(records['h3_previous']['output'])/'corridor.csv'
             data=json.loads(subprocess.check_output([str(build/'measure'),str(previous),str(target/'corridor.csv'),case['seed'],str(a.samples)],text=True,timeout=180))
             assert data['unresolved']==0;r['union_vs_previous']=data
+        if mode!='h3_joint_baseline' and records.get('h3_joint_baseline',{}).get('success'):
+            previous=Path(records['h3_joint_baseline']['output'])/'corridor.csv'
+            data=json.loads(subprocess.check_output([str(build/'measure'),str(previous),str(target/'corridor.csv'),case['seed'],str(a.samples)],text=True,timeout=180))
+            assert data['unresolved']==0;r['union_vs_joint']=data
         (out/'summary.json').write_text(json.dumps(summary,indent=2)+'\n')
         print('union',case['case'],mode,100*r['union']['paired_delta']/r['union']['baseline'],'%',flush=True)

@@ -1,0 +1,1037 @@
+[
+  {
+    "case": 0,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 0,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 0,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 1,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 1,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 1,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 2,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 2,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 2,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 3,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 3,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 3,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 4,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 4,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 4,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 5,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 5,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 5,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 6,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 6,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 6,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 7,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 7,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 7,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 8,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 8,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 8,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 9,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 9,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 9,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 10,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 10,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 10,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 11,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 11,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 11,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 12,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 12,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 12,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 13,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 13,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 13,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 14,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 14,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 14,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 15,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 15,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 15,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 16,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 16,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 16,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 17,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 17,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 17,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 18,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 18,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 18,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 19,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 19,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 19,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 20,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 20,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 20,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 21,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 21,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 21,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 22,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 22,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 22,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 23,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 23,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 23,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 24,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 24,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 24,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 25,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 25,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 25,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 26,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 26,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 26,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 27,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 27,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 27,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 28,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 28,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 28,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 29,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 29,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 29,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 30,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 30,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 30,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 31,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 31,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 31,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 32,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 32,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 32,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 33,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 33,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 33,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 34,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 34,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 34,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 35,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 35,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 35,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 36,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 36,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 36,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 37,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 37,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 37,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 38,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 38,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 38,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 39,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 39,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 39,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 40,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 40,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 40,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 41,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 41,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 41,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 42,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 42,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 42,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 43,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 43,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 43,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 44,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 44,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 44,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 45,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 45,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 45,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 46,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 46,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 46,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 47,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 47,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 47,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 48,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 48,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 48,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 49,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 49,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 49,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 50,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 50,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 50,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 51,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 51,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 51,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 52,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 52,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 52,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 53,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 53,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 53,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 54,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 54,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 54,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 55,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 55,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 55,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 56,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 56,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 56,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 57,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 57,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 57,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 58,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 58,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 58,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 59,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 59,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 59,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 60,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 60,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 60,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 61,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 61,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 61,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 62,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 62,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 62,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 63,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 63,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 63,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 64,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 64,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 64,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 67,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 67,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 67,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 68,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 68,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 68,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 69,
+    "mode": "h3_new",
+    "byte_identical": true
+  },
+  {
+    "case": 69,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 69,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 70,
+    "mode": "c3",
+    "byte_identical": true
+  },
+  {
+    "case": 70,
+    "mode": "h3_joint_baseline",
+    "byte_identical": true
+  },
+  {
+    "case": 70,
+    "mode": "h3_new",
+    "byte_identical": true
+  }
+]

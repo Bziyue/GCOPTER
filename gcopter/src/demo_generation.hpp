@@ -35,6 +35,7 @@ struct Result {
   sc::Metrics metrics;
   int jet_updates = 0;
   int joint_steps = 0;
+  int end_steps = 0, refreshed_spans = 0, budget_skips = 0;
   explicit operator bool() const { return status == sc::Status::Success; }
 };
 Result generate(bool h3, const std::vector<sc::Vec3>& seed,

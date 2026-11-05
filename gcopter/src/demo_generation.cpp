@@ -21,6 +21,9 @@ Result generate(bool h3, const std::vector<sc::Vec3>& seed,
     out.metrics.solver = std::move(r.optimizer);
     out.jet_updates = r.jets.accepted;
     out.joint_steps = r.jets.joint_steps;
+    out.end_steps = r.jets.end_steps;
+    out.refreshed_spans = r.jets.refresh_spans;
+    out.budget_skips = r.jets.joint_budget_skips;
     if (out) out.corridor = Corridor(std::move(r.corridor));
   } else {
     auto r = sc::Generator(options).generate(seed, map, bounds);

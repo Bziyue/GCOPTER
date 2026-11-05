@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Compare the latest H3 ROS exports with offline generation on identical inputs."""
-import hashlib,json,os,resource,subprocess
+import argparse,hashlib,json,os,resource,subprocess
 from pathlib import Path
+p=argparse.ArgumentParser();p.add_argument('--root',default='.scratch/h3_volume');p.add_argument('--output',default='docs/validation/h3_volume/rviz.json');a=p.parse_args()
 repo=Path(__file__).resolve().parents[3];os.chdir(repo)
 os.sched_setaffinity(0,{2});resource.setrlimit(resource.RLIMIT_AS,(4*1024**3,4*1024**3))
 for key in ('OPENBLAS_NUM_THREADS','OMP_NUM_THREADS','MKL_NUM_THREADS'):os.environ[key]='1'
 import numpy as np
-binary=repo/'.scratch/h3/benchmark';root=repo/'.scratch/h3_volume/rviz_replay';root.mkdir(parents=True,exist_ok=True)
+binary=repo/'.scratch/h3/benchmark';root=repo/a.root/'rviz_replay';root.mkdir(parents=True,exist_ok=True)
 rows=[]
 for scene in ('perlin','maze'):
     smoke=json.loads((repo/f'.scratch/sweep_rviz_h3/{scene}_smoke.json').read_text())
@@ -23,9 +24,9 @@ for scene in ('perlin','maze'):
     y=np.loadtxt(destination/'corridor.csv',delimiter=',',skiprows=1)
     error=float(abs(x-y).max());assert error<1e-7
     rows.append(dict(scene=scene,source=str(source.relative_to(repo)),max_coefficient_error=error,
-        joint_steps=metrics['joint_steps'],corridor_ms=metrics['corridor_ms'],smoke=smoke))
+        joint_steps=metrics['joint_steps'],end_steps=metrics.get('end_steps'),refreshed_spans=metrics.get('refreshed_spans'),budget_skips=metrics.get('budget_skips'),corridor_ms=metrics['corridor_ms'],smoke=smoke))
     print(scene,'max coefficient error',error,flush=True)
 data=dict(purpose='ROS goal-message integration and exact offline replay; not a performance benchmark',
     cpu=2,address_space_limit_bytes=4*1024**3,trajectory_optimization=False,h3=rows,
     binaries={str(p.relative_to(repo)):hashlib.sha256(p.read_bytes()).hexdigest() for p in (binary,repo/'install/gcopter/lib/gcopter/direct_corridor_demo')})
-Path('docs/validation/h3_volume/rviz.json').write_text(json.dumps(data,indent=2)+'\n')
+Path(a.output).write_text(json.dumps(data,indent=2)+'\n')
