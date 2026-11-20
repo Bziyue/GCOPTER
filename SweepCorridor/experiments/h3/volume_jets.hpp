@@ -28,8 +28,6 @@ struct JetPatch : HermitePatch {
   std::vector<Support> supports;
   JetPatch(const Model& m,const Geometry& g,int i,double length,double energy_weight)
       :HermitePatch(m,g,i){
-    constexpr double t[5]={.046910077030668,.230765344947158,.5,.769234655052842,.953089922969332};
-    constexpr double w[5]={.118463442528095,.239314335249683,.284444444444444,.239314335249683,.118463442528095};
     for(int span=begin;span<end;++span){const int k=span-begin;const double h=m.basis.breaks[span+1]-m.basis.breaks[span];
       const auto& p=curves[k];const auto& b=basis[k];
       const V9 d0=6*(p[2]-2*p[1]+p[0])/(h*h),d1=6*(p[3]-2*p[2]+p[1])/(h*h);
@@ -38,11 +36,11 @@ struct JetPatch : HermitePatch {
       weight*=energy_weight*h/(3*length*length*length);
       energy_gradient+=weight.cwiseProduct((2*a+c)*d0+(a+2*c)*d1);
       energy_diagonal+=2*(a*a+a*c+c*c)*weight;
-      for(int q=0;q<5;++q){const double u=t[q],r=1-u;
+      for(int q=0;q<5;++q){const double u=gaussNodes[q],r=1-u;
         const double s=b[1]*3*r*r*u+b[2]*3*r*u*u;
         const double ds=(b[1]*3*r*(1-3*u)+b[2]*3*u*(2-3*u))/h;
         const auto section=c3::evaluate<3>(p,u,h);const auto& a=section.shape;const auto& v=section.first;
-        const double factor=std::acos(-1.)*h*w[q];const Vec3 n=a.col(0).cross(a.col(1));
+        const double factor=std::acos(-1.)*h*gaussWeights[q];const Vec3 n=a.col(0).cross(a.col(1));
         volume_gradient.head<3>()+=factor*ds*n;
         volume_gradient.segment<3>(3)+=factor*s*a.col(1).cross(v);
         volume_gradient.tail<3>()+=factor*s*v.cross(a.col(0));
@@ -109,7 +107,7 @@ inline void optimizeVolumeJets(Model& m,const std::vector<internal::detail::Supp
       for(double alpha=1;alpha>=1./4096;alpha*=.5){const V9 next=d+alpha*step;
         if(patch.objective(next,volume,mu)>cost+1e-4*alpha*decrease)continue;
         bool regular=true;for(int span=patch.begin;span<patch.end;++span){c3::Certificate certificate;
-          if(!c3::jacobianCertificate<3>(patch.curve(span,next),certificate)){regular=false;break;}}
+          if(!c3::jacobianCertificate<3>(patch.curve(span,next),certificate,settings.regularity(length).onSpan(m.basis.breaks[span+1]-m.basis.breaks[span]))){regular=false;break;}}
         if(!regular)continue;
         m.jets[node]=old+patch.scale*next;auto trial=anchors;
         if(touches_anchor&&!std::isfinite(anchorObjective(m,m.x,trial,1.))){m.jets[node]=old+patch.scale*d;continue;}

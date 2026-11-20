@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include "end_blocks.hpp"
+#include "inflation_cover.hpp"
 
 namespace SweepCorridor::experiments::h3 {
 // Query domains and obstacle packets belong to the frozen seed layout. Only
@@ -9,23 +10,28 @@ inline std::vector<unsigned char> refreshCover(const Geometry& geometry,
     std::vector<internal::detail::SupportPlane>& cover,const std::vector<unsigned char>& selected,
     const ObstacleIndex& map,const Bounds& bounds,const GeometryOptions& options,
     c3::QueryCache& cache,c3::CoverMetrics& timings,const c3::CoverLayout& layout,
-    JetMetrics& metrics,Deadline& deadline,bool profile){
-  StageTimer timer(profile);c3::MapCover<3> builder(map,bounds,options,cache,timings,deadline,profile);
-  const double pad=options.robot_radius+options.safety_margin+options.certificate_margin;
+    JetMetrics& metrics,Deadline& deadline,const OptimizerSettings& settings){
+  StageTimer timer(settings.profile);c3::MapCover<3> builder(map,bounds,options,cache,timings,deadline,settings.profile);
+  builder.prefer_faces=settings.cover_group_size>1 || map.voxelHalfWidth()>0;
+  builder.group_axis_limit=settings.group_axis_limit;
+  const int group_size=settings.separator_scale==SeparatorScale::Group ? settings.cover_group_size :
+                       settings.separator_scale==SeparatorScale::Span ? 1 : 0;
   std::vector<unsigned char> rebuilt(geometry.pieces(),0);
-  for(int i=0;i<int(geometry.pieces());++i)if(selected[i]){
+  int group_end=0;
+  double chord=0;
+  for(int i=0;i<int(geometry.pieces());++i) {
+    if(group_size>0 && i==group_end) {
+      group_end=coverGroupEnd(layout,i,group_size);
+      chord=groupChordRadius(geometry,i,group_end);
+    }
+    if(!selected[i])continue;
     deadline.check();const auto checkpoint=builder.planes.size();++metrics.refresh_attempts;
     try{
       const c3::GeometryPatch<3> patch{i,0,1,geometry.curve(i)};
-      for(int axis=0;axis<3;++axis){builder.limit(patch,Vec3::Unit(axis),bounds.upper[axis]-pad);builder.limit(patch,-Vec3::Unit(axis),-bounds.lower[axis]-pad);}
-      const auto& span=layout.spans[i];
-      for(size_t j=span.begin;j<span.end;++j){const auto& part=layout.parts[j];
-        const c3::GeometryPatch<3> p{i,part.begin,part.end,c3::restrictCurve<3>(patch.controls,part.begin,part.end)};
-        for(int axis=0;axis<3;++axis){builder.limit(p,Vec3::Unit(axis),part.bounds.upper[axis]);builder.limit(p,-Vec3::Unit(axis),-part.bounds.lower[axis]);}}
-      StageTimer query(profile);std::vector<int> scratch;
-      metrics.refresh_cache_hits+=i<int(cache.spans.size())&&cache.spans[i]>=0;
-      const auto& ids=cache.query(i,span.lower-Vec3::Constant(pad),span.upper+Vec3::Constant(pad),map,scratch);
-      timings.query_ms+=query.elapsed();query.restart();builder.pairCuts(patch,ids,0);timings.separation_ms+=query.elapsed();
+      builder.boundsForSpan(patch,layout);
+      const auto cached=cache.ids.size();
+      separateInflationSpan(builder,patch,layout,chord);
+      metrics.refresh_cache_hits+=cache.spans[i]>=0 && size_t(cache.spans[i])<cached;
       rebuilt[i]=1;++metrics.refresh_spans;
     }catch(const c3::Failure&){
       // A new separating proposal may fail even though the existing one is
@@ -40,6 +46,47 @@ inline std::vector<unsigned char> refreshCover(const Geometry& geometry,
     while(fresh<builder.planes.size()&&builder.planes[fresh].span==i)merged.push_back(builder.planes[fresh++]);
   }
   cover=std::move(merged);const double elapsed=timer.elapsed();timings.total_ms+=elapsed;metrics.refresh_ms+=elapsed;return rebuilt;
+}
+
+// In disk coordinates, translate by s*v and stretch by I+s*v*v^T.
+// For a halfspace a.z <= b the exact upper bound on s is
+// (b^2-|a|^2)/(2*k*(b+k)), k=a.v>0. The opposite faces stay feasible.
+// Its area ratio is 1+s. Rank this feasible gain inside the current cover.
+inline std::vector<double> sectionGains(const Geometry& g,const std::vector<SupportPlane>& cover,
+                                        const std::array<double,2>& anchors) {
+  std::vector<double> gain(g.pieces(),0.);
+  size_t first=0;
+  constexpr double diagonal=.7071067811865475244;
+  for(int span=0;span<int(g.pieces());++span) {
+    size_t end=first;
+    while(end<cover.size() && cover[end].span==span) ++end;
+    const double a=std::max(g.breaks[span],anchors[0]),b=std::min(g.breaks[span+1],anchors[1]);
+    if(b>a && end>first) {
+      const double h=g.breaks[span+1]-g.breaks[span],t=(.5*(a+b)-g.breaks[span])/h;
+      const auto section=c3::evaluate<3>(g.curve(span),t,h);
+      std::array<double,8> limits;
+      limits.fill(INFINITY);
+      for(size_t j=first;j<end;++j) {
+        const auto& p=cover[j];
+        if(t<p.begin || t>p.end) continue;
+        const Eigen::Vector2d n=section.shape.transpose()*p.normal;
+        const double gap=p.bound-p.normal.dot(section.center);
+        const double slack=std::max(0.,gap*gap-n.squaredNorm());
+        const std::array<double,4> projection{n.x(),n.y(),diagonal*(n.x()+n.y()),diagonal*(n.x()-n.y())};
+        for(int k=0;k<4;++k) {
+          const double mag=std::abs(projection[k]);
+          if(mag<=1e-12) continue;
+          auto& limit=limits[2*k+(projection[k]<0)];
+          limit=std::min(limit,slack/(2*mag*(gap+mag)));
+        }
+      }
+      const double stretch=*std::max_element(limits.begin(),limits.end());
+      const double density=section.shape.col(0).cross(section.shape.col(1)).dot(section.first);
+      if(std::isfinite(stretch)) gain[span]=std::max(0.,stretch*density*(b-a));
+    }
+    first=end;
+  }
+  return gain;
 }
 
 inline void refineLocal(Model& model,std::vector<internal::detail::SupportPlane>& cover,double length,
@@ -63,11 +110,25 @@ inline void refineLocal(Model& model,std::vector<internal::detail::SupportPlane>
       const int count=std::min(int(order.size()),int(std::ceil((n-1)*settings.refresh_fraction)));
       for(int i=0;i<count;++i)spans[order[i].second]=1;
     }
-    if(std::none_of(spans.begin(),spans.end(),[](unsigned char x){return x!=0;}))break;
+    const bool has_pressure=std::any_of(spans.begin(),spans.end(),[](unsigned char v){return v!=0;});
+    if(!has_pressure && !settings.use_section_gain && (!settings.end_steps || settings.require_refresh_for_ends))break;
+    const auto geometry=model.geometry();
     const double old_volume=feedback.volume,old_end_gain=metrics.end_volume_gain;
-    const auto rebuilt=refreshCover(model.geometry(),cover,spans,map,bounds,options,cache,timings,layout,metrics,deadline,settings.profile);
+    const auto rebuilt=has_pressure ? refreshCover(geometry,cover,spans,map,bounds,options,cache,timings,layout,
+                                                   metrics,deadline,settings) : spans;
     std::vector<unsigned char> nodes(n,0),support_spans(n-1,0);
     for(int i=0;i<n-1;++i)if(rebuilt[i])nodes[i]=nodes[i+1]=1;
+    if(settings.use_section_gain && settings.refresh_shape && settings.refresh_fraction>0) {
+      const auto gain=sectionGains(geometry,cover,model.anchor_parameters);
+      std::vector<int> order;
+      for(int i=0;i<n-1;++i) if(gain[i]>0 && !(nodes[i] && nodes[i+1]))order.push_back(i);
+      const int count=std::min(int(order.size()),int(std::ceil((n-1)*settings.refresh_fraction)));
+      std::partial_sort(order.begin(),order.begin()+count,order.end(),[&](int i,int j) {
+        return gain[i]==gain[j]?i<j:gain[i]>gain[j];
+      });
+      for(int j=0;j<count;++j)nodes[order[j]]=nodes[order[j]+1]=1;
+      metrics.area_selected_spans+=count;
+    }
     for(int i=0;i<n-1;++i)if(nodes[i]||nodes[i+1])support_spans[i]=1;
     // End center blocks also need the unchanged support rows of their neighbors.
     if(settings.end_steps)for(int i=0;i<std::min(settings.end_nodes,n-1);++i)support_spans[i]=support_spans[n-2-i]=1;

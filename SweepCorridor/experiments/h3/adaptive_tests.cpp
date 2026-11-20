@@ -54,7 +54,8 @@ int main(){
   m.x[7]+=.03;const auto current=m.geometry();
   const auto complete=c3::mapCover(current,obstacles,bounds,options,local_cache,local_metrics,deadline,layout,false);
   std::vector<unsigned char> selected(current.pieces(),0);selected[0]=selected[1]=1;h3::JetMetrics jm;
-  auto updated=before;const auto refreshed=h3::refreshCover(current,updated,selected,obstacles,bounds,options,local_cache,local_metrics,layout,jm,deadline,false);
+  auto local_settings=settings;local_settings.cover_group_size=1;local_settings.separator_scale=h3::SeparatorScale::GroupOnlyDuringInflation;
+  auto updated=before;const auto refreshed=h3::refreshCover(current,updated,selected,obstacles,bounds,options,local_cache,local_metrics,layout,jm,deadline,local_settings);
   assert(jm.refresh_spans==2&&jm.refresh_cache_hits==2&&jm.refresh_failures==0);
   for(int span=0;span<int(current.pieces());++span){std::vector<sc::internal::detail::SupportPlane> a,b;
     for(const auto& p:updated)if(p.span==span)a.push_back(p);

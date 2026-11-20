@@ -39,6 +39,7 @@ struct CoverMetrics {
   double query_ms=0, separation_ms=0, total_ms=0;
   double topology_ms=0;
   int topology_builds=0,reused_cover_spans=0;
+  int shared_obstacle_spans=0;
   size_t priority_evaluations=0;
   struct Primitives {std::size_t certificate_leaves=0,obstacle_pairs=0;} primitives;
 };

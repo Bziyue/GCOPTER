@@ -24,6 +24,11 @@ Result generate(bool h3, const std::vector<sc::Vec3>& seed,
     out.end_steps = r.jets.end_steps;
     out.refreshed_spans = r.jets.refresh_spans;
     out.budget_skips = r.jets.joint_budget_skips;
+    out.coarse_start_used = r.coarse_start_used;
+    out.shared_obstacle_spans = r.cover_metrics.shared_obstacle_spans;
+    out.area_selected_spans = r.jets.area_selected_spans;
+    out.intermediate_radius_used = r.intermediate_radius_used;
+    out.core_smoothed = r.jets.core_smoothed;
     if (out) out.corridor = Corridor(std::move(r.corridor));
   } else {
     auto r = sc::Generator(options).generate(seed, map, bounds);

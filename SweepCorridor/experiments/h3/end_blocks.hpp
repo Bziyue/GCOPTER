@@ -19,6 +19,8 @@ struct CenterBlock {
   struct Group {std::vector<NodeWeight> weights;std::vector<Support> rows;};
   struct Jacobian {
     c3::Curve<8,Vec3> base;
+    c3::Curve<6,Vec3> normals;
+    double width;
     Eigen::Matrix<double,9,Eigen::Dynamic> change;
   };
   std::vector<Group> groups;
@@ -51,24 +53,21 @@ struct CenterBlock {
        volume_gradient(Eigen::VectorXd::Zero(size)),quadratic(size),volume(sweptVolume(m,m.x)){
     for(int i=first;i<last;++i){origin.segment<3>(6*(i-first))=m.x.segment<3>(6*i);
       origin.segment<3>(6*(i-first)+3)=m.jets[i].head<3>()/scale(i);}
-    constexpr double t[5]={.046910077030668,.230765344947158,.5,.769234655052842,.953089922969332};
-    constexpr double w[5]={.118463442528095,.239314335249683,.284444444444444,.239314335249683,.118463442528095};
     for(int span=span_begin;span<span_end;++span){const auto p=geometry.curve(span);const double h=m.basis.breaks[span+1]-m.basis.breaks[span];
-      for(int q=0;q<5;++q){const double u=t[q],r=1-u;Eigen::Vector4d db;db<<-3*r*r,3*r*(1-3*u),3*u*(2-3*u),3*u*u;db/=h;
+      for(int q=0;q<5;++q){const double u=gaussNodes[q],r=1-u;Eigen::Vector4d db;db<<-3*r*r,3*r*(1-3*u),3*u*(2-3*u),3*u*u;db/=h;
         const auto section=c3::evaluate<3>(p,u,h);const Vec3 normal=section.shape.col(0).cross(section.shape.col(1));
-        addGradient(weights(span,db),std::acos(-1.)*h*w[q]*normal,volume_gradient);}
+        addGradient(weights(span,db),std::acos(-1.)*h*gaussWeights[q]*normal,volume_gradient);}
       for(double u:{.5-.5/std::sqrt(3.),.5+.5/std::sqrt(3.)}){
         Eigen::Vector4d ddb;ddb<<6*(1-u),18*u-12,6-18*u,6*u;ddb/=h*h;
         const auto a=weights(span,ddb);const double coefficient=energy_weight*OptimizerSettings::center_energy*h/(length*length*length);
         addGradient(a,coefficient*c3::evaluate<3>(p,u,h).second,linear);
         addHessian(a,coefficient*Eigen::Matrix3d::Identity(),quadratic);
       }
-      Jacobian jc;jc.base=c3::jacobianCoefficients<3>(p);jc.change.setZero(9,size);
-      c3::Curve<6,Vec3> normals;for(auto& n:normals)n.setZero();
-      for(int a=0;a<4;++a)for(int b=0;b<4;++b)
-        normals[a+b]+=c3::binomial(3,a)*c3::binomial(3,b)/c3::binomial(6,a+b)*shape(p[a]).col(0).cross(shape(p[b]).col(1));
+      Jacobian jc;jc.width=h;
+      jc.base=c3::jacobianCoefficients<3>(p,&jc.normals);
+      jc.change.setZero(9,size);
       for(int j=0;j<3;++j){const auto mapping=weights(span,Eigen::Vector4d::Unit(j+1)-Eigen::Vector4d::Unit(j));
-        for(int k=0;k<7;++k){const Vec3 n=3*c3::binomial(2,j)*c3::binomial(6,k)/c3::binomial(8,j+k)*normals[k];
+        for(int k=0;k<7;++k){const Vec3 n=3*c3::binomial(2,j)*c3::binomial(6,k)/c3::binomial(8,j+k)*jc.normals[k];
           for(const auto& a:mapping){jc.change.block<1,3>(j+k,6*a.node)+=a.value*n.transpose();jc.change.block<1,3>(j+k,6*a.node+3)+=a.jet*n.transpose();}}}
       jacobians.push_back(std::move(jc));
     }
@@ -87,10 +86,11 @@ struct CenterBlock {
     for(int i=first;i<last;++i){model.x.segment<3>(6*i)=origin.segment<3>(6*(i-first))+d.segment<3>(6*(i-first));
       model.jets[i].head<3>()=scale(i)*(origin.segment<3>(6*(i-first)+3)+d.segment<3>(6*(i-first)+3));}
   }
-  double objective(const Eigen::VectorXd& d,double mu,Eigen::VectorXd* gradient=nullptr,BlockTridiagonal* hessian=nullptr)const{
-    const double total=volume+volume_gradient.dot(d);if(total<=0)return INFINITY;
+  double objective(const Eigen::VectorXd& d,double mu,Eigen::VectorXd* gradient=nullptr,
+      BlockTridiagonal* hessian=nullptr,double cap_loss=0,const Eigen::VectorXd* weighted_gradient=nullptr)const{
+    const double total=volume+volume_gradient.dot(d)-cap_loss;if(!(total>0))return INFINITY;
     const Eigen::VectorXd qd=quadratic.multiply(d);double cost=linear.dot(d)+.5*d.dot(qd)-std::log(total/volume);
-    if(gradient)*gradient=linear+qd-volume_gradient/total;
+    if(gradient)*gradient=linear+qd-(weighted_gradient?*weighted_gradient:volume_gradient)/total;
     // The affine-volume rank-one Hessian is applied by Sherman-Morrison.
     if(hessian)hessian->assign(quadratic);
     for(int i=0;i<size/6;++i){const Vec3 center=origin.segment<3>(6*i)+d.segment<3>(6*i);
@@ -131,28 +131,25 @@ struct CenterBlock {
       line.terms.push_back({a/c,b/c,mu});if(a+b+c<=0)limit=std::min(limit,c3::positiveRoot(a,b,c));}
     line.step=std::min(1.,.99*limit);return line;
   }
-  bool regular(const Eigen::VectorXd& d)const{
-    for(const auto& jac:jacobians){auto cone=jac.base;const Eigen::Matrix<double,9,1> change=jac.change*d;double scale=0;
-      for(int i=0;i<9;++i){cone[i][0]+=change[i];scale=std::max(scale,cone[i].norm());}
-      c3::Certificate certificate;if(scale<=1e-18||!c3::coneCertificate<8>(cone,std::max(1e-18,1e-9*scale),scale,certificate))return false;
+  bool regular(const Eigen::VectorXd& d,c3::JacobianRequirement relative_margin={OptimizerSettings::default_jacobian_margin,true})const{
+    for(const auto& jac:jacobians){auto cone=jac.base;const Eigen::Matrix<double,9,1> change=jac.change*d;
+      for(int i=0;i<9;++i)cone[i][0]+=change[i];
+      c3::Certificate certificate;if(!c3::certifyJacobianCone<8>(cone,certificate,relative_margin))return false;
+      if(relative_margin.min_axis_travel>0 &&
+         !c3::centerProgressCertificate<3>(cone,jac.normals,relative_margin.min_axis_travel*jac.width))return false;
     }return true;
   }
   template<class Solve> void constrainCaps(const Eigen::VectorXd& d,Eigen::VectorXd& step,Solve&& solve)const{
-    std::vector<std::pair<int,Vec3>> caps;if(first==0)caps.push_back({0,inwardCapNormal(model,0)});
-    if(last==model.basis.count)caps.push_back({size-6,inwardCapNormal(model,1)});
-    const int n=caps.size();Eigen::Vector2d rhs=Eigen::Vector2d::Zero();int mask=0;
-    for(int i=0;i<n;++i){rhs[i]=caps[i].second.dot(origin.segment<3>(caps[i].first)+d.segment<3>(caps[i].first)+step.segment<3>(caps[i].first));if(rhs[i]<0)mask|=1<<i;}
-    if(!mask)return;
-    const Eigen::VectorXd unconstrained=step;std::array<Eigen::VectorXd,2> inverse;
-    for(int i=0;i<n;++i){Eigen::VectorXd g=Eigen::VectorXd::Zero(size);g.segment<3>(caps[i].first)=caps[i].second;solve(g,inverse[i]);}
-    auto attempt=[&](int active){Eigen::Matrix2d a=Eigen::Matrix2d::Identity();Eigen::Vector2d b=Eigen::Vector2d::Zero();
-      for(int i=0;i<n;++i)if(active&(1<<i)){b[i]=rhs[i];for(int j=0;j<n;++j)a(i,j)=(active&(1<<j))?caps[i].second.dot(inverse[j].segment<3>(caps[i].first)):0;}
-      const Eigen::Vector2d lambda=a.ldlt().solve(b);if(lambda.maxCoeff()>1e-10)return false;
-      Eigen::VectorXd candidate=unconstrained;for(int i=0;i<n;++i)if(active&(1<<i))candidate-=lambda[i]*inverse[i];
-      for(const auto& cap:caps)if(cap.second.dot(origin.segment<3>(cap.first)+d.segment<3>(cap.first)+candidate.segment<3>(cap.first)) < -1e-9)return false;
-      step=std::move(candidate);return true;};
-    if(attempt(mask))return;for(int active=1;active<(1<<n);++active)if(active!=mask&&attempt(active))return;
-    step.setZero();
+    std::array<int,2> offsets{};
+    std::array<Vec3,2> normals;
+    int count=0;
+    if(first==0){offsets[count]=0;normals[count++]=inwardCapNormal(model,0);}
+    if(last==model.basis.count){offsets[count]=size-6;normals[count++]=inwardCapNormal(model,1);}
+    const auto slack=[&](int i,const Eigen::VectorXd& movement) {
+      const int k=offsets[i];
+      return normals[i].dot(origin.segment<3>(k)+d.segment<3>(k)+movement.segment<3>(k));
+    };
+    if(!projectCapStep(count,offsets,normals,step,slack,solve))step.setZero();
   }
 };
 
@@ -164,26 +161,46 @@ inline void optimizeEnds(Model& model,const GeometryOptions& options,double leng
   std::array<Anchor,2> anchors;for(int i=0;i<2;++i)anchors[i].u=model.anchor_parameters[i];
   for(const auto& range:blocks){deadline.check();CenterBlock patch(model,range.first,range.second,options,length,settings.end_energy,constraints);
     Eigen::VectorXd d=Eigen::VectorXd::Zero(patch.size),gradient,step,inverse_v;BlockTridiagonal hessian;
-    const double mu=1e-5/n,anchor_mu=1e-5;
+    const double mu=1e-5/n,anchor_mu=1e-5,discount=1-settings.cap_volume_weight;
+    if(!std::isfinite(patch.anchorCost(anchors,anchor_mu)))break;
+    const double initial_cap=discount>0 ? capVolume(model,model.x,anchors) : 0;
+    double cap=initial_cap;
     for(int iteration=0;iteration<settings.end_steps;++iteration){deadline.check();
-      const double cost=patch.objective(d,mu,&gradient,&hessian),anchor=patch.anchorCost(anchors,anchor_mu,&gradient,&hessian);
+      Eigen::VectorXd weighted_gradient=patch.volume_gradient;
+      if(discount>0) {
+        cap=capVolume(model,model.x,anchors,[&](int span,const c3::Curve<3,V9>& g) {
+          const double h=model.basis.breaks[span+1]-model.basis.breaks[span];
+          for(int side=0;side<2;++side) {
+            const int node=span+side;
+            if(node<patch.first || node>=patch.last)continue;
+            const int index=6*(node-patch.first),j=2*side;
+            weighted_gradient.segment<3>(index)-=discount*(g[j]+g[j+1]).head<3>();
+            const double scale=(side?-1:1)*discount*h*patch.scale(node)/3;
+            weighted_gradient.segment<3>(index+3)-=scale*g[side?2:1].head<3>();
+          }
+        });
+      }
+      const double cost=patch.objective(d,mu,&gradient,&hessian,discount*cap,&weighted_gradient);
+      const double anchor=patch.anchorCost(anchors,anchor_mu,&gradient,&hessian);
       if(!std::isfinite(cost)||!std::isfinite(anchor))break;
       if(!hessian.factor(1e-8))break;
-      const double total=patch.volume+patch.volume_gradient.dot(d);const Eigen::VectorXd v=patch.volume_gradient/total;
+      const double total=patch.volume+patch.volume_gradient.dot(d)-discount*cap;const Eigen::VectorXd v=weighted_gradient/total;
       hessian.solveInto(v,inverse_v);const double denominator=1+v.dot(inverse_v);
       auto solve=[&](const Eigen::VectorXd& rhs,Eigen::VectorXd& answer){hessian.solveInto(rhs,answer);answer-=inverse_v*(v.dot(answer)/denominator);};
       solve(-gradient,step);patch.constrainCaps(d,step,solve);const double descent=gradient.dot(step);if(descent>=-1e-10)break;
       const auto line=patch.prepareLine(d,step,mu);const double dv=patch.volume_gradient.dot(step);bool accepted=false;
       for(double alpha=line.step;alpha>=1e-10;alpha*=.5){++metrics.end_trials;const Eigen::VectorXd next=d+alpha*step;
-        if(alpha*dv<=-total)continue;
         patch.assign(next);auto trial=anchors;const double anchor_next=patch.anchorCost(trial,anchor_mu);
-        if(line.delta(alpha)-std::log1p(alpha*dv/total)+anchor_next-anchor>1e-4*alpha*descent)continue;
-        if(!patch.regular(next))continue;
-        anchors=trial;d=next;accepted=true;++metrics.end_steps;break;
+        if(!std::isfinite(anchor_next))continue;
+        const double next_cap=discount>0 ? capVolume(model,model.x,trial) : 0;
+        const double gain=alpha*dv-discount*(next_cap-cap);
+        if(!(gain>-total) || line.delta(alpha)-std::log1p(gain/total)+anchor_next-anchor>1e-4*alpha*descent)continue;
+        if(!patch.regular(next,settings.regularity(length)))continue;
+        anchors=trial;cap=next_cap;d=next;accepted=true;++metrics.end_steps;break;
       }
       patch.assign(d);if(!accepted)break;
     }
-    metrics.end_volume_gain+=patch.volume_gradient.dot(d);model.cacheQuadrature(patch.span_begin,patch.span_end);
+    metrics.end_volume_gain+=patch.volume_gradient.dot(d)-discount*(cap-initial_cap);model.cacheQuadrature(patch.span_begin,patch.span_end);
   }
   for(int i=0;i<2;++i)model.anchor_parameters[i]=anchors[i].u;
   metrics.end_ms+=timer.elapsed();

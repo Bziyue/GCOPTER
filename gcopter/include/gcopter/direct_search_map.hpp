@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
 #pragma once
-#include <algorithm>
 #include <cmath>
 #include <SweepCorridor.hpp>
 
@@ -11,7 +10,7 @@ using SweepCorridor::Sphere;
 using SweepCorridor::ObstacleIndex;
 /** Read-only adapter for GCOPTER's OMPL search. The reference clearance is
  * reserved during search only; the corridor uses the physical padding itself.
- * All closed search edges are checked against the same solid sphere snapshot.
+ * All closed search edges are checked against the declared obstacle geometry.
  */
 class SearchMap {
  public:
@@ -27,22 +26,7 @@ class SearchMap {
       if ((p.array() <= bounds_.lower.array() + padding_).any() ||
           (p.array() >= bounds_.upper.array() - padding_).any())
         return false;
-    std::vector<int> ids;
-    const Vec3 expand = Vec3::Constant(padding_);
-    index_.query(a.cwiseMin(b) - expand, a.cwiseMax(b) + expand, ids);
-    const Vec3 d = b - a;
-    const double squared = d.squaredNorm();
-    for (int id : ids) {
-      const auto& sphere = index_.obstacles()[id];
-      const double t =
-          squared > 1e-24
-              ? std::clamp((sphere.center - a).dot(d) / squared, 0., 1.)
-              : 0.;
-      if ((a + t * d - sphere.center).squaredNorm() <=
-          std::pow(sphere.radius + padding_, 2))
-        return false;
-    }
-    return true;
+    return index_.segmentFree(a,b,padding_);
   }
 
  private:

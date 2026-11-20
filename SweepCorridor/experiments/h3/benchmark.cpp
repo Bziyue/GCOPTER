@@ -1,6 +1,8 @@
 #include "../free_boundary/common.hpp"
 #ifndef H3_BASELINE
 #include "generator.hpp"
+#include "audit_cover.hpp"
+#include "benchmark_presets.hpp"
 #endif
 #include "../../../gcopter/tools/corridor_volume.hpp"
 #include <sys/resource.h>
@@ -24,83 +26,33 @@ double anchorParameter(const c3::Geometry& g,const sc::Vec3& p,double u) {
   }return -1;
 }
 int main(int argc,char** argv){try{
-  if(argc!=11)throw std::runtime_error("seed map output xmin ymin zmin xmax ymax zmax repeats");
-  const auto seed=readPoints(argv[1]),cloud=readPoints(argv[2]);std::vector<sc::Sphere> spheres;
-  for(const auto& p:cloud)spheres.push_back({p,std::sqrt(3)*.25/2});
-  const auto index_start=c3::Clock::now();const sc::ObstacleIndex map(std::move(spheres));const double index_ms=c3::elapsedMs(index_start);
+  if(argc!=11 && argc!=12)throw std::runtime_error("seed map output xmin ymin zmin xmax ymax zmax repeats [voxel_resolution]");
+  const double resolution=argc==12?std::stod(argv[11]):.25;
+  if(!(resolution>0) || !std::isfinite(resolution))throw std::invalid_argument("invalid resolution");
+  const auto seed=readPoints(argv[1]),cloud=readPoints(argv[2]);
+  const std::string mode=std::getenv("H3_MODE")?std::getenv("H3_MODE"):"h3_new";
+  c3::OptimizerSettings solver;solver.profile=std::getenv("SWEEP_PROFILE");
+#ifndef H3_BASELINE
+  const auto preset=sc::experiments::h3::benchmarkPreset(mode,solver);
+  const auto& h3_solver=preset.solver;
+#endif
+  const auto index_start=c3::Clock::now();
+  const sc::ObstacleIndex map=[&] {
+#ifndef H3_BASELINE
+    if(preset.voxels)
+      return sc::ObstacleIndex::fromOccupiedVoxels(cloud,resolution);
+#endif
+    std::vector<sc::Sphere> spheres;
+    spheres.reserve(cloud.size());
+    for(const auto& p:cloud)spheres.push_back({p,std::sqrt(3)*resolution/2});
+    return sc::ObstacleIndex(std::move(spheres));
+  }();
+  const double index_ms=c3::elapsedMs(index_start);
   const sc::Bounds bounds{{std::stod(argv[4]),std::stod(argv[5]),std::stod(argv[6])},{std::stod(argv[7]),std::stod(argv[8]),std::stod(argv[9])}};
-  auto options=optionsFor(seed,bounds);c3::OptimizerSettings solver;solver.profile=std::getenv("SWEEP_PROFILE");
+  auto options=optionsFor(seed,bounds);
   const fs::path output=argv[3];fs::create_directories(output);std::ofstream log(output/"rows.jsonl");log<<std::setprecision(17);
   const double length=seedLength(seed);
   for(int repeat=-1;repeat<std::stoi(argv[10]);++repeat){
-#ifndef H3_BASELINE
-    const std::string mode=std::getenv("H3_MODE")?std::getenv("H3_MODE"):"h3_new";
-    sc::experiments::h3::OptimizerSettings h3_solver(solver);
-    // Named ablations retain their original settings as the demo default evolves.
-    if(mode!="h3_new"&&mode.rfind("h3_adaptive",0)!=0){
-      h3_solver.end_steps=0;h3_solver.refresh_rounds=0;h3_solver.refresh_fraction=0;h3_solver.joint_budget_share=1;}
-    if(mode.rfind("h3_new",0)!=0&&mode.rfind("h3_adaptive",0)!=0){
-      h3_solver.volume_jet_energy=1;h3_solver.joint_jet_steps=0;
-      h3_solver.joint_final_only=false;h3_solver.joint_sweeps=1;}
-    if(mode=="h3")h3_solver.jet_schedule=sc::experiments::h3::JetSchedule::Frozen;
-    if(mode=="h3_mid")h3_solver.jet_schedule=sc::experiments::h3::JetSchedule::BeforeTightening;
-    if(mode=="h3_polish")h3_solver.polish=true;
-    if(mode=="h3_more")h3_solver.iterations=12;
-    if(mode=="h3_three"){h3_solver.inflation_iterations=3;h3_solver.iterations=4;h3_solver.corrector_iterations=2;}
-    if(mode=="h3_volume"||mode=="h3_vmid"||mode=="h3_vreg")h3_solver.volume_jet_steps=2;
-    if(mode=="h3_vmid")h3_solver.jet_schedule=sc::experiments::h3::JetSchedule::BeforeTightening;
-    if(mode=="h3_vreg")h3_solver.volume_jet_energy=10;
-    if(mode=="h3_joint"||mode=="h3_joint4"||mode=="h3_jointreg")h3_solver.joint_jet_steps=2;
-    if(mode=="h3_joint4")h3_solver.joint_jet_steps=4;
-    if(mode=="h3_jointreg")h3_solver.volume_jet_energy=10;
-    if(mode=="h3_final"||mode=="h3_final4"||mode=="h3_relaxed_joint"){
-      h3_solver.joint_jet_steps=2;h3_solver.joint_final_only=true;}
-    if(mode=="h3_final4")h3_solver.joint_jet_steps=4;
-    if(mode=="h3_relaxed"||mode=="h3_relaxed_joint")h3_solver.bending_weight=.25;
-    if(mode=="h3_relaxed1")h3_solver.bending_weight=.1;
-    if(mode=="h3_two"||mode=="h3_two_half"||mode=="h3_two_soft"||mode=="h3_four"){
-      h3_solver.joint_final_only=true;h3_solver.joint_jet_steps=2;h3_solver.joint_sweeps=2;}
-    if(mode=="h3_four"){h3_solver.joint_jet_steps=1;h3_solver.joint_sweeps=4;}
-    if(mode=="h3_two_half"||mode=="h3_two_soft")h3_solver.bending_weight=.5;
-    if(mode=="h3_two_soft")h3_solver.volume_jet_energy=3;
-    if(mode=="h3_balanced"||mode=="h3_balanced6"||mode=="h3_balanced2"){
-      h3_solver.joint_final_only=true;h3_solver.joint_jet_steps=2;h3_solver.bending_weight=.5;h3_solver.volume_jet_energy=3;}
-    if(mode=="h3_balanced6")h3_solver.iterations=6;
-    if(mode=="h3_balanced2")h3_solver.corrector_iterations=2;
-    if(mode=="h3_half")h3_solver.bending_weight=.5;
-    if(mode=="h3_halving"){h3_solver.joint_final_only=true;h3_solver.joint_jet_steps=2;h3_solver.joint_fast_line=false;}
-    if(mode=="h3_rebuild"){h3_solver.joint_final_only=true;h3_solver.joint_jet_steps=2;h3_solver.bending_weight=.5;h3_solver.volume_jet_energy=3;h3_solver.corrector_iterations=2;h3_solver.reuse_joint_supports=false;}
-    if(mode=="h3_two_reg3"||mode=="h3_final_reg3"){
-      h3_solver.joint_final_only=true;h3_solver.joint_jet_steps=2;h3_solver.volume_jet_energy=3;
-      h3_solver.joint_sweeps=mode=="h3_two_reg3"?2:1;}
-    if(mode=="h3_new_rebuild")h3_solver.reuse_joint_supports=false;
-    if(mode=="h3_new_halving")h3_solver.joint_fast_line=false;
-    if(mode=="h3_new_end4"||mode=="h3_new_end6"||mode=="h3_new_end8")h3_solver.end_steps=4;
-    if(mode=="h3_new_end6")h3_solver.end_nodes=6;
-    if(mode=="h3_new_end8")h3_solver.end_nodes=8;
-    if(mode=="h3_new_end_soft"){h3_solver.end_steps=4;h3_solver.end_energy=.1;}
-    if(mode=="h3_new_faces"||mode=="h3_new_faces2"||mode=="h3_new_faces_center"||mode=="h3_new_faces_soft"){
-      h3_solver.end_steps=4;h3_solver.refresh_rounds=1;}
-    if(mode=="h3_new_faces2")h3_solver.refresh_rounds=2;
-    if(mode=="h3_new_faces_center")h3_solver.refresh_shape=false;
-    if(mode=="h3_new_faces_soft")h3_solver.end_energy=.1;
-    if(mode=="h3_new_budget50")h3_solver.joint_budget_fraction=.5;
-    if(mode=="h3_new_budget75")h3_solver.joint_budget_fraction=.75;
-    if(mode=="h3_new_local5"||mode=="h3_new_local10"||mode=="h3_new_adaptive5"||mode=="h3_new_adaptive10"||mode=="h3_new_adaptive2"){
-      h3_solver.end_steps=4;h3_solver.refresh_rounds=1;h3_solver.refresh_fraction=.05;}
-    if(mode=="h3_new_local10"||mode=="h3_new_adaptive10")h3_solver.refresh_fraction=.1;
-    if(mode=="h3_new_adaptive5"||mode=="h3_new_adaptive10"||mode=="h3_new_adaptive2")h3_solver.joint_budget_fraction=.5;
-    if(mode=="h3_new_adaptive2")h3_solver.refresh_rounds=2;
-    if(mode=="h3_new_share99"||mode=="h3_new_share995"||mode=="h3_new_share_only")h3_solver.joint_budget_share=.99;
-    if(mode=="h3_new_share995")h3_solver.joint_budget_share=.995;
-    if(mode=="h3_new_share99"||mode=="h3_new_share995"){
-      h3_solver.end_steps=4;h3_solver.refresh_rounds=2;h3_solver.refresh_fraction=.05;}
-    if(mode=="h3_adaptive_no_budget")h3_solver.joint_budget_share=1;
-    if(mode=="h3_adaptive_no_interior")h3_solver.refresh_fraction=0;
-    if(mode=="h3_adaptive_no_end")h3_solver.end_steps=0;
-    if(mode=="h3_adaptive_no_refresh")h3_solver.refresh_rounds=0;
-    if(mode=="h3_adaptive_one_round")h3_solver.refresh_rounds=1;
-#endif
     const auto start=c3::Clock::now();auto r=
 #ifdef H3_BASELINE
       c3::generateCubic(seed,map,bounds,options,solver);
@@ -117,6 +69,10 @@ const double total=c3::elapsedMs(start);
        <<",\"cover_ms\":"<<r.cover_metrics.total_ms<<",\"setup_ms\":"<<r.optimizer.setup_ms<<",\"assembly_ms\":"<<r.optimizer.assembly_ms
        <<",\"solve_ms\":"<<r.optimizer.solve_ms<<",\"line_ms\":"<<r.optimizer.line_search_ms<<",\"certificate_ms\":"<<r.optimizer.certificate_ms;
 #ifndef H3_BASELINE
+    log<<",\"intermediate_radius_used\":"<<(r.intermediate_radius_used?"true":"false")
+       <<",\"core_smoothed\":"<<(r.jets.core_smoothed?"true":"false")<<",\"area_selected_spans\":"<<r.jets.area_selected_spans;
+    log<<",\"coarse_start_used\":"<<(r.coarse_start_used?"true":"false");
+    log<<",\"shared_obstacle_spans\":"<<r.cover_metrics.shared_obstacle_spans;
     log<<",\"jet_ms\":"<<r.jets.milliseconds<<",\"jet_accepted\":"<<r.jets.accepted<<",\"jet_rejected\":"<<r.jets.rejected<<",\"jet_fraction\":"<<(r.jets.accepted?r.jets.fraction_sum/r.jets.accepted:0);
     log<<",\"joint_setup_ms\":"<<r.jets.joint_setup_ms<<",\"joint_assembly_ms\":"<<r.jets.joint_assembly_ms<<",\"joint_solve_ms\":"<<r.jets.joint_solve_ms
        <<",\"joint_refresh_ms\":"<<r.jets.joint_refresh_ms<<",\"joint_line_ms\":"<<r.jets.joint_line_ms<<",\"joint_steps\":"<<r.jets.joint_steps
@@ -126,9 +82,21 @@ const double total=c3::elapsedMs(start);
     log<<",\"local_setup_ms\":"<<r.jets.local_setup_ms<<",\"local_joint_ms\":"<<r.jets.local_joint_ms;
     log<<",\"joint_budget_skips\":"<<r.jets.joint_budget_skips;
 #endif
-    if(r.status==sc::Status::Success){const auto cert=c3::certify(r.corridor,r.cover);
+    if(r.status==sc::Status::Success){
+#ifndef H3_BASELINE
+      const auto cert=c3::certify(r.corridor,r.cover,options.certificate_depth,h3_solver.regularity(length));
+      log<<",\"jacobian_relative_lower_bound\":"<<cert.cone_relative_margin;
+      if(repeat==0) {
+        const double pad=options.robot_radius+options.safety_margin+options.certificate_margin;
+        if(!sc::experiments::h3::auditObstacleCover(r.corridor,r.cover,map,pad))
+          throw std::runtime_error("incomplete obstacle separation in exported corridor");
+        log<<",\"obstacle_audit\":true";
+      }
+#else
+      const auto cert=c3::certify(r.corridor,r.cover);
+#endif
       const double begin=anchorParameter(r.corridor,seed.front(),0),end=anchorParameter(r.corridor,seed.back(),1);
-      if(!cert.safe()||begin<0||end<begin){writeGeometry(r.corridor,output/"failed_geometry.csv");
+      if(!cert.safe()||begin<0||end<=begin){writeGeometry(r.corridor,output/"failed_geometry.csv");
         log<<",\"verification_pass\":false}\n";log.flush();
         std::cerr<<"support="<<cert.support<<" jacobian="<<cert.jacobian<<" anchors="<<begin<<','<<end<<'\n';
         throw std::runtime_error("independent certificate / anchor failure");}
@@ -137,7 +105,8 @@ const double total=c3::elapsedMs(start);
       log<<",\"c1_error\":"<<c1_error;
       const auto core=restrictGeometry(r.corridor,begin,end);const auto q=quality(core,length),full=quality(r.corridor,length/(end-begin));
       log<<",\"support_pass\":true,\"jacobian_pass\":true,\"anchors_pass\":true,\"anchor_begin\":"<<begin<<",\"anchor_end\":"<<end
-         <<",\"swept_volume\":"<<full.swept_volume<<",\"boundary_bending\":"<<q.boundary_bending<<",\"c2_error\":"<<full.c2_error
+         <<",\"swept_volume\":"<<full.swept_volume<<",\"core_swept_volume\":"<<q.swept_volume
+         <<",\"boundary_bending\":"<<q.boundary_bending<<",\"c2_error\":"<<full.c2_error
          <<",\"start_distance\":"<<(r.corridor.section(0).center-seed.front()).norm()<<",\"end_distance\":"<<(r.corridor.section(1).center-seed.back()).norm();
       if(repeat==0){writeGeometry(r.corridor,output/"corridor.csv");writeGeometry(core,output/"core.csv");
         std::ofstream planes(output/"support_planes.csv");planes<<std::setprecision(17)<<"span,begin,end,nx,ny,nz,bound\n";

@@ -4,15 +4,19 @@ import argparse,hashlib,json,os,platform,resource,statistics,subprocess
 from pathlib import Path
 p=argparse.ArgumentParser();p.add_argument('--output',required=True);p.add_argument('--cases',default='0,1,2,3,4,5,6,67')
 p.add_argument('--modes',default='c3,h3_jets');p.add_argument('--inputs',default='docs/validation/free_boundary/inputs.json');p.add_argument('--repeats',type=int,default=7)
+p.add_argument('--pre-core-binary',type=Path,help='original voxel H3 benchmark for historical wall timings')
 p.add_argument('--samples',type=int,default=65536);a=p.parse_args();repo=Path(__file__).resolve().parents[3];os.chdir(repo)
 os.sched_setaffinity(0,{2});resource.setrlimit(resource.RLIMIT_AS,(4*1024**3,4*1024**3))
 for key in ('OPENBLAS_NUM_THREADS','OMP_NUM_THREADS','MKL_NUM_THREADS'):os.environ[key]='1'
 out=Path(a.output).resolve();out.mkdir(parents=True,exist_ok=True);build=Path('.scratch/h3').resolve()
 def executable(mode):
+    if mode=='h3_pre_core' and a.pre_core_binary:return a.pre_core_binary.resolve()
+    if mode=='h3_adaptive_baseline':return build/'adaptive_benchmark'
     if mode=='h3_joint_baseline':return build/'joint_benchmark'
     if mode=='h3_previous':return build/'previous_benchmark'
     return build/('baseline_benchmark' if mode=='c3' else ('world' if mode=='h3_world' else 'benchmark'))
 cases=json.loads(Path(a.inputs).read_text())['cases'];ids=None if a.cases=='all' else set(map(int,a.cases.split(',')))
+resolutions={r['map']:r['resolution'] for r in cases if 'resolution' in r}
 cases=[r for r in cases if ids is None or r['case'] in ids];hashes={}
 for r in cases:
     for key in ('seed','map'):
@@ -33,8 +37,15 @@ for case in cases:
         target=out/f"case_{case['case']:02d}"/mode;target.mkdir(parents=True,exist_ok=True)
         binary=executable(mode)
         command=[str(binary),case['seed'],case['map'],str(target),*map(str,case['bounds_lower']+case['bounds_upper']),str(a.repeats)]
-        env=os.environ.copy();env['H3_MODE']='h3_new' if mode=='h3_joint_baseline' else mode
+        resolution=case.get('resolution',resolutions.get(case['map'],.25))
+        if mode in ('h3_adaptive_baseline','h3_joint_baseline','h3_previous'):
+            if resolution!=.25:raise ValueError(f'{mode} frozen benchmark requires 0.25 m voxels')
+        elif resolution!=.25:
+            command.append(str(resolution))
+        reference=mode in ('h3_joint_baseline','h3_adaptive_baseline') or (mode=='h3_pre_core' and a.pre_core_binary)
+        env=os.environ.copy();env['H3_MODE']='h3_new' if reference else mode
         with (target/'process.log').open('w') as log:process=subprocess.run(command,stdout=log,stderr=subprocess.STDOUT,timeout=180,env=env)
+        if process.returncode:raise RuntimeError(f"{mode} exited {process.returncode} on case {case['case']}, see {target/'process.log'}")
         rows=[json.loads(line) for line in (target/'rows.jsonl').read_text().splitlines()];runs=[r for r in rows if r.get('repeat',-1)>=0]
         times=sorted(r['wall_ms'] for r in runs)
         r=dict(case=case['case'],family=case['family'],mode=mode,success=process.returncode==0 and len(runs)==a.repeats and all(r['status']=='SUCCESS' for r in runs),

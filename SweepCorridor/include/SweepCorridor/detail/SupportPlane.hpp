@@ -8,5 +8,6 @@ struct SupportPlane {
   double begin, end;
   Vec3 normal;
   double bound;
+  bool obstacle=false;
 };
 }

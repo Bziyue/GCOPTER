@@ -76,7 +76,8 @@ struct QueryCache {
         }
       }
     }
-    if (span == int(spans.size())) spans.push_back(entry);
+    if (span >= int(spans.size())) spans.resize(span + 1, -1);
+    spans[span] = entry;
     return entry >= 0 ? ids[entry] : scratch;
   }
 };

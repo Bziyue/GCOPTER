@@ -8,9 +8,15 @@ namespace c3=internal::cubic;
 using internal::GeometryOptions;
 using c3::V9;using c3::Geometry;using c3::pack;using c3::shape;
 using c3::OptimizerMetrics;
+inline constexpr std::array<double,5> gaussNodes{
+    .046910077030668,.230765344947158,.5,.769234655052842,.953089922969332};
+inline constexpr std::array<double,5> gaussWeights{
+    .118463442528095,.239314335249683,.284444444444444,.239314335249683,.118463442528095};
+
 enum class JetSchedule { Frozen, AfterPass, BeforeTightening };
+enum class SeparatorScale { Group, Span, GroupOnlyDuringInflation };
 struct OptimizerSettings : c3::OptimizerSettings {
-  int iterations=8,corrector_iterations=3,inflation_iterations=2;
+  int iterations=7,corrector_iterations=2,inflation_iterations=2;
   JetSchedule jet_schedule=JetSchedule::AfterPass;
   bool polish=false;
   int volume_jet_steps=0;
@@ -20,13 +26,33 @@ struct OptimizerSettings : c3::OptimizerSettings {
   int joint_sweeps=2;
   bool joint_fast_line=true;
   bool reuse_joint_supports=true;
-  double bending_weight=1;
+  double bending_weight=1.25;
   int end_nodes=4,end_steps=4;
   double end_energy=1;
-  int refresh_rounds=2;
+  int refresh_rounds=1;
+  int cover_group_size=8;
+  bool coarse_start=true;
+  bool intermediate_radius=true;
+  double initial_radius_fraction=c3::OptimizerSettings::initial_radius_fraction;
+  int fine_iterations=4;
+  bool use_section_gain=true;
+  bool pointwise_jacobian=true;
+  double cap_volume_weight=.5;
+  double smoothing_volume_tolerance=.005;
+  bool share_cover_planes=true;
+  double group_axis_limit=2;
+  SeparatorScale separator_scale=SeparatorScale::Group;
+  bool require_refresh_for_ends=false;
+  // Fraction of the center Jacobian required everywhere on the section.
+  static constexpr double default_jacobian_margin=.15;
+  double relative_jacobian_margin=default_jacobian_margin;
+  double min_center_progress=.02;
+  c3::JacobianRequirement regularity(double seed_length) const {
+    return {relative_jacobian_margin,pointwise_jacobian,pointwise_jacobian?min_center_progress*seed_length:0};
+  }
   bool refresh_shape=true;
-  double joint_budget_fraction=1,refresh_fraction=.05;
-  double joint_budget_share=.99;
+  double joint_budget_fraction=1,refresh_fraction=.10;
+  double joint_budget_share=1;
   OptimizerSettings(const c3::OptimizerSettings& baseline={}):c3::OptimizerSettings(baseline){}
 };
 using c3::Clock;using c3::StageTimer;using c3::Deadline;
@@ -71,6 +97,11 @@ struct Model {
     const double h=(basis.breaks[i+1]-basis.breaks[i])/3;
     return {V9::Zero(),V9(h*jets[i]),V9(-h*jets[i+1]),V9::Zero()};
   }
+  c3::Curve<3,V9> curve(const Eigen::VectorXd& values,int span) const {
+    const V9 left=node(values,span),right=node(values,span+1);
+    const double h=(basis.breaks[span+1]-basis.breaks[span])/3;
+    return {left,V9(left+h*jets[span]),V9(right-h*jets[span+1]),right};
+  }
   Geometry geometry(const Eigen::VectorXd& values)const{
     Geometry g;g.breaks=basis.breaks;g.controls.resize(4*(basis.count-1));
     V9 left=node(values,0);
@@ -94,11 +125,9 @@ struct Model {
     cacheQuadrature(0,basis.count-1);
   }
   void cacheQuadrature(int begin,int end){
-    constexpr double t[5]={.046910077030668,.230765344947158,.5,.769234655052842,.953089922969332};
-    constexpr double w[5]={.118463442528095,.239314335249683,.284444444444444,.239314335249683,.118463442528095};
     for(int i=begin;i<end;++i){const double h=basis.breaks[i+1]-basis.breaks[i];
-      for(int q=0;q<5;++q){const double u=t[q],r=1-u;auto& s=quadrature[i][q];
-        s.left=r*r*(1+2*u);s.derivative=-6*u*r/h;s.weight=std::acos(-1.)*h*w[q];
+      for(int q=0;q<5;++q){const double u=gaussNodes[q],r=1-u;auto& s=quadrature[i][q];
+        s.left=r*r*(1+2*u);s.derivative=-6*u*r/h;s.weight=std::acos(-1.)*h*gaussWeights[q];
         s.offset=h*(u*r*r*jets[i]-u*u*r*jets[i+1]);
         s.tangent=(1-4*u+3*u*u)*jets[i].head<3>()+(3*u*u-2*u)*jets[i+1].head<3>();}
     }

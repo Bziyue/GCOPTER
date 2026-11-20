@@ -75,6 +75,44 @@ inline Vec3 inwardCapNormal(const Model& model,int end) {
   const auto& f=model.frames[end?model.basis.count-1:0];
   return (end?1.:-1.)*f.col(0).cross(f.col(1)).normalized();
 }
+// Active-set projection in the Newton metric for the one or two end planes.
+// slack(i, step) evaluates the affine gap in the caller's coordinates.
+template<class Slack,class Solve>
+inline bool projectCapStep(int count,const std::array<int,2>& offsets,const std::array<Vec3,2>& normals,
+                           Eigen::VectorXd& step,Slack&& slack,Solve&& solve) {
+  Eigen::Vector2d rhs=Eigen::Vector2d::Zero();
+  int violated=0;
+  for(int i=0;i<count;++i) {
+    rhs[i]=slack(i,step);
+    if(rhs[i]<0)violated|=1<<i;
+  }
+  if(!violated)return true;
+  std::array<Eigen::VectorXd,2> inverse;
+  const auto attempt=[&](int mask) {
+    Eigen::Matrix2d schur=Eigen::Matrix2d::Identity();
+    Eigen::Vector2d b=Eigen::Vector2d::Zero();
+    for(int j=0;j<count;++j)if(mask&(1<<j)) {
+      if(!inverse[j].size()) {
+        Eigen::VectorXd normal=Eigen::VectorXd::Zero(step.size());
+        normal.segment<3>(offsets[j])=normals[j];
+        solve(normal,inverse[j]);
+      }
+      b[j]=rhs[j];
+      for(int i=0;i<count;++i)if(mask&(1<<i))
+        schur(i,j)=normals[i].dot(inverse[j].segment<3>(offsets[i]));
+    }
+    const Eigen::Vector2d multipliers=schur.ldlt().solve(b);
+    if(!multipliers.allFinite() || multipliers.maxCoeff()>1e-10)return false;
+    Eigen::VectorXd candidate=step;
+    for(int i=0;i<count;++i)if(mask&(1<<i))candidate-=multipliers[i]*inverse[i];
+    for(int i=0;i<count;++i)if(slack(i,candidate)<-1e-9)return false;
+    step=std::move(candidate);
+    return true;
+  };
+  if(attempt(violated))return true;
+  for(int mask:{3,1,2})if(mask<(1<<count) && mask!=violated && attempt(mask))return true;
+  return false;
+}
 inline double capStep(const Model& model,const Eigen::VectorXd& x,const Eigen::VectorXd& step) {
   double alpha=1;
   for(int end=0;end<2;++end){const int offset=end?int(x.size())-6:0;const Vec3 n=inwardCapNormal(model,end);

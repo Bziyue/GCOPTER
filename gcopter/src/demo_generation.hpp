@@ -36,6 +36,10 @@ struct Result {
   int jet_updates = 0;
   int joint_steps = 0;
   int end_steps = 0, refreshed_spans = 0, budget_skips = 0;
+  bool coarse_start_used = false;
+  int shared_obstacle_spans = 0;
+  int area_selected_spans = 0;
+  bool intermediate_radius_used = false, core_smoothed = false;
   explicit operator bool() const { return status == sc::Status::Success; }
 };
 Result generate(bool h3, const std::vector<sc::Vec3>& seed,

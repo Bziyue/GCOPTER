@@ -9,10 +9,11 @@ lock=(out/'build.lock').open('w');fcntl.flock(lock,fcntl.LOCK_EX)
 baseline='7d4fc603607f131a1d282247c3e523c11da5d06e'
 previous='d1e0ad66431f40836d7b82f65c8dfdcf27b95fb5'
 joint='fd7a301e66bf8d836409ce508665ffedf457ef45'
+adaptive='08451b5df0f5a700289040cb18992df73b4f6ead'
 for target in a.targets.split(','):
-    if target not in ('tests','volume_tests','adaptive_tests','benchmark','baseline','measure','current_c3','world','previous','joint'):raise ValueError(target)
-    if target in ('previous','joint'):
-        commit=previous if target=='previous' else joint
+    if target not in ('tests','volume_tests','adaptive_tests','inflation_tests','benchmark','baseline','measure','current_c3','world','previous','joint','adaptive'):raise ValueError(target)
+    if target in ('previous','joint','adaptive'):
+        commit={'previous':previous,'joint':joint,'adaptive':adaptive}[target]
         snapshot=out/target
         names=subprocess.check_output(['git','ls-tree','-r','--name-only',commit,'SweepCorridor/include','SweepCorridor/experiments/h3','SweepCorridor/experiments/free_boundary/common.hpp','gcopter/tools/corridor_volume.hpp'],text=True).splitlines()
         for name in names:
@@ -32,7 +33,7 @@ for target in a.targets.split(','):
     folder='free_boundary' if target=='measure' else 'h3'
     destination='baseline_benchmark' if target=='baseline' else target
     command=['c++','-std=c++17','-O3','-DNDEBUG','-I'+include,'-I/usr/include/eigen3',f'SweepCorridor/experiments/{folder}/{source}.cpp','-o',str(out/destination)]
-    if target in ('tests','volume_tests','adaptive_tests'):command.append('-UNDEBUG')
+    if target in ('tests','volume_tests','adaptive_tests','inflation_tests'):command.append('-UNDEBUG')
     if target=='world':command.append('-DH3_WORLD_ASSEMBLY')
     if target in ('baseline','current_c3'):command.append('-DH3_BASELINE')
     with (out/(target+'_build.log')).open('w') as log:subprocess.run(command,stdout=log,stderr=subprocess.STDOUT,check=True)

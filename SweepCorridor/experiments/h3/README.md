@@ -2,22 +2,15 @@
 
 从 `ros2@7d4fc603607f131a1d282247c3e523c11da5d06e` 建立的独立实验。主库及 RViz2 默认使用 C3，RViz2 可通过 `corridor:=h3` 切换到 H3。实验程序输出相同的四控制点三次 Bézier 几何格式，但几何连续性约定为 **C¹**。
 
-H3 每个节点有三个中心偏移和三个对称形状变量。世界坐标中的九通道一阶导数由相邻段共享。主膨胀采用六维块三对角求解，之后联合优化节点值与共享导数，每个局部问题有 15 个变量，只改变相邻两段。第二次扫描按上一轮收益分配预算，再对受限区域刷新分离面，交替进行局部形状修正与六维端部中心块更新。初始化精确复用未优化的 C3 小截面参考；不调用 C3 的走廊膨胀器，初始化成本包含在总耗时中。
+H3 的搜索、种子检查和分离面共用实体体素几何。显式传入 `ObstacleIndex(std::vector<Sphere>)` 可使用球障碍。在同一 BVH 查询域内，粗网格膨胀允许相邻段共享经过整段验证的分离面。细网格通过精确插入节点得到。当前默认与上一代实体体素 H3 的逐例对照见[核心体积与生成耗时](../../../docs/validation/h3_core/README.md)。早期球障碍对照见[分层膨胀实验](../../../docs/H3实体体素与分层膨胀.md)。
 
-实现重点：
+每个 Hermite 节点有三个中心偏移和三个对称形状变量，相邻段共享九通道一阶导数。全局膨胀采用六维块三对角求解，细网格再耦合优化节点值与导数。每个十五维局部步只影响相邻两段。第二次联合扫描访问全部节点。随后按障碍压力选段换面，按核心截面的可行面积余量补选节点，执行一轮局部修正。自由端中心块可在没有障碍压力时单独更新。
 
-- `model.hpp`：两节点 Hermite 模型、精确弯曲能量、预计算的五点体积积分与体积线搜索多项式。
-- `block_tridiagonal.hpp`：6×6 块三对角、尺度平衡、缓存 Schur 分解，多右端项复用。
-- `problem.hpp`：单节点支撑约束直接在六维空间组装，细分约束只耦合两个节点；三组导数控制量只保留一组可变进度约束。
-- `anchors.hpp` / `solve.hpp`：十二维局部反求梯度、自由端面主动集、体积秩一修正、可行线搜索。
-- `jets.hpp`：共享导数提议，只更新相邻两段，复用原支持平面并重新认证这两段的全截面 Jacobian。
-- `joint_jets.hpp`：节点值与共享导数的局部联合体积优化；复用完整支持分组，闭式弯曲能量和精确三次体积线搜索。
-- `end_blocks.hpp`：固定形状下的仿射体积、中心与共享切向量的六维耦合更新、隐式锚点和缓存 Jacobian。
-- `local_refinement.hpp`：复用 BVH 查询候选，只刷新高压力区域的分离面，再做小预算局部修正。
-- `volume_jets.hpp`：Hermite 局部基函数和仅释放导数的诊断方案。
-- `generator.hpp`：种子输入、覆盖构造、两轮膨胀和导数更新。
-
-障碍 BVH、分离面、查询缓存、连续支持与 Jacobian 认证直接复用主库。共享冗余界新增一个编译期分支，H3 的固定形状导数偏置必须计入可达域证明；原生 C3 不执行该分支。
+- `model.hpp`、`block_tridiagonal.hpp` 和 `problem.hpp` 实现两节点 Hermite 模型、积分、块矩阵与支撑约束组装。
+- `cap_volume.hpp` 计算自由端体积和移动锚点的边界导数。`anchors.hpp` 和 `solve.hpp` 处理锚点反解、端面主动集及全局线搜索。
+- `joint_jets.hpp` 与 `end_blocks.hpp` 分别处理节点与端部更新。线搜索保留完整扫掠体积的多项式，直接计算试探步的自由端扣减量。
+- `jets.hpp` 提出自然样条导数并按整段证书裁剪。`wall_quality.hpp` 对中间半径回退后的最终平滑候选核对物理侧壁曲率和核心体积。`volume_jets.hpp` 用于仅释放导数的历史消融。
+- `inflation_cover.hpp`、`local_refinement.hpp` 和 `generator.hpp` 负责粗细转移、分离面共享、局部换面、初始化重试与在线生成。点和线段到原始障碍的距离由主库的 `ObstacleIndex` 提供。
 
 ## 构建和运行
 
@@ -40,8 +33,14 @@ python3 SweepCorridor/experiments/h3/run.py \
 | `h3` | 固定初始共享导数，28 步 | 诊断导数冻结的形状损失 |
 | `h3_jets` | 每轮膨胀后更新，28 步 | 旧 H3 的算法配置 |
 | `h3_previous` | 从 `d1e0ad6` 重建的旧 H3 | 冻结代码对照（先构建 `--targets previous`） |
-| `h3_joint_baseline` | 从 `fd7a301` 重建的共享导数 H3 | 本次直接基线（先构建 `--targets joint`） |
-| `h3_new` | 主膨胀 + 收益预算扫描 + 最多两轮局部刷新与端部耦合 | 当前 H3 默认 |
+| `h3_joint_baseline` | 从 `fd7a301` 重建的共享导数 H3 | 端部耦合实验的基线 |
+| `h3_adaptive_baseline` | 从 `08451b5` 重建的局部刷新与端部耦合 H3 | 分层膨胀实验的直接基线，先构建 `--targets adaptive` |
+| `h3_new` | 移动锚点核心体积、截面逐点 Jacobian、局部换面与面积修正 | 当前 H3 默认 |
+| `h3_pre_core` | 上一代实体体素、粗细网格 H3 | 本轮几何对照 |
+| `h3_core_full` / `h3_core_pressure` | 全体积权重 / 仅按压力选择局部节点 | 核心目标与面积选点消融 |
+| `h3_core_span_scale` / `h3_core_no_share` | 切换到单段尺度 / 停用经过认证的平面共享 | 独立验证分离面尺度与复用 |
+| `h3_spheres` | 与 `h3_new` 相同的求解器，输入旧版外接球 | 单独测量求解策略的收益 |
+| `h3_voxel_single` / `h3_voxel_fine` | 上一代 H3 逐段建面或从细网格开始 | 分层膨胀实验的历史配置 |
 | `h3_world` | 更新导数，采用九维世界 Hessian 回传 | 六维组装的独立消融（先构建 `--targets world`） |
 | `h3_mid` | 收紧障碍参数前及每轮后更新，28 步 | 平滑性与耗时取舍 |
 | `h3_more` | 两轮，每轮 12+3+3 步 | 迭代预算消融 |
@@ -64,7 +63,7 @@ python3 SweepCorridor/experiments/h3/run.py \
 
 H3 入口对应实验的 `h3_new`：主膨胀后联合优化节点值和共享导数。原地图生成器、Informed RRT* 搜索和同输入 FIRI 对照均保留；界面标注 **H3 · C¹**，显示 H3 和 FIRI 各自生成耗时。红色为 H3，蓝色为 FIRI，可在左侧分别切换。H3 模式只生成走廊，隐藏轨迹优化控件。默认 `corridor:=c3` 保持原轨迹演示功能。
 
-渲染和导出直接读取 H3 的三次 Bézier 系数，不重新拟合，也不转换成 C²。每次输出 `metrics.json` 记录 `shape_mode=h3`、`continuity=1`、`representation=hermite_cubic_v3`、`jet_updates`、`joint_steps`、`end_steps`、`refreshed_spans` 和 `budget_skips`。耗时分开记录路径搜索、走廊生成、FIRI 和渲染导出。
+渲染和导出直接读取 H3 的三次 Bézier 系数，不重新拟合，也不转换成 C²。每次输出 `metrics.json` 记录 `shape_mode=h3`、`continuity=1`、`representation=hermite_cubic_v3`、`jet_updates`、`joint_steps`、`end_steps`、`refreshed_spans`、`budget_skips`、`coarse_start_used`、`shared_obstacle_spans`、`intermediate_radius_used`、`area_selected_spans` 和 `core_smoothed`。耗时分开记录路径搜索、走廊生成、FIRI 和渲染导出。
 
 ROS 集成测试（Perlin、迷宫各一条点选路径）：
 
@@ -93,18 +92,18 @@ python3 SweepCorridor/experiments/h3/analyze_volume.py
 
 输入归档随仓库保存，脚本自动解压并核对 SHA256。结果见 [共享导数体积优化报告](../../../docs/H3共享导数体积优化.md)。命名消融保留独立配置，不随默认值变化；`h3_new_rebuild` 重新构造支持约束，`h3_new_halving` 改用逐次减半线搜索。其他 `h3_*` 模式用于报告中保留的预算、正则和仅导数实验，不接入 ROS 参数。
 
-当前分支的端部耦合与局部覆盖实验也使用这 71 条输入。完整复现命令为：
+在 `08451b5` 上，端部耦合与局部覆盖实验也使用这 71 条输入，可运行以下命令复现。
 
 ```bash
 python3 SweepCorridor/experiments/h3/validate_adaptive.py
 python3 SweepCorridor/experiments/h3/analyze_adaptive.py
 ```
 
-默认第二轮扫描保留累计首轮收益达 99% 的节点；优先刷新端部和约 5% 的高压力内部 span，最多两轮。端部中心与共享中心导数组成小块，不设固定外推距离。消融 `h3_adaptive_no_budget`、`h3_adaptive_no_interior`、`h3_adaptive_no_end`、`h3_adaptive_no_refresh` 和 `h3_adaptive_one_round` 分别检验预算、内部刷新、端部耦合、覆盖刷新和第二轮的贡献。结果与数学说明见 [局部覆盖与端部耦合报告](../../../docs/H3局部覆盖与端部耦合优化.md)。
+该历史配置的第二轮扫描保留累计首轮收益达 99% 的节点，优先刷新端部和约 5% 的高压力内部段，最多两轮。端部中心与共享中心导数组成小块，不设固定外推距离。消融 `h3_adaptive_no_budget`、`h3_adaptive_no_interior`、`h3_adaptive_no_end`、`h3_adaptive_no_refresh` 和 `h3_adaptive_one_round` 分别检验预算、内部刷新、端部耦合、覆盖刷新和第二轮的贡献。结果与数学说明见 [局部覆盖与端部耦合报告](../../../docs/H3局部覆盖与端部耦合优化.md)。
 
 完成 ROS 集成测试后，可以核对演示与离线生成的全部系数：
 
 ```bash
 python3 SweepCorridor/experiments/h3/verify_volume_demo.py \
-  --root .scratch/h3_adaptive --output docs/validation/h3_adaptive/rviz.json
+  --root .scratch/h3_inflation --output docs/validation/h3_inflation/rviz.json
 ```

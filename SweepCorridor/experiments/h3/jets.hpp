@@ -10,7 +10,8 @@ struct JetMetrics {
   double end_ms=0,end_volume_gain=0;
   int refresh_attempts=0,refresh_spans=0,refresh_failures=0,refresh_cache_hits=0;
   double refresh_ms=0,local_setup_ms=0,local_joint_ms=0;
-  int joint_budget_skips=0;
+  int joint_budget_skips=0,area_selected_spans=0;
+  bool core_smoothed=false;
 };
 struct JointFeedback {
   double volume=0;
@@ -41,10 +42,12 @@ inline double patchBending(const c3::Curve<3,V9>& p,double h){
 // Clip against the reused support planes (including subdivided intervals),
 // certify only these two patches, then update the two anchor roots.
 inline void updateJets(Model& m,const std::vector<internal::detail::SupportPlane>& cover,
-    JetMetrics& metrics,const Deadline& deadline,bool profile){
+    JetMetrics& metrics,const Deadline& deadline,bool profile,
+    c3::JacobianRequirement relative_margin={OptimizerSettings::default_jacobian_margin,true}){
   StageTimer timer(profile);const auto target=naturalJets(m);auto g=m.geometry();
   std::vector<std::vector<int>> planes(g.pieces());for(int k=0;k<int(cover.size());++k)planes[cover[k].span].push_back(k);
   std::array<Anchor,2> anchors;for(int end=0;end<2;++end)anchors[end].u=m.anchor_parameters[end];
+  if(!std::isfinite(anchorObjective(m,m.x,anchors,1.)))return;
   for(int node=0;node<m.basis.count;++node){
     deadline.check();const V9 delta=target[node]-m.jets[node];
     const int begin=std::max(0,node-1),end=std::min(node+1,m.basis.count-1);
@@ -53,12 +56,23 @@ inline void updateJets(Model& m,const std::vector<internal::detail::SupportPlane
       before[local]=g.curve(span);for(auto& v:change[local])v.setZero();
       change[local][span==node?1:2]=(span==node?1.:-1.)*(h/3)*delta;
       old_energy+=patchBending(before[local],h);
-      for(int id:planes[span]){const auto& p=cover[id];const auto a=c3::restrictCurve<3>(before[local],p.begin,p.end),b=c3::restrictCurve<3>(change[local],p.begin,p.end);
-        for(int j=0;j<(p.begin==p.end?1:4);++j){const Vec3 v(p.bound-p.normal.dot(a[j].head<3>()),p.normal.dot(a[j].segment<3>(3)),p.normal.dot(a[j].tail<3>()));
-          const Vec3 d(-p.normal.dot(b[j].head<3>()),p.normal.dot(b[j].segment<3>(3)),p.normal.dot(b[j].tail<3>()));
+      for(int id:planes[span]){const auto& p=cover[id];
+        auto clip=[&](const V9& control,const V9& increment) {
+          const Vec3 v(p.bound-p.normal.dot(control.head<3>()),p.normal.dot(control.segment<3>(3)),p.normal.dot(control.tail<3>()));
+          const Vec3 d(-p.normal.dot(increment.head<3>()),p.normal.dot(increment.segment<3>(3)),p.normal.dot(increment.tail<3>()));
           const double A=d[0]*d[0]-d.tail<2>().squaredNorm(),B=2*(v[0]*d[0]-v.tail<2>().dot(d.tail<2>())),C=v[0]*v[0]-v.tail<2>().squaredNorm();
-          if((A*alpha+B)*alpha+C>0&&v[0]+alpha*d[0]>0)continue;
-          if(d[0]<0)alpha=std::min(alpha,.99*-v[0]/d[0]);alpha=std::min(alpha,.99*c3::positiveRoot(A,B,C));
+          if((A*alpha+B)*alpha+C>0&&v[0]+alpha*d[0]>0)return;
+          if(d[0]<0)alpha=std::min(alpha,.99*-v[0]/d[0]);
+          alpha=std::min(alpha,.99*c3::positiveRoot(A,B,C));
+        };
+        if(p.begin==0 && p.end==1) {
+          // Only one of this span's four controls depends on the current jet.
+          const int j=span==node?1:2;
+          clip(before[local][j],change[local][j]);
+        } else {
+          const auto a=c3::restrictCurve<3>(before[local],p.begin,p.end);
+          const auto b=c3::restrictCurve<3>(change[local],p.begin,p.end);
+          for(int j=0;j<(p.begin==p.end?1:4);++j) clip(a[j],b[j]);
         }
       }
     }
@@ -66,12 +80,23 @@ inline void updateJets(Model& m,const std::vector<internal::detail::SupportPlane
     for(int trial=0;trial<16&&alpha>1e-9;++trial,alpha*=.5){bool valid=true;double energy=0;
       for(int span=begin;span<end;++span){auto p=before[span-begin];for(int j=0;j<4;++j)p[j]+=alpha*change[span-begin][j];
         energy+=patchBending(p,m.basis.breaks[span+1]-m.basis.breaks[span]);c3::Certificate cert;
-        if(!c3::jacobianCertificate<3>(p,cert)){valid=false;break;}}
+        if(!c3::jacobianCertificate<3>(p,cert,relative_margin.onSpan(m.basis.breaks[span+1]-m.basis.breaks[span]))){valid=false;break;}}
       if(!valid||energy>old_energy+1e-10*(1+old_energy))continue;
-      m.jets[node]=old+alpha*delta;auto trial_anchors=anchors;
-      if(!std::isfinite(anchorObjective(m,m.x,trial_anchors,1.))){m.jets[node]=old;continue;}
+      m.jets[node]=old+alpha*delta;
+      // A jet has compact support. An anchor in an untouched span still
+      // solves exactly the same plane equation and disk inequality.
+      const auto touched=[&](const Anchor& a){return begin<=a.span && a.span<end;};
+      if(touched(anchors[0]) || touched(anchors[1])) {
+        auto trial=anchors;
+        for(int side=0;side<2;++side) {
+          if(touched(trial[side]) &&
+             !locateAnchor(m,m.x,m.reference[side?m.basis.count-1:0],trial[side],false))valid=false;
+        }
+        if(!valid || trial[0].u>=trial[1].u){m.jets[node]=old;continue;}
+        anchors=trial;
+      }
       for(int span=begin;span<end;++span)for(int j=0;j<4;++j)g.controls[4*span+j]=before[span-begin][j]+alpha*change[span-begin][j];
-      anchors=trial_anchors;accepted=true;break;
+      accepted=true;break;
     }
     if(accepted){++metrics.accepted;metrics.fraction_sum+=alpha;}else{++metrics.rejected;m.jets[node]=old;}
   }

@@ -1,10 +1,22 @@
 """Offline geometric bending metrics, independent of longitudinal speed."""
 import numpy as np
+from functools import lru_cache
+
+@lru_cache(maxsize=12)
+def longitudinal_quadrature(order):
+    t,w=np.polynomial.legendre.leggauss(order)
+    return (t+1)/2,w/2
 
 def bending(path,order=24,angles=48):
     cp=np.loadtxt(path,delimiter=',',skiprows=1).reshape(-1,4,12)
+    count=max(1,262144//(order*angles))
+    parts=[_bending_block(cp[i:i+count],order,angles) for i in range(0,len(cp),count)]
+    longitudinal,surface,surface_area=map(sum,zip(*parts))
+    return dict(longitudinal=longitudinal,surface=surface,surface_area=surface_area,mean_surface_curvature=surface/surface_area)
+
+def _bending_block(cp,order,angles):
     h=(cp[:,0,2]-cp[:,0,1])[:,None,None];y=cp[:,:,3:]
-    t,w=np.polynomial.legendre.leggauss(order);t=(t+1)/2;w=w/2;r=1-t
+    t,w=longitudinal_quadrature(order);r=1-t
     b=np.array([r**3,3*r*r*t,3*r*t*t,t**3]).T
     db=np.array([-3*r*r,3*r*r-6*r*t,6*r*t-3*t*t,3*t*t]).T
     ddb=np.array([6*r,18*t-12,6-18*t,6*t]).T
@@ -28,4 +40,4 @@ def bending(path,order=24,angles=48):
     squared_curvature=((e*G-2*f*F+g*E)/determinant)**2-2*(e*g-f*f)/determinant
     surface=2*np.pi*integrate(np.maximum(0,squared_curvature)*area)
     surface_area=2*np.pi*integrate(area)
-    return dict(longitudinal=longitudinal,surface=surface,surface_area=surface_area,mean_surface_curvature=surface/surface_area)
+    return longitudinal,surface,surface_area

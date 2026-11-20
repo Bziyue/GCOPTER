@@ -47,6 +47,9 @@ public:
     auto& block=blocks[i];
     if(!block.alive){++versions[i];block.nearest=-1;return;}
     if(!evaluated[i])return;
+    // Deleting other entries cannot change a surviving minimum. Its current
+    // key is still in the heap (next() only peeks at an evaluated block).
+    if(block.nearest>=0 && (block.alive & (1ull<<(block.nearest-block.begin)))) return;
     int nearest=-1;
     for(auto bits=block.alive;bits;bits&=bits-1) {
       const int j=block.begin+__builtin_ctzll(bits);

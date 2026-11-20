@@ -21,14 +21,23 @@ struct Bounds {
   Vec3 lower, upper;
 };
 
-/** Immutable reusable sphere BVH. Construction validates inputs and may throw.
- * Concurrent read-only queries/generations are safe. No borrowed map storage.
- * Represent a voxel by its centre and radius sqrt(3)*resolution/2; a bare point
- * is NOT a solid voxel and unobserved space is NOT inferred from this API.
+/** Immutable obstacle BVH. Concurrent read-only queries/generations are safe.
+ * Construct from solid spheres, or use fromOccupiedVoxels for known solid
+ * cells. Broad-phase queries use the enclosing spheres for both inputs.
  */
 class ObstacleIndex {
  public:
   explicit ObstacleIndex(std::vector<Sphere> obstacles);
+  /** Occupied axis-aligned solid cells. The BVH and obstacles() expose their
+   * enclosing spheres for conservative consumers. H3 uses the exact cells. */
+  static ObstacleIndex fromOccupiedVoxels(const std::vector<Vec3>& centers,
+                                          double resolution);
+  double voxelHalfWidth() const { return voxel_half_width_; }
+  /** Euclidean distance to the solid and the support extent about its center. */
+  double pointDistance(int id, const Vec3& point) const;
+  double supportExtent(int id, const Vec3& direction) const;
+  /** Closed segment, with metric clearance applied to the declared solid. */
+  bool segmentFree(const Vec3& a, const Vec3& b, double padding) const;
   const std::vector<Sphere>& obstacles() const { return obstacles_; }
   /** Find all spheres whose AABB intersects [lower, upper]; output is replaced.
    */
@@ -40,9 +49,12 @@ class ObstacleIndex {
     int begin = 0, end = 0, left = -1, right = -1;
   };
   int build(int begin, int end);
+  ObstacleIndex(std::vector<Sphere> obstacles,double voxel_half_width);
+  void orderVoxels();
   std::vector<Sphere> obstacles_;
   std::vector<int> order_;
   std::vector<Node> nodes_;
+  double voxel_half_width_ = 0;  // Zero for the sphere constructor.
 };
 
 /** Geometric output, NOT a timed or dynamically feasible trajectory. */

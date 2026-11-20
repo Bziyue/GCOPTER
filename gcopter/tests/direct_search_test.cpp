@@ -17,6 +17,12 @@ int main() {
     require(!map.query({-1, 0, 0}) && !map.query({1, 0, 0}), "endpoints free");
     require(!map.segmentFree({-1, 0, 0}, {1, 0, 0}),
             "continuous edge catches between-endpoint obstacle");
+    const auto voxels=ObstacleIndex::fromOccupiedVoxels({Vec3::Zero()},.25);
+    const ObstacleIndex enclosing(voxels.obstacles());
+    const Vec3 left(-1,.42,0),right(1,.42,0);
+    require(SearchMap(voxels,bounds,.25).segmentFree(left,right),"clear solid-voxel edge");
+    require(!SearchMap(enclosing,bounds,.25).segmentFree(left,right),"enclosing sphere obstructs edge");
+    require(!SearchMap(voxels,bounds,.25).segmentFree({-1,.375,0},{1,.375,0}),"closed voxel contact");
     std::vector<Vec3> path;
     int checks = 0;
     double cost = sfc_gen::planPath(

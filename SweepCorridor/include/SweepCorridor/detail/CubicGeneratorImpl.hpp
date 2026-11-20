@@ -15,7 +15,9 @@ inline void clearanceInitialization(CubicModel& model,const ObstacleIndex& index
         (c-bounds.lower).minCoeff()-pad,(bounds.upper-c).minCoeff()-pad});
     const double reach=radius+pad;
     index.query(c-Vec3::Constant(reach),c+Vec3::Constant(reach),ids);
-    for(int id:ids){const auto& sphere=index.obstacles()[id];radius=std::min(radius,(sphere.center-c).norm()-sphere.radius-pad);}
+    for(int id:ids){
+      radius=std::min(radius,index.pointDistance(id,c)-pad);
+    }
     model.x[6*i+3]=model.x[6*i+5]=std::max(o.min_radius*1.1,fraction*radius);
   }
 }
@@ -46,10 +48,8 @@ inline CubicResult generateCubic(const std::vector<Vec3>& input_seed,const Obsta
   try {
     const double pad=o.robot_radius+o.safety_margin;
     for(size_t i=1;i<seed.size();++i) {
-      const Vec3 a=seed[i-1],b=seed[i],d=b-a;
-      std::vector<int> ids;index.query(a.cwiseMin(b)-Vec3::Constant(pad),a.cwiseMax(b)+Vec3::Constant(pad),ids);
-      for(int id:ids){const auto& sphere=index.obstacles()[id];const double t=std::clamp((sphere.center-a).dot(d)/d.squaredNorm(),0.,1.);
-        if((sphere.center-a-t*d).norm()<=sphere.radius+pad)throw Failure{Status::SeedCollision,"seed intersects an inflated obstacle"};}
+      if(!index.segmentFree(seed[i-1],seed[i],pad))
+        throw Failure{Status::SeedCollision,"seed intersects an inflated obstacle"};
     }
     for(int refinement=0;refinement<=refinements;++refinement) {
       result.refinements=refinement;deadline.check();StageTimer timer(solver.profile);

@@ -67,6 +67,7 @@ struct Cone {
 };
 struct Problem {
   const Model& model;const GeometryOptions& options;OptimizerSettings settings;
+  const c3::JacobianRequirement regularity;
   struct Constraints {std::vector<Group> groups;int count=0,retained=0,merged=0,axes=0;};
   std::shared_ptr<const Constraints> geometry;
   std::shared_ptr<const Energy> energy;
@@ -112,23 +113,33 @@ inline std::shared_ptr<Problem::Constraints> buildSupportGroups(const Model& m,
             else if(row.weights[j][0]==0){g.first+=6;g.count=1;g.center_weights[0]=g.center_weights[1];g.maps[0]=g.maps[1];}
             data->groups.push_back(std::move(g));}
         }else ++metrics.reuses;
-        data->groups[row.ids[j]].supports.push_back({p.normal,p.bound});
+        auto& supports=data->groups[row.ids[j]].supports;
+        supports.push_back({p.normal,p.bound});
+        supports.back().obstacle=p.obstacle;
       }
     }
     for(auto& g:data->groups){auto& supports=g.supports;
       auto key=[](const auto& p){return std::make_tuple(p.normal[0],p.normal[1],p.normal[2]);};
       std::sort(supports.begin(),supports.end(),[&](const auto& a,const auto& b){return key(a)<key(b);});
-      size_t count=0;for(const auto& p:supports){if(count&&key(p)==key(supports[count-1]))supports[count-1].bound=std::min(supports[count-1].bound,p.bound);else supports[count++]=p;}
+      size_t count=0;
+      for(const auto& p:supports) {
+        if(count && key(p)==key(supports[count-1])) {
+          auto& tight=supports[count-1];
+          if(p.bound<tight.bound) tight=p;
+          else if(p.bound==tight.bound) tight.obstacle &= p.obstacle;
+        } else supports[count++]=p;
+      }
       data->merged+=supports.size()-count;supports.resize(count);
-      for(size_t i=0;i<supports.size();++i){auto& p=supports[i];p.original_id=i;
-        for(int a=0;a<3;++a)if(p.normal[a]!=0&&p.normal[(a+1)%3]==0&&p.normal[(a+2)%3]==0)p.axis=a;}
+      for(auto& p:supports)
+        for(int a=0;a<3;++a)if(p.normal[a]!=0&&p.normal[(a+1)%3]==0&&p.normal[(a+2)%3]==0)p.axis=a;
+      for(size_t i=0;i<supports.size();++i)supports[i].original_id=i;
     }
     return data;
 }
 
 inline Problem::Problem(const Model& m,const std::vector<internal::detail::SupportPlane>& cover,double length,
     const GeometryOptions& o,const OptimizerSettings& s,std::shared_ptr<const Energy> e,const Problem* previous,bool progress)
-    :model(m),options(o),settings(s),energy(e?std::move(e):std::make_shared<Energy>(m,length,s)),quadratic(energy->quadratic),linear(energy->linear){
+    :model(m),options(o),settings(s),regularity(s.regularity(length)),energy(e?std::move(e):std::make_shared<Energy>(m,length,s)),quadratic(energy->quadratic),linear(energy->linear){
   if(previous){geometry=previous->geometry;reused_construction=true;}
   else {
     GroupBuildMetrics group_metrics;auto data=buildSupportGroups(m,cover,group_metrics);

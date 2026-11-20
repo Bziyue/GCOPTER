@@ -185,17 +185,18 @@ struct Patch {
     return roots(values, p, 0, 1, 0, unresolved);
   }
 };
-inline std::vector<Patch> patches(const Corridor& corridor) {
-  std::vector<Patch> result(corridor.pieces());
+template<class T=Patch> inline std::vector<T> patches(const std::vector<Control>& controls) {
+  std::vector<T> result(controls.size()/4);
   for (std::size_t i = 0; i < result.size(); ++i) {
     for (int j = 0; j < 4; ++j) {
-      result[i].c[j] = corridor.controls()[4 * i + j].head<3>();
-      result[i].m[j] = Eigen::Map<const Mat32>(corridor.controls()[4 * i + j].data()+3);
+      result[i].c[j] = controls[4 * i + j].head<3>();
+      result[i].m[j] = Eigen::Map<const Mat32>(controls[4 * i + j].data()+3);
     }
     result[i].prepare();
   }
   return result;
 }
+inline std::vector<Patch> patches(const Corridor& corridor) { return patches(corridor.controls()); }
 struct Estimate {
   double mean = 0, ci95 = 0;
 };
@@ -203,6 +204,7 @@ struct Measurement {
   // Cubic union, FIRI union, same 3-m seed ROI for each, intersection.
   std::array<Estimate, 5> volume;
   Estimate paired_difference;  // second union minus first, shared samples
+  std::vector<double> intersection_shifts;
   std::size_t unresolved = 0, cells = 0, samples = 0;
 };
 struct Cell {
@@ -214,7 +216,7 @@ inline Measurement measure(const std::vector<Patch>& patches,
                            const std::vector<Other>& polys,
                            const std::vector<Vec3>& seed, int samples = 65536,
                            int replicates = 8, double cell_size = 1.,
-                           double roi_radius = 3.) {
+                           double roi_radius = 3., bool poly_domain = false) {
   if (replicates != 8)
     throw std::invalid_argument(
         "eight random shifts required for the reported t interval");
@@ -252,7 +254,9 @@ inline Measurement measure(const std::vector<Patch>& patches,
   for (int i = 0; i < int(polys.size()); ++i)
     if (polys[i].valid) insert(polys[i].box, i, false);
   std::vector<Cell> cells;
-  for (auto& entry : bins) cells.push_back(std::move(entry.second));
+  for (auto& entry : bins)
+    if (!poly_domain || !entry.second.polys.empty())
+      cells.push_back(std::move(entry.second));
   Measurement result;
   result.cells = cells.size();
   result.samples = std::size_t(samples) * replicates;
@@ -327,6 +331,7 @@ inline Measurement measure(const std::vector<Patch>& patches,
   }
   delta.ci95 = 2.364624251 *
       std::sqrt(delta_variance / (replicates * (replicates - 1)));
+  if (poly_domain) result.intersection_shifts = std::move(estimates[4]);
   return result;
 }
 }  // namespace corridor_volume

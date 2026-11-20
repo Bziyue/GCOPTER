@@ -45,10 +45,13 @@ struct CoverLayout {
     }
     spans.resize(breaks.size()-1);
     parts.reserve(spans.size()+boxes.size());
+    size_t first_box=0;
     for(size_t i=0;i<spans.size();++i) {
       auto& span=spans[i];span.begin=parts.size();span.lower=Vec3::Constant(INFINITY);span.upper=-span.lower;
       const double s=breaks[i]*length,e=breaks[i+1]*length,h=e-s;
-      for(const auto& box:boxes) {
+      while(first_box<boxes.size() && boxes[first_box].end<=s) ++first_box;
+      for(size_t j=first_box;j<boxes.size() && boxes[j].begin<e;++j) {
+        const auto& box=boxes[j];
         const double from=std::clamp((box.begin-s)/h,0.,1.),to=std::clamp((box.end-s)/h,0.,1.);
         if(to<=from)continue;
         parts.push_back({from,to,box.bounds});
@@ -66,11 +69,15 @@ template<int D> struct MapCover {
   QueryCache& query_cache;CoverMetrics& timings;CoverMetrics::Primitives& metrics;
   Deadline& deadline;
   bool profile;
+  const double voxel_half_width;
+  double longitudinal_floor=0;
+  double group_axis_limit=INFINITY;
+  bool prefer_faces=false;
   std::vector<detail::SupportPlane> planes;
   MapCover(const ObstacleIndex& m,const Bounds& b,const GeometryOptions& o,QueryCache& cache,
            CoverMetrics& t,Deadline& budget,bool profiling)
-    :map(m),bounds(b),options(o),query_cache(cache),timings(t),metrics(t.primitives),deadline(budget),profile(profiling){}
-  void add(const Patch& p,const Vec3& n,double h) {planes.push_back({p.span,p.begin,p.end,n,h});}
+    :map(m),bounds(b),options(o),query_cache(cache),timings(t),metrics(t.primitives),deadline(budget),profile(profiling),voxel_half_width(m.voxelHalfWidth()){}
+  void add(const Patch& p,const Vec3& n,double h,bool obstacle=false) {planes.push_back({p.span,p.begin,p.end,n,h,obstacle});}
   void limit(const Patch& p,const Vec3& n,double h,int depth=0) {
     if(supportBound<D>(p.controls,n,h)<=1e-9){add(p,n,h);return;}
     if(depth==options.certificate_depth)throw Failure{Status::InsufficientClearance,"continuous local/world bounds failed"};
@@ -97,9 +104,12 @@ template<int D> struct MapCover {
     const M2 u = eig.eigenvectors();
     const Eigen::Matrix<double, 2, 3> transform = u.transpose() * mm.transpose();
     const Vec3 normal = mm.col(0).cross(mm.col(1)).normalized();
+    const double short_axis=std::sqrt(lambda[0]);
+    // Limit only the extra length supplied by a group of spans. The patch's
+    // own chord always sets a geometric lower bound in the whitening metric.
     const double longitudinal =
-        std::max(.5 * (c[D] - c[0]).norm(), options.min_radius);
-    const double min_scale = std::min(std::sqrt(lambda[0]), longitudinal);
+        std::max({.5 * (c[D] - c[0]).norm(),options.min_radius,std::min(longitudinal_floor,group_axis_limit*short_axis)});
+    const double min_scale = std::min(short_axis,longitudinal);
     const double pad = options.robot_radius + options.safety_margin +
                        options.certificate_margin;
     // Whitening is constant over this patch. Hoist all divisions out of the
@@ -114,6 +124,11 @@ template<int D> struct MapCover {
                            transform;
     rotation.row(2) = normal.transpose();
     const Vec3 axes2(lambda[0], lambda[1], longitudinal * longitudinal);
+    Vec3 face_scale=Vec3::Zero();
+    if(prefer_faces) {
+      face_scale=(mm.rowwise().squaredNorm().array()+
+                  longitudinal*longitudinal*normal.array().square()).sqrt().inverse();
+    }
     // Keep spatial groups intact while planes remove individual spheres.
     // Bounds can discard/retain a whole group; only straddling groups need
     // per-sphere predicates. The eager path scans group minima; the lazy path
@@ -142,21 +157,37 @@ template<int D> struct MapCover {
       const auto& sphere = map.obstacles()[id];
       const Vec3 delta = sphere.center - cm;
       Vec3 n;
-      double h;
+      double h, voxel_support=0;
       auto separate = [&](const Vec3& direction) {
         const double length = direction.norm();
         if (length <= 1e-12) return false;
         n = direction / length;
-        h = n.dot(sphere.center) - sphere.radius - pad;
+        voxel_support = voxel_half_width>0 ? map.supportExtent(id,n) : 0.;
+        h = n.dot(sphere.center) - (voxel_half_width>0 ? voxel_support : sphere.radius) - pad;
         double support = -INFINITY;
         for (int j = 0; j <= D; ++j)
           support =
               std::max(support, n.dot(c[j]) + (m[j].transpose() * n).norm());
         return support < h - 1e-10;
       };
-      bool separated =
-          separate(rotation.transpose() * metricSphereNormal(
-              rotation * delta, axes2, sphere.radius + pad));
+      const Vec3 radial=rotation.transpose()*metricSphereNormal(rotation*delta,axes2,sphere.radius+pad);
+      bool separated=false;
+      if(prefer_faces && radial.squaredNorm()>1e-24) {
+        // Compare admissible homothetic growth of the metric ellipsoid. Flat
+        // voxel faces often support a whole wall with one plane.
+        Eigen::Index axis;
+        const double face_radius=voxel_half_width>0?voxel_half_width:sphere.radius;
+        const double face=((delta.cwiseAbs().array()-face_radius-pad)*
+                           face_scale.array()).maxCoeff(&axis);
+        const Vec3 face_normal=std::copysign(1.,delta[axis])*Vec3::Unit(axis);
+        const double extent=std::sqrt((mm.transpose()*radial).squaredNorm()+
+                                      std::pow(longitudinal*normal.dot(radial),2));
+        const double radial_support=map.supportExtent(id,radial);
+        const double gap=radial.dot(delta)-radial_support-pad*radial.norm();
+        if(face*extent>=.98*gap) separated=separate(face_normal);
+        if(!separated) separated=separate(radial);
+        if(!separated) separated=separate(face_normal);
+      } else separated=separate(radial);
       if (!separated) {
         const V2 rhs = transform * delta;
         V2 v = rhs.cwiseQuotient(lambda);
@@ -180,7 +211,7 @@ template<int D> struct MapCover {
       ++metrics.obstacle_pairs;
       next = -1;
       if (separated) {
-        add(p, n, h);
+        add(p, n, h, true);
         const Vec3 absolute = n.cwiseAbs();
         for (size_t block_id=0;block_id<blocks.size();++block_id) {
           auto& b=blocks[block_id];
@@ -191,18 +222,20 @@ template<int D> struct MapCover {
           // allowance; ambiguous groups use the original sphere predicate.
           const double guard = 1e-10 + 32 * std::numeric_limits<double>::epsilon() *
               (absolute.dot(b.center.cwiseAbs() + b.half) + b.max_radius + pad + std::abs(h));
-          if (projection - extent - b.max_radius - pad >= h + guard) {
+          const double max_support=voxel_half_width>0 ? voxel_support : b.max_radius;
+          const double min_support=voxel_half_width>0 ? voxel_support : b.min_radius;
+          if (projection - extent - max_support - pad >= h + guard) {
             b.alive = 0;
             b.nearest = -1;
             lazy.changed(int(block_id));
             continue;
           }
-          if (projection + extent - b.min_radius - pad >= h - guard) {
+          if (projection + extent - min_support - pad >= h - guard) {
             for (auto bits = b.alive; bits; bits &= bits - 1) {
               const int j = b.begin + __builtin_ctzll(bits);
               const auto& other = map.obstacles()[ids[j]];
               ++metrics.obstacle_pairs;
-              if (n.dot(other.center) - other.radius - pad >= h)
+              if (n.dot(other.center) - (voxel_half_width>0 ? voxel_support : other.radius) - pad >= h)
                 b.alive &= ~(1ull << (j - b.begin));
             }
           }
@@ -224,22 +257,30 @@ template<int D> struct MapCover {
       pairCuts(halves.second, failed, depth + 1);
     }
   }
+  void boundsForSpan(const Patch& p,const CoverLayout& layout) {
+    const double pad=options.robot_radius+options.safety_margin+options.certificate_margin;
+    for(int axis=0;axis<3;++axis){limit(p,Vec3::Unit(axis),bounds.upper[axis]-pad);limit(p,-Vec3::Unit(axis),-bounds.lower[axis]-pad);}
+    const auto& span=layout.spans[p.span];
+    for(size_t j=span.begin;j<span.end;++j) {
+      const auto& box=layout.parts[j];
+      const Patch part{p.span,box.begin,box.end,restrictCurve<D>(p.controls,box.begin,box.end)};
+      for(int axis=0;axis<3;++axis){limit(part,Vec3::Unit(axis),box.bounds.upper[axis]);limit(part,-Vec3::Unit(axis),-box.bounds.lower[axis]);}
+    }
+  }
+  void obstaclesForSpan(const Patch& p,const CoverLayout& layout) {
+    const auto& span=layout.spans[p.span];
+    const double pad=options.robot_radius+options.safety_margin+options.certificate_margin;
+    ++timings.reused_cover_spans;
+    StageTimer timer(profile);std::vector<int> scratch;
+    const auto& ids=query_cache.query(p.span,span.lower-Vec3::Constant(pad),span.upper+Vec3::Constant(pad),map,scratch);
+    timings.query_ms+=timer.elapsed();timer.restart();pairCuts(p,ids,0);timings.separation_ms+=timer.elapsed();
+  }
   void build(const Geometry& g,const CoverLayout& layout) {
     StageTimer total(profile);
-    const double pad=options.robot_radius+options.safety_margin+options.certificate_margin;
     for(int i=0;i<int(g.pieces());++i) {
       deadline.check();const Patch p{i,0,1,g.curve(i)};
-      for(int axis=0;axis<3;++axis){limit(p,Vec3::Unit(axis),bounds.upper[axis]-pad);limit(p,-Vec3::Unit(axis),-bounds.lower[axis]-pad);}
-      const auto& span=layout.spans[i];
-      for(size_t j=span.begin;j<span.end;++j) {
-        const auto& box=layout.parts[j];
-        const Patch part{i,box.begin,box.end,restrictCurve<D>(p.controls,box.begin,box.end)};
-        for(int axis=0;axis<3;++axis){limit(part,Vec3::Unit(axis),box.bounds.upper[axis]);limit(part,-Vec3::Unit(axis),-box.bounds.lower[axis]);}
-      }
-      ++timings.reused_cover_spans;
-      StageTimer timer(profile);std::vector<int> scratch;
-      const auto& ids=query_cache.query(i,span.lower-Vec3::Constant(pad),span.upper+Vec3::Constant(pad),map,scratch);
-      timings.query_ms+=timer.elapsed();timer.restart();pairCuts(p,ids,0);timings.separation_ms+=timer.elapsed();
+      boundsForSpan(p,layout);
+      obstaclesForSpan(p,layout);
     }
     timings.total_ms+=total.elapsed();
   }

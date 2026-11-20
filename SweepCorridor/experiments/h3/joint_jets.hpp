@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include "volume_jets.hpp"
+#include "cap_volume.hpp"
 #include "problem.hpp"
 namespace SweepCorridor::experiments::h3 {
 using V15=Eigen::Matrix<double,15,1>;
@@ -33,8 +34,6 @@ struct JointPatch {
     energy_weights.head<3>().setConstant(factor*OptimizerSettings::center_energy/(length*length*length));
     energy_weights.tail<6>().setConstant(factor*OptimizerSettings::shape_energy/(length*length*length));
     std::map<std::tuple<int,double,double,int>,int> shared_rows;
-    constexpr double t[5]={.046910077030668,.230765344947158,.5,.769234655052842,.953089922969332};
-    constexpr double w[5]={.118463442528095,.239314335249683,.284444444444444,.239314335249683,.118463442528095};
     for(int span=patch.begin;span<patch.end;++span){const int k=span-patch.begin;const double h=m.basis.breaks[span+1]-m.basis.breaks[span];
       const auto& p=patch.curves[k];
       const double f0=(span==node?-6.:6.)/(h*h),f1=-f0;
@@ -49,7 +48,7 @@ struct JointPatch {
       const Map cross=nj*energy_weights.asDiagonal()*j;
       energy_hessian.topRightCorner<6,9>()+=cross.transpose();energy_hessian.bottomLeftCorner<9,6>()+=cross;
       energy_rows.push_back({span,f0,f1,q0,q1,h/3,1/(h*h)});
-      for(int q=0;q<5;++q){const double u=t[q],r=1-u;auto& s=samples[sample_count++];
+      for(int q=0;q<5;++q){const double u=gaussNodes[q],r=1-u;auto& s=samples[sample_count++];
         s.value=r*r*r*p[0]+3*r*r*u*p[1]+3*r*u*u*p[2]+u*u*u*p[3];
         s.node_basis=span==node?r*r*(1+2*u):u*u*(3-2*u);
         s.node_first=(span==node?-1.:1.)*6*r*u/h;
@@ -57,7 +56,7 @@ struct JointPatch {
         s.jet_first=(3*r*(1-3*u)*patch.basis[k][1]+3*u*(2-3*u)*patch.basis[k][2])/h;
         s.tangent=(3*r*r*(p[1]-p[0])+6*r*u*(p[2]-p[1])+3*u*u*(p[3]-p[2])).head<3>()/h;
 
-        s.weight=std::acos(-1.)*h*w[q];
+        s.weight=std::acos(-1.)*h*gaussWeights[q];
         s.span=span;s.basis<<r*r*r,3*r*r*u,3*r*u*u,u*u*u;
         s.first<<-3*r*r,3*r*(1-3*u),3*u*(2-3*u),3*u*u;s.first/=h;
       }
@@ -79,8 +78,11 @@ struct JointPatch {
           }
           found=intervals.emplace(key,rows).first;
         }
-        for(int b=0;b<(c.begin==c.end?1:4);++b)if(found->second[b]>=0)
-          groups[found->second[b]].supports.push_back({c.normal,c.bound});
+        for(int b=0;b<(c.begin==c.end?1:4);++b)if(found->second[b]>=0) {
+          auto& supports=groups[found->second[b]].supports;
+          supports.push_back({c.normal,c.bound});
+          supports.back().obstacle=c.obstacle;
+        }
       }
     }
     if(shared)for(const auto* source:*shared){Group g;g.span=source->span;g.basis=source->bernstein;g.reference.setZero();
@@ -92,7 +94,7 @@ struct JointPatch {
       // releasing jets. Only construction and exact parallel-plane merging
       // are reused; the retained prefix is deliberately not used here.
       g.reused=&source->supports;groups.push_back(std::move(g));}
-    for(auto& g:groups){auto key=[](const auto& p){return std::make_tuple(p.normal.x(),p.normal.y(),p.normal.z(),p.bound);};
+    for(auto& g:groups){auto key=[](const auto& p){return std::make_tuple(p.normal.x(),p.normal.y(),p.normal.z(),p.bound,p.obstacle);};
       std::sort(g.supports.begin(),g.supports.end(),[&](const auto& a,const auto& b){return key(a)<key(b);});
       g.supports.erase(std::unique(g.supports.begin(),g.supports.end(),[](const auto& a,const auto& b){return a.normal==b.normal;}),g.supports.end());}
     const double offset=2*OptimizerSettings::offset_weight*m.basis.weight(node);
@@ -134,9 +136,11 @@ struct JointPatch {
     return result;
   }
   template<bool Feedback=false>
-  double objective(const V15& d,double global_volume,double mu,V15* gradient=nullptr,M15* hessian=nullptr,double* pressure=nullptr)const{
+  double objective(const V15& d,double global_volume,double mu,V15* gradient=nullptr,M15* hessian=nullptr,double* pressure=nullptr,
+                   double cap_loss=0,const V15* cap_gradient=nullptr)const{
     if constexpr(Feedback)*pressure=0;
-    V15 vg;const double total=global_volume+volume(d,gradient?&vg:nullptr)-old_volume;if(total<=0)return INFINITY;
+    V15 vg;const double total=global_volume+volume(d,gradient?&vg:nullptr)-old_volume-cap_loss;if(!(total>0))return INFINITY;
+    if(gradient && cap_gradient) vg-=*cap_gradient;
     double cost=energy_gradient.dot(d)+.5*d.dot(energy_hessian*d)-std::log(total/global_volume);
     if(gradient)*gradient=energy_gradient+energy_hessian*d-vg/total;
     if(hessian){*hessian=energy_hessian;hessian->noalias()+=vg*vg.transpose()/(total*total);}
@@ -159,11 +163,21 @@ struct JointPatch {
         if(v[0]<=0||slack<=0)return INFINITY;
         cost-=mu*std::log(slack);
         if(gradient){const double f=2*mu/slack;
-          if constexpr(Feedback){if(p.normal.cwiseAbs().sum()>1+1e-12)*pressure=std::max(*pressure,f*v[0]);}
-          for(int channel=0;channel<3;++channel)g.segment<3>(3*channel)+=f*v[channel]*p.normal;
-          if(hessian){const Eigen::Matrix3d nn=f*p.normal*p.normal.transpose();
-            for(int row=0;row<3;++row)for(int col=row;col<3;++col)
-              h.block<3,3>(3*row,3*col)+=(2/slack*v[row]*v[col]+(row==col?(row?1.:-1.):0))*nn;}}
+          if constexpr(Feedback){if(p.obstacle)*pressure=std::max(*pressure,f*v[0]);}
+          if(p.axis>=0) {
+            const int a=p.axis;
+            for(int ch=0;ch<3;++ch) g[3*ch+a]+=f*v[ch]*p.normal[a];
+            if(hessian) {
+              const double nn=f*p.normal[a]*p.normal[a];
+              for(int row=0;row<3;++row)for(int col=row;col<3;++col)
+                h(3*row+a,3*col+a)+=(2/slack*v[row]*v[col]+(row==col?(row?1.:-1.):0))*nn;
+            }
+          } else {
+            for(int ch=0;ch<3;++ch)g.segment<3>(3*ch)+=f*v[ch]*p.normal;
+            if(hessian){const Eigen::Matrix3d nn=f*p.normal*p.normal.transpose();
+              for(int row=0;row<3;++row)for(int col=row;col<3;++col)
+                h.block<3,3>(3*row,3*col)+=(2/slack*v[row]*v[col]+(row==col?(row?1.:-1.):0))*nn;}
+          }}
       }
       if(gradient){gradient->head<6>()+=group.node_basis*pull(g);gradient->tail<9>()+=group.jet_basis*g;}
       if(hessian){for(int row=1;row<3;++row)for(int col=0;col<row;++col)h.block<3,3>(3*row,3*col)=h.block<3,3>(3*col,3*row).transpose();
@@ -185,8 +199,8 @@ struct JointPatch {
     c3::CubicProblem::LineModel barrier;
     Vec3 volume=Vec3::Zero();
     double total=0;
-    double delta(double alpha)const{
-      const double dv=alpha*(volume[0]+alpha*(volume[1]+alpha*volume[2]));
+    double delta(double alpha,double cap_loss=0)const{
+      const double dv=alpha*(volume[0]+alpha*(volume[1]+alpha*volume[2]))-cap_loss;
       return dv>-total?barrier.delta(alpha)-std::log1p(dv/total):INFINITY;
     }
   };
@@ -224,7 +238,11 @@ inline void optimizeJointJets(Model& m,const std::vector<internal::detail::Suppo
     const Problem::Constraints* shared=nullptr,const std::vector<unsigned char>* selected_nodes=nullptr,JointFeedback* feedback=nullptr){
   StageTimer timer(settings.profile);auto geometry=m.geometry();double volume=sweptVolume(m,m.x);
   std::vector<std::vector<int>> planes(geometry.pieces());for(int k=0;k<int(cover.size());++k)planes[cover[k].span].push_back(k);
-  std::array<Anchor,2> anchors;for(int end=0;end<2;++end)anchors[end].u=m.anchor_parameters[end];anchorObjective(m,m.x,anchors,1.);
+  std::array<Anchor,2> anchors;for(int end=0;end<2;++end)anchors[end].u=m.anchor_parameters[end];
+  if(!std::isfinite(anchorObjective(m,m.x,anchors,1.))) return;
+  const double discount=1-settings.cap_volume_weight;
+  double cap=discount>0 ? capVolume(m,m.x,anchors) : 0;
+  volume-=discount*cap;
   const double mu=1e-5/m.basis.count;
   std::vector<JointPatch> patches;patches.reserve(m.basis.count);
   JointFeedback internal_feedback;if(!feedback&&(settings.joint_budget_fraction<1||settings.joint_budget_share<1))feedback=&internal_feedback;
@@ -259,10 +277,29 @@ inline void optimizeJointJets(Model& m,const std::vector<internal::detail::Suppo
     const V9 old=m.jets[node];V15 d=V15::Zero();bool changed=false;
     const bool touches_anchor=(anchors[0].span>=patch.patch.begin&&anchors[0].span<patch.patch.end)||
                              (anchors[1].span>=patch.patch.begin&&anchors[1].span<patch.patch.end);
+    const bool affects_cap=discount>0 && (patch.patch.begin<=anchors[0].span || patch.patch.end>anchors[1].span);
+    const double initial_cap=cap;
+    auto assign=[&](const V15& state) {
+      m.jets[node]=old+patch.patch.scale*state.tail<9>();
+      m.x.segment<6>(6*node)=patch.value+state.head<6>();
+    };
     for(int iteration=0;iteration<settings.joint_jet_steps;++iteration){V15 gradient;M15 hessian;
       phase.restart();
       double pressure=0;
-      const double cost=feedback?patch.objective<true>(d,volume,mu,&gradient,&hessian,&pressure):patch.objective(d,volume,mu,&gradient,&hessian);
+      V15 cap_gradient=V15::Zero();
+      if(affects_cap) {
+        cap=capVolume(m,m.x,anchors,[&](int span,const c3::Curve<3,V9>& g) {
+          if(span!=node && span+1!=node) return;
+          const bool left=span==node;
+          cap_gradient.head<6>()+=discount*patch.pull(left?V9(g[0]+g[1]):V9(g[2]+g[3]));
+          const double h=m.basis.breaks[span+1]-m.basis.breaks[span];
+          cap_gradient.tail<9>()+=(discount*h*patch.patch.scale/3)*(left?g[1]:V9(-g[2]));
+        });
+      }
+      const double cap_loss=discount*(cap-initial_cap);
+      const double cost=feedback
+          ? patch.objective<true>(d,volume,mu,&gradient,&hessian,&pressure,cap_loss,&cap_gradient)
+          : patch.objective(d,volume,mu,&gradient,&hessian,nullptr,cap_loss,&cap_gradient);
       if(!std::isfinite(cost))break;
       if(feedback)feedback->nodes[node].pressure=pressure;
       metrics.joint_assembly_ms+=phase.elapsed();phase.restart();
@@ -277,25 +314,39 @@ inline void optimizeJointJets(Model& m,const std::vector<internal::detail::Suppo
       const double decrease=gradient.dot(step);if(decrease>=-1e-10)break;bool accepted=false;
       if(feedback)feedback->nodes[node].decrement=-decrease;
       metrics.joint_solve_ms+=phase.elapsed();phase.restart();
-      JointPatch::Line line;if(settings.joint_fast_line)line=patch.prepareLine(d,step,volume,mu);
+      JointPatch::Line line;
+      if(settings.joint_fast_line) {
+        line=patch.prepareLine(d,step,volume,mu);
+        line.total-=cap_loss;
+      }
       const double initial_step=settings.joint_fast_line?line.barrier.step:1.;
       for(double alpha=initial_step;alpha>=1e-10;alpha*=.5){const V15 next=d+alpha*step;
         metrics.joint_backtracks+=alpha<initial_step;
-        const double delta=settings.joint_fast_line?line.delta(alpha):patch.objective(next,volume,mu)-cost;
-        if(delta>1e-4*alpha*decrease)continue;
-        bool regular=true;for(int span=patch.patch.begin;span<patch.patch.end;++span){c3::Certificate certificate;
-          if(!c3::jacobianCertificate<3>(patch.curve(span,next),certificate)){regular=false;break;}}
-        if(!regular)continue;
-        m.jets[node]=old+patch.patch.scale*next.tail<9>();m.x.segment<6>(6*node)=patch.value+next.head<6>();auto trial=anchors;
-        if(touches_anchor&&!std::isfinite(anchorObjective(m,m.x,trial,1.))){m.jets[node]=old+patch.patch.scale*d.tail<9>();m.x.segment<6>(6*node)=patch.value+d.head<6>();continue;}
-        anchors=trial;d=next;accepted=changed=true;
+        auto trial=anchors;
+        double next_cap=cap;
+        if(touches_anchor || affects_cap) {
+          assign(next);
+          if(touches_anchor && !std::isfinite(anchorObjective(m,m.x,trial,1.))) {assign(d);continue;}
+          if(affects_cap) next_cap=capVolume(m,m.x,trial);
+        }
+        const double delta=settings.joint_fast_line
+            ? line.delta(alpha,discount*(next_cap-cap))
+            : patch.objective(next,volume,mu,nullptr,nullptr,nullptr,discount*(next_cap-initial_cap))-cost;
+        bool valid=delta<=1e-4*alpha*decrease;
+        for(int span=patch.patch.begin;valid && span<patch.patch.end;++span) {
+          c3::Certificate certificate;
+          valid=c3::jacobianCertificate<3>(patch.curve(span,next),certificate,settings.regularity(length).onSpan(m.basis.breaks[span+1]-m.basis.breaks[span]));
+        }
+        if(!valid) {if(touches_anchor || affects_cap) assign(d);continue;}
+        if(!touches_anchor && !affects_cap) assign(next);
+        anchors=trial;cap=next_cap;d=next;accepted=changed=true;
         if(feedback)feedback->nodes[node].reward=std::max(0.,-delta);
         break;
       }
       metrics.joint_line_ms+=phase.elapsed();metrics.joint_steps+=accepted;
       if(!accepted)break;
     }
-    if(changed){const double gain=patch.volume(d)-patch.old_volume;
+    if(changed){const double gain=patch.volume(d)-patch.old_volume-discount*(cap-initial_cap);
       if(feedback)feedback->nodes[node].gain+=std::max(0.,gain)/volume;
       volume+=gain;for(int span=patch.patch.begin;span<patch.patch.end;++span){const auto p=patch.curve(span,d);
         std::copy(p.begin(),p.end(),geometry.controls.begin()+4*span);}}

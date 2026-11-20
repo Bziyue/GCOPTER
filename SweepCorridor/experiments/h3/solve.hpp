@@ -1,36 +1,21 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include "problem_impl.hpp"
-#include "anchors.hpp"
+#include "cap_volume.hpp"
 namespace SweepCorridor::experiments::h3 {
-inline bool regularGeometry(const Model& model,const Eigen::VectorXd& x) {
+inline bool regularGeometry(const Model& model,const Eigen::VectorXd& x,c3::JacobianRequirement relative_margin) {
   const auto g=model.geometry(x);c3::Certificate result;
-  for(int i=0;i<int(g.pieces());++i)if(!c3::jacobianCertificate<3>(g.curve(i),result))return false;
+  for(int i=0;i<int(g.pieces());++i)if(!c3::jacobianCertificate<3>(g.curve(i),result,relative_margin.onSpan(g.breaks[i+1]-g.breaks[i])))return false;
   return true;
 }
 template<class Solve>
 inline void constrainCapStep(const Model& model,const Eigen::VectorXd& x,Eigen::VectorXd& step,Solve&& solve) {
   std::array<Vec3,2> normals{{inwardCapNormal(model,0),inwardCapNormal(model,1)}};
   const std::array<int,2> offsets{{0,int(x.size())-6}};
-  Eigen::Vector2d gaps,rhs;for(int i=0;i<2;++i){gaps[i]=normals[i].dot(x.segment<3>(offsets[i]));rhs[i]=gaps[i]+normals[i].dot(step.segment<3>(offsets[i]));}
-  const int violated=(rhs[0]<0?1:0)|(rhs[1]<0?2:0);if(!violated)return;
-  const Eigen::VectorXd unconstrained=step;Eigen::Matrix<double,Eigen::Dynamic,2> inverse_normals(x.size(),2);
-  std::array<bool,2> ready{{false,false}};
-  auto attempt=[&](int mask){Eigen::Matrix2d schur=Eigen::Matrix2d::Identity();Eigen::Vector2d b=Eigen::Vector2d::Zero();
-    for(int i=0;i<2;++i)if((mask>>i)&1){
-      if(!ready[i]){Eigen::VectorXd v=Eigen::VectorXd::Zero(x.size()),answer;v.segment<3>(offsets[i])=normals[i];solve(v,answer);inverse_normals.col(i)=answer;ready[i]=true;}
-      b[i]=rhs[i];}
-    for(int i=0;i<2;++i)if((mask>>i)&1)for(int j=0;j<2;++j)
-      schur(i,j)=((mask>>j)&1)?normals[i].dot(inverse_normals.col(j).segment<3>(offsets[i])):0;
-    const Eigen::Vector2d multipliers=schur.ldlt().solve(b);
-    if(multipliers.maxCoeff()>1e-10)return false;
-    Eigen::VectorXd candidate=unconstrained;for(int i=0;i<2;++i)if((mask>>i)&1)candidate-=multipliers[i]*inverse_normals.col(i);
-    for(int i=0;i<2;++i)if(gaps[i]+normals[i].dot(candidate.segment<3>(offsets[i])) < -1e-9)return false;
-    step=std::move(candidate);return true;
-  };
-  if(attempt(violated))return;
-  for(int mask:{3,1,2})if(mask!=violated&&attempt(mask))return;
-  throw std::runtime_error("cap constrained Newton direction");
+  Eigen::Vector2d gaps;
+  for(int i=0;i<2;++i)gaps[i]=normals[i].dot(x.segment<3>(offsets[i]));
+  const auto slack=[&](int i,const Eigen::VectorXd& d){return gaps[i]+normals[i].dot(d.segment<3>(offsets[i]));};
+  if(!projectCapStep(2,offsets,normals,step,slack,solve))throw std::runtime_error("cap constrained Newton direction");
 }
 inline void Problem::optimize(Eigen::VectorXd& x,OptimizerMetrics& metrics,const Deadline& deadline,int first_stage,int last_stage)const {
   metrics.construction_reuses+=reused_construction;
@@ -49,10 +34,20 @@ inline void Problem::optimize(Eigen::VectorXd& x,OptimizerMetrics& metrics,const
   for(int stage=first_stage;stage<last_stage;++stage){const double anchor_mu=barriers[stage],mu=anchor_mu/model.basis.count;
     bool converged=false,stalled=false;const int limit=stage?settings.corrector_iterations:settings.iterations;
     for(int it=0;it<limit;++it){deadline.check();StageTimer timer(settings.profile);
-      const double base=objective(x,mu,&g,&h,false),volume=sweptVolume(model,x,&vg);
+      const double base=objective(x,mu,&g,&h,false);
+      double volume=sweptVolume(model,x,&vg);
       const double anchor_cost=anchorObjective(model,x,anchors,anchor_mu,&g,&h);
       if(!std::isfinite(base))throw std::runtime_error("free-boundary support interior");
       if(!std::isfinite(anchor_cost))throw std::runtime_error("free-boundary anchor inversion / inclusion");
+      const double discount=1-settings.cap_volume_weight;
+      double cap=0;
+      if(discount>0) {
+        cap=capVolume(model,x,anchors,[&](int span,const c3::Curve<3,V9>& control) {
+          vg.segment<6>(6*span)-=discount*model.jacobian(span).transpose()*(control[0]+control[1]);
+          vg.segment<6>(6*span+6)-=discount*model.jacobian(span+1).transpose()*(control[2]+control[3]);
+        });
+        volume-=discount*cap;
+      }
       if(!(volume>0))throw std::runtime_error("free-boundary nonpositive volume");
       vg/=volume;g-=vg;
       metrics.assembly_ms+=timer.elapsed();metrics.gradient_support_rows+=metrics.active_constraints;metrics.hessian_support_rows+=metrics.active_constraints;
@@ -72,16 +67,19 @@ inline void Problem::optimize(Eigen::VectorXd& x,OptimizerMetrics& metrics,const
       const Vec3 polynomial=volumeLine(model,x,step);
       bool accepted=false;std::array<Anchor,2> trial_anchors;
       for(int trial=0;trial<28&&alpha>1e-12;++trial,alpha*=.5){
-        const double dv=alpha*(polynomial[0]+alpha*(polynomial[1]+alpha*polynomial[2]));if(dv<=-volume)continue;
+        double dv=alpha*(polynomial[0]+alpha*(polynomial[1]+alpha*polynomial[2]));
         next=x+alpha*step;trial_anchors=anchors;
         const double ca=anchorObjective(model,next,trial_anchors,anchor_mu);
+        if(!std::isfinite(ca))continue;
+        if(discount>0) dv-=discount*(capVolume(model,next,trial_anchors)-cap);
+        if(!(dv>-volume))continue;
         const double other=-std::log1p(dv/volume)+ca-anchor_cost,decrease=-1e-4*alpha*decrement;
         ++metrics.bound_line_evaluations;metrics.line_support_rows+=metrics.active_constraints;
         bool sufficient=line.upperBound(alpha)+other<=decrease;
         if(sufficient)++metrics.bound_line_accepts;
         else {++metrics.exact_line_evaluations;metrics.line_support_rows+=metrics.active_constraints;sufficient=line.delta(alpha)+other<=decrease;}
         if(sufficient){
-          StageTimer cert_timer(settings.profile);const bool regular=regularGeometry(model,next);metrics.certificate_ms+=cert_timer.elapsed();
+          StageTimer cert_timer(settings.profile);const bool regular=regularGeometry(model,next,regularity);metrics.certificate_ms+=cert_timer.elapsed();
           if(regular){accepted=true;break;}++metrics.regularity_backtracks;
         }++metrics.backtracks;
       }

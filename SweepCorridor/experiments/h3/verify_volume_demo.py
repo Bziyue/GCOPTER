@@ -15,15 +15,17 @@ for scene in ('perlin','maze'):
     source=max(paths,key=lambda p:p.stat().st_mtime).parent
     metrics=json.loads((source/'metrics.json').read_text())
     assert metrics['shape_mode']=='h3' and metrics['joint_steps']>0
+    assert metrics['obstacle_model']=='solid_voxels' and metrics['continuity']==1
     destination=root/scene;destination.mkdir(exist_ok=True)
     env=os.environ.copy();env['H3_MODE']='h3_new'
     command=[str(binary),str(source/'seed.xyz'),str(source.parent/f"map_{metrics['map_version']}.xyz"),str(destination),
-        *map(str,metrics['bounds_lower']+metrics['bounds_upper']),'1']
+        *map(str,metrics['bounds_lower']+metrics['bounds_upper']),'1',str(metrics['resolution'])]
     with (destination/'process.log').open('w') as log:subprocess.run(command,stdout=log,stderr=subprocess.STDOUT,env=env,check=True)
     x=np.loadtxt(source/'cubic_controls.csv',delimiter=',',skiprows=1)
     y=np.loadtxt(destination/'corridor.csv',delimiter=',',skiprows=1)
     error=float(abs(x-y).max());assert error<1e-7
     rows.append(dict(scene=scene,source=str(source.relative_to(repo)),max_coefficient_error=error,
+        coarse_start_used=metrics['coarse_start_used'],shared_obstacle_spans=metrics['shared_obstacle_spans'],
         joint_steps=metrics['joint_steps'],end_steps=metrics.get('end_steps'),refreshed_spans=metrics.get('refreshed_spans'),budget_skips=metrics.get('budget_skips'),corridor_ms=metrics['corridor_ms'],smoke=smoke))
     print(scene,'max coefficient error',error,flush=True)
 data=dict(purpose='ROS goal-message integration and exact offline replay; not a performance benchmark',

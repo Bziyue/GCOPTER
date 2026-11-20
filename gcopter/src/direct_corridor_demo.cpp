@@ -354,21 +354,27 @@ class DirectDemo final : public rclcpp::Node {
             (p.array() < bounds_.upper.array()).all())
           voxels.setOccupied(p);
       }
-      std::vector<Sphere> spheres;
       std::vector<Vec3> centers;
       const auto& cells = voxels.getVoxels();
-      const double radius = std::sqrt(3.) * .5 * resolution_;
       for (std::size_t k = 0; k < cells.size(); ++k)
         if (cells[k]) {
           const int z = k / (dims_.x() * dims_.y()),
                     rest = k - z * dims_.x() * dims_.y();
           const Vec3 p = voxels.posI2D(
               Eigen::Vector3i(rest % dims_.x(), rest / dims_.x(), z));
-          spheres.push_back({p, radius});
           centers.push_back(p);
         }
-      if (spheres.empty()) throw std::runtime_error("empty occupied map");
-      map_ = std::make_shared<ObstacleIndex>(std::move(spheres));
+      if (centers.empty()) throw std::runtime_error("empty occupied map");
+      if (shape_mode_ == "h3") {
+        map_ = std::make_shared<ObstacleIndex>(
+            ObstacleIndex::fromOccupiedVoxels(centers, resolution_));
+      } else {
+        const double radius = std::sqrt(3.) * .5 * resolution_;
+        std::vector<Sphere> spheres;
+        spheres.reserve(centers.size());
+        for (const auto& p : centers) spheres.push_back({p, radius});
+        map_ = std::make_shared<ObstacleIndex>(std::move(spheres));
+      }
       ++map_version_;
       map_ms_ = milliseconds(start);
       writePoints(session_ / ("map_" + std::to_string(map_version_) + ".xyz"),
@@ -632,12 +638,19 @@ class DirectDemo final : public rclcpp::Node {
            << ",\"local_range\":" << request_options.local_range
            << ",\"local_progress\":" << request_options.local_progress
            << ",\"shape_mode\":\"" << shape_mode_ << '"'
+           << ",\"obstacle_model\":\"" << (shape_mode_=="h3"?"solid_voxels":"enclosing_spheres") << '"'
+           << ",\"firi_obstacle_model\":\"enclosing_spheres\""
            << ",\"continuity\":" << (shape_mode_=="h3"?1:2)
            << ",\"jet_updates\":" << result.jet_updates
            << ",\"joint_steps\":" << result.joint_steps
            << ",\"end_steps\":" << result.end_steps
            << ",\"refreshed_spans\":" << result.refreshed_spans
            << ",\"budget_skips\":" << result.budget_skips
+           << ",\"coarse_start_used\":" << (result.coarse_start_used ? "true" : "false")
+           << ",\"shared_obstacle_spans\":" << result.shared_obstacle_spans
+           << ",\"area_selected_spans\":" << result.area_selected_spans
+           << ",\"intermediate_radius_used\":" << (result.intermediate_radius_used ? "true" : "false")
+           << ",\"core_smoothed\":" << (result.core_smoothed ? "true" : "false")
            << ",\"search_timeout\":" << search_timeout_
            << ",\"search_range\":" << search_range_
            << ",\"corridor_budget_ms\":" << options_.budget_ms

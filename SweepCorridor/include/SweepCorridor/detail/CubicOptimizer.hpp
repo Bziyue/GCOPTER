@@ -43,6 +43,7 @@ struct CubicProblem {
   struct Support {
     Vec3 normal;double bound;bool redundant=false;
     std::int8_t axis=-1;int original_id=-1;
+    bool obstacle=false;
     Vec3 project(const V9& y)const {
       if(axis>=0){const double n=normal[axis];return Vec3(bound-n*y[axis],n*y[axis+3],n*y[axis+6]);}
       return Vec3(bound-normal.dot(y.head<3>()),normal.dot(y.segment<3>(3)),normal.dot(y.tail<3>()));
