@@ -8,6 +8,13 @@
 #include <numeric>
 #include <stdexcept>
 namespace SweepCorridor::internal {
+inline ObstacleIndex ObstacleIndex::fromPoints(const std::vector<Vec3>& points) {
+  std::vector<Sphere> obstacles;
+  obstacles.reserve(points.size());
+  for (const auto& point : points) obstacles.push_back({point, 0.});
+  return ObstacleIndex(std::move(obstacles));
+}
+
 inline ObstacleIndex ObstacleIndex::fromOccupiedVoxels(
     const std::vector<Vec3>& centers, double resolution) {
   const double half = .5 * resolution;

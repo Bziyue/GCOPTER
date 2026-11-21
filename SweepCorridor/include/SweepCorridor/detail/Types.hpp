@@ -28,6 +28,8 @@ struct Bounds {
 class ObstacleIndex {
  public:
   explicit ObstacleIndex(std::vector<Sphere> obstacles);
+  /** Zero-extent obstacle samples in metres. The generator applies robot_radius. */
+  static ObstacleIndex fromPoints(const std::vector<Vec3>& points);
   /** Occupied axis-aligned solid cells. The BVH and obstacles() expose their
    * enclosing spheres for conservative consumers. H3 uses the exact cells. */
   static ObstacleIndex fromOccupiedVoxels(const std::vector<Vec3>& centers,

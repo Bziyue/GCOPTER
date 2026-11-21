@@ -79,9 +79,13 @@ coefficients and caches; use one instance per thread. `reset()` clears the cache
 The kernel contains no clocks or profiling counters. `first(u)` and
 `evaluateFirst(u,x)` skip second derivatives and Hessian work entirely.
 
-Obstacles are closed spheres. A voxel of edge a can be represented by its
-circumsphere of radius `sqrt(3)*a/2`. Bounds and obstacles are inflated using the
-same robot and safety margins. Successful generation includes continuous
+Build a point map with `ObstacleIndex::fromPoints(points)`, a solid axis-aligned
+voxel map with `ObstacleIndex::fromOccupiedVoxels(centers, resolution)`, or a
+sphere map with `ObstacleIndex(std::vector<Sphere>{...})`. Point samples have
+zero extent. H3 uses exact voxel support and distance. To model a voxel of edge
+`a` as a sphere, pass its circumsphere of radius `sqrt(3)*a/2`. Supply the
+physical obstacle geometry once. The generator reserves `robot_radius` plus
+`safety_margin` around obstacles and inside world bounds. Successful generation includes continuous
 support and full-section Jacobian certification. An unsuccessful result has no
 usable corridor. `certify()` is an explicit certificate recheck, outside normal
 generation timing. Local Jacobian positivity does not imply global injectivity.

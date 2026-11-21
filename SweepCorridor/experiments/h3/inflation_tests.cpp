@@ -180,6 +180,16 @@ int main() {
   assert(!c3::jacobianCertificate<3>(cylinder,certificate,disk));
   assert(c3::jacobianCertificate<3>(cylinder,certificate,{.05,true,.02}));
   const std::vector<sc::Vec3> seed{{-2,.58,0},{2,.58,0}};
+  const auto points=sc::ObstacleIndex::fromPoints({sc::Vec3::Zero()});
+  assert(points.pointDistance(0,{0,.25,0})==.25 && points.supportExtent(0,sc::Vec3::UnitX())==0);
+  const std::vector<sc::Vec3> close_seed{{-2,.30,0},{2,.30,0}};
+  auto close_options=options;
+  close_options.robot_radius=.2;close_options.safety_margin=.05;
+  const auto point_result=h3::generate(close_seed,points,bounds,close_options,settings);
+  assert(point_result.status==sc::Status::Success);
+  assert(h3::auditObstacleCover(point_result.corridor,point_result.cover,points,.25+close_options.certificate_margin));
+  close_options.robot_radius=.26;
+  assert(h3::generate(close_seed,points,bounds,close_options,settings).status==sc::Status::SeedCollision);
   const auto cube=h3::generate(seed,voxels,bounds,options,settings);
   assert(cube.status==sc::Status::Success);
   const auto cert=c3::certify(cube.corridor,cube.cover,options.certificate_depth,settings.regularity(4));

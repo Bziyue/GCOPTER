@@ -2,7 +2,7 @@
 
 从 `ros2@7d4fc603607f131a1d282247c3e523c11da5d06e` 建立的独立实验。主库及 RViz2 默认使用 C3，RViz2 可通过 `corridor:=h3` 切换到 H3。实验程序输出相同的四控制点三次 Bézier 几何格式，但几何连续性约定为 **C¹**。
 
-H3 的搜索、种子检查和分离面共用实体体素几何。显式传入 `ObstacleIndex(std::vector<Sphere>)` 可使用球障碍。在同一 BVH 查询域内，粗网格膨胀允许相邻段共享经过整段验证的分离面。细网格通过精确插入节点得到。当前默认与上一代实体体素 H3 的逐例对照见[核心体积与生成耗时](../../../docs/validation/h3_core/README.md)。早期球障碍对照见[分层膨胀实验](../../../docs/H3实体体素与分层膨胀.md)。
+RViz2 默认把占据栅格作为实体体素交给 H3，搜索、种子检查和分离面共用同一种几何。在同一 BVH 查询域内，粗网格膨胀允许相邻段共享经过整段验证的分离面。细网格通过精确插入节点得到。当前默认与上一代实体体素 H3 的逐例对照见[核心体积与生成耗时](../../../docs/validation/h3_core/README.md)。早期球障碍对照见[分层膨胀实验](../../../docs/H3实体体素与分层膨胀.md)。
 
 每个 Hermite 节点有三个中心偏移和三个对称形状变量，相邻段共享九通道一阶导数。全局膨胀采用六维块三对角求解，细网格再耦合优化节点值与导数。每个十五维局部步只影响相邻两段。第二次联合扫描访问全部节点。随后按障碍压力选段换面，按核心截面的可行面积余量补选节点，执行一轮局部修正。自由端中心块可在没有障碍压力时单独更新。
 
@@ -11,6 +11,26 @@ H3 的搜索、种子检查和分离面共用实体体素几何。显式传入 `
 - `joint_jets.hpp` 与 `end_blocks.hpp` 分别处理节点与端部更新。线搜索保留完整扫掠体积的多项式，直接计算试探步的自由端扣减量。
 - `jets.hpp` 提出自然样条导数并按整段证书裁剪。`wall_quality.hpp` 对中间半径回退后的最终平滑候选核对物理侧壁曲率和核心体积。`volume_jets.hpp` 用于仅释放导数的历史消融。
 - `inflation_cover.hpp`、`local_refinement.hpp` 和 `generator.hpp` 负责粗细转移、分离面共享、局部换面、初始化重试与在线生成。点和线段到原始障碍的距离由主库的 `ObstacleIndex` 提供。
+
+## 障碍输入与内缩半径
+
+生成器接受同一个 `SweepCorridor::ObstacleIndex`，调用方按原始地图的几何含义构造索引。
+
+| 原始输入 | C++ 入口 | 几何含义 |
+|---|---|---|
+| 障碍点坐标 | `ObstacleIndex::fromPoints(points)` | 每个采样点自身半径为零，点间空间保持空闲 |
+| 占据体素中心和边长 | `ObstacleIndex::fromOccupiedVoxels(centers, resolution)` | 占据整个轴对齐立方体 |
+| 带半径的障碍球 | `ObstacleIndex(std::vector<Sphere>{...})` | 每个障碍独立指定球心和物理半径 |
+
+以上长度单位均为米。三种输入都直接传原始几何。H3 通过 `options.robot_radius` 为机器人球体留空间，`safety_margin` 表示附加净空，分离面认证还预留 `certificate_margin`。把占据体素的中心当作点输入，会改变障碍的物理范围。
+
+```cpp
+namespace sc = SweepCorridor;
+auto obstacles = sc::ObstacleIndex::fromPoints(points);  // std::vector<sc::Vec3>
+sc::Options options;
+options.robot_radius = 0.20;
+auto result = sc::experiments::h3::generate(seed, obstacles, bounds, options, settings);
+```
 
 ## 构建和运行
 
@@ -39,6 +59,7 @@ python3 SweepCorridor/experiments/h3/run.py \
 | `h3_pre_core` | 上一代实体体素、粗细网格 H3 | 本轮几何对照 |
 | `h3_core_full` / `h3_core_pressure` | 全体积权重 / 仅按压力选择局部节点 | 核心目标与面积选点消融 |
 | `h3_core_span_scale` / `h3_core_no_share` | 切换到单段尺度 / 停用经过认证的平面共享 | 独立验证分离面尺度与复用 |
+| `h3_points` | 与 `h3_new` 相同的求解器，输入零半径障碍点 | 独立检查点障碍与机器人的净空 |
 | `h3_spheres` | 与 `h3_new` 相同的求解器，输入旧版外接球 | 单独测量求解策略的收益 |
 | `h3_voxel_single` / `h3_voxel_fine` | 上一代 H3 逐段建面或从细网格开始 | 分层膨胀实验的历史配置 |
 | `h3_world` | 更新导数，采用九维世界 Hessian 回传 | 六维组装的独立消融（先构建 `--targets world`） |

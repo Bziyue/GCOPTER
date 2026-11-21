@@ -39,7 +39,9 @@ int main(int argc,char** argv){try{
   const auto index_start=c3::Clock::now();
   const sc::ObstacleIndex map=[&] {
 #ifndef H3_BASELINE
-    if(preset.voxels)
+    using sc::experiments::h3::MapInput;
+    if(preset.input==MapInput::Points)return sc::ObstacleIndex::fromPoints(cloud);
+    if(preset.input==MapInput::Voxels)
       return sc::ObstacleIndex::fromOccupiedVoxels(cloud,resolution);
 #endif
     std::vector<sc::Sphere> spheres;

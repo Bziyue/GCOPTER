@@ -5,16 +5,19 @@
 #include <string>
 
 namespace SweepCorridor::experiments::h3 {
-struct BenchmarkPreset { OptimizerSettings solver; bool voxels; };
+enum class MapInput { Points, Voxels, Spheres };
+struct BenchmarkPreset { OptimizerSettings solver; MapInput input; };
 
 inline BenchmarkPreset benchmarkPreset(const std::string& name,const c3::OptimizerSettings& baseline) {
   OptimizerSettings current(baseline);
-  if(name=="h3_new" || name=="h3_spheres")return {current,name=="h3_new"};
-  if(name=="h3_core_full"){current.cap_volume_weight=1;return {current,true};}
-  if(name=="h3_core_pressure"){current.use_section_gain=false;return {current,true};}
-  if(name=="h3_core_two_rounds"){current.refresh_rounds=2;return {current,true};}
-  if(name=="h3_core_span_scale"){current.separator_scale=SeparatorScale::Span;return {current,true};}
-  if(name=="h3_core_no_share"){current.share_cover_planes=false;return {current,true};}
+  if(name=="h3_points")return {current,MapInput::Points};
+  if(name=="h3_new")return {current,MapInput::Voxels};
+  if(name=="h3_spheres")return {current,MapInput::Spheres};
+  if(name=="h3_core_full"){current.cap_volume_weight=1;return {current,MapInput::Voxels};}
+  if(name=="h3_core_pressure"){current.use_section_gain=false;return {current,MapInput::Voxels};}
+  if(name=="h3_core_two_rounds"){current.refresh_rounds=2;return {current,MapInput::Voxels};}
+  if(name=="h3_core_span_scale"){current.separator_scale=SeparatorScale::Span;return {current,MapInput::Voxels};}
+  if(name=="h3_core_no_share"){current.share_cover_planes=false;return {current,MapInput::Voxels};}
 
   // Frozen presets inherit only from an explicitly named historical experiment.
   // Keep their parameters independent of today's demo settings.
@@ -25,10 +28,10 @@ inline BenchmarkPreset benchmarkPreset(const std::string& name,const c3::Optimiz
   old.min_center_progress=0;old.intermediate_radius=false;old.smoothing_volume_tolerance=0;
   old.use_section_gain=false;old.require_refresh_for_ends=true;
   old.separator_scale=SeparatorScale::GroupOnlyDuringInflation;
-  if(name=="h3_pre_core" || name=="h3_pre_core_spheres")return {old,name=="h3_pre_core"};
-  if(name=="h3_voxel_single"){old.cover_group_size=1;return {old,true};}
-  if(name=="h3_voxel_fine"){old.coarse_start=false;return {old,true};}
-  if(name=="h3_voxel_positive"){old.relative_jacobian_margin=1e-9;return {old,true};}
+  if(name=="h3_pre_core" || name=="h3_pre_core_spheres")return {old,name=="h3_pre_core"?MapInput::Voxels:MapInput::Spheres};
+  if(name=="h3_voxel_single"){old.cover_group_size=1;return {old,MapInput::Voxels};}
+  if(name=="h3_voxel_fine"){old.coarse_start=false;return {old,MapInput::Voxels};}
+  if(name=="h3_voxel_positive"){old.relative_jacobian_margin=1e-9;return {old,MapInput::Voxels};}
   auto jets=old;
   jets.cover_group_size=1;jets.coarse_start=false;jets.relative_jacobian_margin=1e-9;
   jets.refresh_rounds=0;jets.refresh_fraction=0;jets.end_steps=0;jets.joint_budget_share=1;
@@ -96,6 +99,6 @@ inline BenchmarkPreset benchmarkPreset(const std::string& name,const c3::Optimiz
   presets.emplace("h3_world",presets.at("h3_jets"));
   const auto it=presets.find(name);
   if(it==presets.end())throw std::invalid_argument("unknown H3 benchmark mode: "+name);
-  return {it->second,false};
+  return {it->second,MapInput::Spheres};
 }
 }
